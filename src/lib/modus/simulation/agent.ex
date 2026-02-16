@@ -153,6 +153,11 @@ defmodule Modus.Simulation.Agent do
   end
 
   @impl true
+  def handle_cast({:update_relationships, rels}, agent) do
+    {:noreply, %{agent | relationships: rels}}
+  end
+
+  @impl true
   def handle_cast({:move_toward, _target}, %{alive?: false} = agent) do
     {:noreply, agent}
   end
@@ -235,9 +240,16 @@ defmodule Modus.Simulation.Agent do
 
   defp check_death(agent) do
     cond do
-      agent.needs.hunger > 100.0 -> %{agent | alive?: false, current_action: :dead}
-      agent.needs.rest < 0.0 -> %{agent | alive?: false, current_action: :dead}
-      true -> agent
+      agent.needs.hunger > 100.0 ->
+        Modus.Simulation.EventLog.log(:death, 0, [agent.id], %{cause: "starvation", name: agent.name})
+        %{agent | alive?: false, current_action: :dead}
+
+      agent.needs.rest < 0.0 ->
+        Modus.Simulation.EventLog.log(:death, 0, [agent.id], %{cause: "exhaustion", name: agent.name})
+        %{agent | alive?: false, current_action: :dead}
+
+      true ->
+        agent
     end
   end
 

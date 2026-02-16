@@ -46,16 +46,38 @@ defmodule Modus.Intelligence.OllamaClient do
     end
   end
 
+  @doc """
+  Chat with a single agent as a user. Returns the agent's reply string.
+  """
+  @spec chat_with_agent(map(), String.t()) :: {:ok, String.t()} | :fallback
+  def chat_with_agent(agent, user_message) do
+    prompt = build_chat_prompt(agent, user_message)
+
+    case call_generate(prompt, false) do
+      {:ok, text} ->
+        case Jason.decode(text) do
+          {:ok, %{"reply" => reply}} -> {:ok, reply}
+          _ -> {:ok, String.trim(text)}
+        end
+
+      {:error, reason} ->
+        Logger.warning("OllamaClient chat failed: #{inspect(reason)}")
+        :fallback
+    end
+  end
+
   # ── HTTP ────────────────────────────────────────────────────
 
-  defp call_generate(prompt) do
+  defp call_generate(prompt, json_format \\ true)
+
+  defp call_generate(prompt, json_format) do
     body = %{
       model: @model,
       prompt: prompt,
       stream: false,
-      format: "json",
       options: %{temperature: 0.7, num_predict: 512}
     }
+    body = if json_format, do: Map.put(body, :format, "json"), else: body
 
     case Req.post("#{@base_url}/api/generate",
            json: body,
@@ -111,6 +133,21 @@ defmodule Modus.Intelligence.OllamaClient do
 
     Respond with JSON: {"dialogue": [{"speaker": "<name>", "line": "<text>"}, ...]}
     Keep each line under 50 words. Be natural and reflect their personalities.
+    """
+  end
+
+  defp build_chat_prompt(agent, user_message) do
+    """
+    You are #{agent.name}, a #{agent.occupation} in a village simulation.
+    Your personality: #{describe_agent(agent)}
+    Your current state: hunger=#{round(agent.needs.hunger)}, social=#{round(agent.needs.social)}, rest=#{round(agent.needs.rest)}
+    You are currently #{agent.current_action}.
+
+    Stay in character. Be brief (1-3 sentences). Respond naturally as this character would.
+
+    The user says: "#{user_message}"
+
+    Respond with JSON: {"reply": "<your response>"}
     """
   end
 

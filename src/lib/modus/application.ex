@@ -19,6 +19,7 @@ defmodule Modus.Application do
       {Registry, keys: :unique, name: Modus.AgentRegistry},
       Modus.Intelligence.DecisionCache,
       Modus.Simulation.AgentSupervisor,
+      Modus.Simulation.EventLog,
       Modus.Intelligence.LlmScheduler,
       ModusWeb.Endpoint
     ]

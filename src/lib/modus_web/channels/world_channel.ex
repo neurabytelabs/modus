@@ -4,116 +4,179 @@ defmodule ModusWeb.WorldChannel do
 
   On join: sends full grid + agent state.
   Each tick: broadcasts delta (agent positions + tick number).
+  Supports agent chat (user→agent via Ollama) and agent detail queries.
   """
   use Phoenix.Channel
 
-  alias Modus.Simulation.{World, Ticker, Agent, AgentSupervisor}
-
-  # tick topic used for PubSub subscription
+  alias Modus.Simulation.{World, Ticker, Agent, AgentSupervisor, EventLog}
+  alias Modus.Intelligence.OllamaClient
 
   @impl true
   def join("world:lobby", _payload, socket) do
-    # Subscribe to tick events
     Ticker.subscribe()
-
-    # Build full state
     state = build_full_state()
     {:ok, state, socket}
   end
 
+  # ── handle_in ───────────────────────────────────────────────
+
   @impl true
   def handle_in("start", _payload, socket) do
-    # Ensure world + agents exist, then start ticker
     ensure_world_running()
     Ticker.run()
     broadcast!(socket, "status_change", %{status: "running"})
     {:noreply, socket}
   end
 
-  @impl true
   def handle_in("pause", _payload, socket) do
     Ticker.pause()
     broadcast!(socket, "status_change", %{status: "paused"})
     {:noreply, socket}
   end
 
-  @impl true
   def handle_in("reset", _payload, socket) do
     Ticker.pause()
-    # Kill all agents
     AgentSupervisor.terminate_all()
-    # Restart world
     if Process.whereis(World), do: GenServer.stop(World)
     world = World.new("Genesis")
     {:ok, _} = World.start_link(world)
     World.spawn_initial_agents(10)
     Ticker.run()
     broadcast!(socket, "status_change", %{status: "running"})
-
-    # Send fresh full state
     state = build_full_state()
     broadcast!(socket, "full_state", state)
     {:noreply, socket}
   end
 
-  # Handle tick broadcasts from PubSub
+  def handle_in("chat_agent", %{"agent_id" => agent_id, "message" => message}, socket) do
+    channel_pid = self()
+
+    Task.start(fn ->
+      try do
+        state = Agent.get_state(agent_id)
+
+        reply =
+          case OllamaClient.chat_with_agent(state, message) do
+            {:ok, text} -> text
+            :fallback -> "..."
+          end
+
+        EventLog.log(:conversation, 0, [agent_id], %{
+          type: :user_chat,
+          user_message: message,
+          agent_reply: reply
+        })
+
+        send(channel_pid, {:chat_reply, agent_id, reply})
+      catch
+        :exit, _ ->
+          send(channel_pid, {:chat_reply, agent_id, "..."})
+      end
+    end)
+
+    {:noreply, socket}
+  end
+
+  def handle_in("get_agent_detail", %{"agent_id" => agent_id}, socket) do
+    try do
+      state = Agent.get_state(agent_id)
+      events = EventLog.recent(agent_id: agent_id, limit: 5)
+
+      detail = %{
+        id: state.id,
+        name: state.name,
+        occupation: to_string(state.occupation),
+        alive: state.alive?,
+        age: state.age,
+        conatus: state.conatus_score,
+        position: %{x: elem(state.position, 0), y: elem(state.position, 1)},
+        personality: %{
+          openness: Float.round(state.personality.openness, 2),
+          conscientiousness: Float.round(state.personality.conscientiousness, 2),
+          extraversion: Float.round(state.personality.extraversion, 2),
+          agreeableness: Float.round(state.personality.agreeableness, 2),
+          neuroticism: Float.round(state.personality.neuroticism, 2)
+        },
+        needs: %{
+          hunger: Float.round(state.needs.hunger, 1),
+          social: Float.round(state.needs.social, 1),
+          rest: Float.round(state.needs.rest, 1),
+          shelter: Float.round(state.needs.shelter, 1)
+        },
+        relationships:
+          state.relationships
+          |> Enum.map(fn {id, {type, strength}} ->
+            %{agent_id: id, type: to_string(type), strength: strength}
+          end),
+        action: to_string(state.current_action),
+        recent_events:
+          events
+          |> Enum.map(fn e ->
+            %{id: e.id, type: to_string(e.type), tick: e.tick, data: e.data}
+          end)
+      }
+
+      {:reply, {:ok, detail}, socket}
+    catch
+      :exit, _ ->
+        {:reply, {:error, %{reason: "agent_not_found"}}, socket}
+    end
+  end
+
+  # ── handle_info ─────────────────────────────────────────────
+
   @impl true
   def handle_info({:tick, tick_number}, socket) do
     agents = get_agent_list()
 
-    # Tick each agent
     for agent <- agents do
       Agent.tick(agent.id, tick_number, %{})
     end
 
-    # Get updated positions
     updated_agents = get_agent_list()
+
+    if rem(tick_number, 10) == 0 do
+      trigger_agent_conversations(updated_agents, tick_number)
+    end
 
     delta = %{
       tick: tick_number,
       agent_count: length(updated_agents),
-      agents: updated_agents,
+      agents: updated_agents
     }
 
     push(socket, "delta", delta)
     {:noreply, socket}
   end
 
+  def handle_info({:chat_reply, agent_id, reply}, socket) do
+    push(socket, "chat_reply", %{agent_id: agent_id, reply: reply})
+    {:noreply, socket}
+  end
+
   # ── Helpers ───────────────────────────────────────────────
 
   defp build_full_state do
-    world_state = if Process.whereis(World) do
-      World.get_state()
-    else
-      nil
-    end
+    world_state =
+      if Process.whereis(World), do: World.get_state(), else: nil
 
-    grid = if world_state do
-      build_grid(world_state)
-    else
-      []
-    end
-
+    grid = if world_state, do: build_grid(world_state), else: []
     agents = get_agent_list()
 
-    tick = if Process.whereis(Ticker) do
-      Ticker.current_tick()
-    else
-      0
-    end
+    tick =
+      if Process.whereis(Ticker), do: Ticker.current_tick(), else: 0
 
-    status = if Process.whereis(Ticker) do
-      Ticker.status().state |> to_string()
-    else
-      "paused"
-    end
+    status =
+      if Process.whereis(Ticker),
+        do: Ticker.status().state |> to_string(),
+        else: "paused"
 
     %{
       grid: grid,
       agents: agents,
       tick: tick,
       status: status,
-      agent_count: length(agents),
+      agent_count: length(agents)
     }
   end
 
@@ -147,7 +210,7 @@ defmodule ModusWeb.WorldChannel do
           occupation: state.occupation |> to_string(),
           action: state.current_action |> to_string(),
           alive: state.alive?,
-          conatus: state.conatus_score,
+          conatus: state.conatus_score
         }
       catch
         :exit, _ -> nil
@@ -156,14 +219,70 @@ defmodule ModusWeb.WorldChannel do
     |> Enum.reject(&is_nil/1)
   end
 
+  defp trigger_agent_conversations(agents, tick) do
+    alive = Enum.filter(agents, & &1.alive)
+
+    pairs =
+      for a <- alive, b <- alive, a.id < b.id,
+          abs(a.x - b.x) <= 3 and abs(a.y - b.y) <= 3,
+          do: {a.id, b.id}
+
+    pairs
+    |> Enum.take_random(min(2, length(pairs)))
+    |> Enum.each(fn {id_a, id_b} ->
+      Task.start(fn ->
+        try do
+          state_a = Agent.get_state(id_a)
+          state_b = Agent.get_state(id_b)
+
+          case OllamaClient.conversation(state_a, state_b, %{tick: tick}) do
+            dialogue when is_list(dialogue) ->
+              EventLog.log(:conversation, tick, [id_a, id_b], %{
+                type: :agent_chat,
+                dialogue:
+                  Enum.map(dialogue, fn {speaker, line} ->
+                    %{speaker: speaker, line: line}
+                  end)
+              })
+
+              update_relationship(id_a, id_b, :acquaintance, 0.1)
+              update_relationship(id_b, id_a, :acquaintance, 0.1)
+
+            :fallback ->
+              :ok
+          end
+        catch
+          :exit, _ -> :ok
+        end
+      end)
+    end)
+  end
+
+  defp update_relationship(agent_id, other_id, type, delta) do
+    try do
+      state = Agent.get_state(agent_id)
+      {current_type, current_strength} = Map.get(state.relationships, other_id, {type, 0.0})
+      new_strength = min(current_strength + delta, 1.0)
+      new_type = if new_strength > 0.5, do: :friend, else: current_type
+      new_rels = Map.put(state.relationships, other_id, {new_type, new_strength})
+
+      GenServer.cast(
+        {:via, Registry, {Modus.AgentRegistry, agent_id}},
+        {:update_relationships, new_rels}
+      )
+    catch
+      :exit, _ -> :ok
+    end
+  end
+
   defp ensure_world_running do
     unless Process.whereis(World) do
       world = World.new("Genesis")
       {:ok, _} = World.start_link(world)
     end
 
-    # Spawn agents if none exist
     agents = get_agent_list()
+
     if Enum.empty?(agents) do
       World.spawn_initial_agents(10)
     end

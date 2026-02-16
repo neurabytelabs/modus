@@ -31,8 +31,12 @@ export default class Renderer {
     this.agentLayer = null
     this.agentSprites = new Map() // id -> {gfx, label, targetX, targetY}
 
+    // Agent click callback
+    this.onAgentClick = null
+
     // Camera state
     this.dragging = false
+    this.didDrag = false
     this.dragStart = { x: 0, y: 0 }
     this.camStart = { x: 0, y: 0 }
     this.scale = 1.0
@@ -184,9 +188,10 @@ export default class Renderer {
   _setupCamera() {
     const canvas = this.app.canvas
 
-    // Pan (drag)
+    // Pan (drag) + click detection
     canvas.addEventListener("pointerdown", (e) => {
       this.dragging = true
+      this.didDrag = false
       this.dragStart = { x: e.clientX, y: e.clientY }
       this.camStart = { x: this.worldContainer.x, y: this.worldContainer.y }
       canvas.style.cursor = "grabbing"
@@ -194,11 +199,18 @@ export default class Renderer {
 
     canvas.addEventListener("pointermove", (e) => {
       if (!this.dragging) return
-      this.worldContainer.x = this.camStart.x + (e.clientX - this.dragStart.x)
-      this.worldContainer.y = this.camStart.y + (e.clientY - this.dragStart.y)
+      const dx = e.clientX - this.dragStart.x
+      const dy = e.clientY - this.dragStart.y
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) this.didDrag = true
+      this.worldContainer.x = this.camStart.x + dx
+      this.worldContainer.y = this.camStart.y + dy
     })
 
-    canvas.addEventListener("pointerup", () => {
+    canvas.addEventListener("pointerup", (e) => {
+      if (!this.didDrag) {
+        // It was a click — check for agent hit
+        this._handleClick(e)
+      }
       this.dragging = false
       canvas.style.cursor = "grab"
     })
@@ -232,6 +244,34 @@ export default class Renderer {
   }
 
   // ── Helpers ─────────────────────────────────────────────
+
+  _handleClick(e) {
+    if (!this.onAgentClick) return
+    const rect = this.app.canvas.getBoundingClientRect()
+    const mx = e.clientX - rect.left
+    const my = e.clientY - rect.top
+    // Convert to world coordinates
+    const wx = (mx - this.worldContainer.x) / this.scale
+    const wy = (my - this.worldContainer.y) / this.scale
+
+    // Find closest agent within click radius
+    let closest = null
+    let closestDist = AGENT_RADIUS * 3
+
+    for (const [id, sprite] of this.agentSprites) {
+      const dx = sprite.targetX - wx
+      const dy = sprite.targetY - wy
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      if (dist < closestDist) {
+        closestDist = dist
+        closest = id
+      }
+    }
+
+    if (closest) {
+      this.onAgentClick(closest)
+    }
+  }
 
   _hashCode(str) {
     let hash = 0

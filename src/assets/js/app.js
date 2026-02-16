@@ -12,12 +12,25 @@ Hooks.WorldCanvas = {
   mounted() {
     this.renderer = new Renderer(this.el)
     this.worldSocket = null
+    this.lastAgents = []
 
     this.renderer.init().then(() => {
+      // Set up agent click callback
+      this.renderer.onAgentClick = (agentId) => {
+        if (this.worldSocket) {
+          this.worldSocket.getAgentDetail(agentId, (detail) => {
+            this.pushEvent("select_agent", { agent: detail })
+          })
+        }
+      }
+
       this.worldSocket = new WorldSocket({
         onFullState: (state) => {
           if (state.grid) this.renderer.renderTerrain(state.grid)
-          if (state.agents) this.renderer.updateAgents(state.agents)
+          if (state.agents) {
+            this.renderer.updateAgents(state.agents)
+            this.lastAgents = state.agents
+          }
           this.pushEvent("world_state", {
             tick: state.tick || 0,
             agent_count: state.agents ? state.agents.length : 0,
@@ -25,7 +38,10 @@ Hooks.WorldCanvas = {
           })
         },
         onDelta: (delta) => {
-          if (delta.agents) this.renderer.updateAgents(delta.agents)
+          if (delta.agents) {
+            this.renderer.updateAgents(delta.agents)
+            this.lastAgents = delta.agents
+          }
           if (delta.tick != null) {
             this.pushEvent("tick_update", {
               tick: delta.tick,
@@ -42,6 +58,9 @@ Hooks.WorldCanvas = {
         onStatus: (data) => {
           this.pushEvent("status_change", { status: data.status })
         },
+        onChatReply: (data) => {
+          this.pushEvent("chat_response", { reply: data.reply })
+        },
       })
       this.worldSocket.connect()
     })
@@ -55,6 +74,11 @@ Hooks.WorldCanvas = {
     })
     this.handleEvent("reset_simulation", () => {
       if (this.worldSocket) this.worldSocket.resetSimulation()
+    })
+    this.handleEvent("chat_to_agent", (data) => {
+      if (this.worldSocket) {
+        this.worldSocket.chatAgent(data.agent_id, data.message)
+      }
     })
   },
 
