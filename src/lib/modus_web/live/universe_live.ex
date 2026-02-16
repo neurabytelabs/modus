@@ -707,10 +707,10 @@ defmodule ModusWeb.UniverseLive do
                 <div class="mb-2">
                   <div class="flex justify-between text-[10px] mb-0.5">
                     <span class="text-slate-500">⚡ Conatus Energy</span>
-                    <span class="text-slate-400 tabular-nums"><%= Float.round((@selected_agent["conatus_energy"] || 0.7) * 100, 1) %>%</span>
+                    <span class="text-slate-400 tabular-nums"><%= Float.round(ensure_float(@selected_agent["conatus_energy"] || 0.7) * 100, 1) %>%</span>
                   </div>
                   <div class="h-2 bg-white/5 rounded-full overflow-hidden">
-                    <% ce = @selected_agent["conatus_energy"] || 0.7 %>
+                    <% ce = ensure_float(@selected_agent["conatus_energy"] || 0.7) %>
                     <div class={"h-full rounded-full transition-all duration-500 #{cond do ce > 0.6 -> "bg-green-500"; ce > 0.3 -> "bg-yellow-500"; true -> "bg-red-500" end}"} style={"width: #{min(ce * 100, 100)}%"} />
                   </div>
                 </div>
@@ -774,7 +774,7 @@ defmodule ModusWeb.UniverseLive do
                       <div class="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
                         <div class="h-full bg-cyan-500/60 rounded-full transition-all duration-500" style={"width: #{(val || 0) * 100}%"} />
                       </div>
-                      <span class="text-[10px] text-slate-500 tabular-nums w-6 text-right"><%= val || 0 %></span>
+                      <span class="text-[10px] text-slate-500 tabular-nums w-6 text-right"><%= Float.round(ensure_float(val || 0), 2) %></span>
                     </div>
                   <% end %>
                 <% end %>
@@ -1078,6 +1078,11 @@ defmodule ModusWeb.UniverseLive do
     |> Enum.join(", ")
   end
   defp resolve_agent_names(_), do: "Unknown"
+
+  # Ensure a value is a float (JSON doesn't distinguish 1 from 1.0)
+  defp ensure_float(val) when is_float(val), do: val
+  defp ensure_float(val) when is_integer(val), do: val / 1
+  defp ensure_float(_), do: 0.0
 
   # Dynamic need bar colors based on value
   defp need_bar_color("hunger", val) when val > 80, do: "bg-red-500"
