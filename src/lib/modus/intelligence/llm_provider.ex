@@ -62,8 +62,14 @@ defmodule Modus.Intelligence.LlmProvider do
     GenServer.start_link(__MODULE__, init_config(), name: __MODULE__)
   end
 
-  @doc "Get current LLM config."
-  def get_config, do: GenServer.call(__MODULE__, :get_config)
+  @doc "Get current LLM config. Uses persistent_term for non-blocking reads."
+  def get_config do
+    try do
+      :persistent_term.get(:llm_config)
+    rescue
+      ArgumentError -> GenServer.call(__MODULE__, :get_config)
+    end
+  end
 
   @doc "Update LLM config. Keys: :provider, :model, :base_url, :api_key"
   def set_config(new_config) when is_map(new_config) do
@@ -100,6 +106,7 @@ defmodule Modus.Intelligence.LlmProvider do
   @impl true
   def init(config) do
     Logger.info("LlmProvider started: provider=#{config.provider} model=#{config.model} url=#{config.base_url}")
+    :persistent_term.put(:llm_config, config)
     {:ok, config}
   end
 
@@ -110,6 +117,7 @@ defmodule Modus.Intelligence.LlmProvider do
 
   def handle_call({:set_config, new}, _from, config) do
     merged = Map.merge(config, new)
+    :persistent_term.put(:llm_config, merged)
     Logger.info("LlmProvider config updated: provider=#{merged.provider} model=#{merged.model}")
     {:reply, :ok, merged}
   end
