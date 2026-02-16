@@ -115,7 +115,7 @@ defmodule ModusWeb.WorldChannel do
     AgentSupervisor.terminate_all()
     if Process.whereis(World), do: GenServer.stop(World)
 
-    world = World.new("Genesis", template: String.to_existing_atom(template), danger_level: String.to_existing_atom(danger))
+    world = World.new("Genesis", template: String.to_atom(template), danger_level: String.to_atom(danger))
     {:ok, _} = World.start_link(world)
     pop_count = max(2, min(pop, 50))
     World.spawn_initial_agents(pop_count)

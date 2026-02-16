@@ -56,18 +56,47 @@ defmodule ModusWeb.UniverseLive do
   end
 
   def handle_event("launch_world", _params, socket) do
+    # Start World and agents server-side directly
+    template = socket.assigns.template
+    pop = socket.assigns.population
+    danger = socket.assigns.danger
+
+    alias Modus.Simulation.{World, Ticker, AgentSupervisor}
+
+    # Clean up if already running
+    AgentSupervisor.terminate_all()
+    if Process.whereis(World), do: GenServer.stop(World)
+
+    world = World.new("Genesis",
+      template: String.to_atom(template),
+      danger_level: String.to_atom(danger)
+    )
+    {:ok, _} = World.start_link(world)
+    World.spawn_initial_agents(max(2, min(pop, 50)))
+    Ticker.run()
+
     {:noreply,
      socket
-     |> assign(phase: :simulation)
+     |> assign(phase: :simulation, status: :running)
      |> push_event("create_world", %{
-       template: socket.assigns.template,
-       population: socket.assigns.population,
-       danger: socket.assigns.danger
+       template: template,
+       population: pop,
+       danger: danger
      })}
   end
 
   def handle_event("skip_onboarding", _params, socket) do
-    {:noreply, assign(socket, phase: :simulation)}
+    alias Modus.Simulation.{World, Ticker, AgentSupervisor}
+
+    AgentSupervisor.terminate_all()
+    if Process.whereis(World), do: GenServer.stop(World)
+
+    world = World.new("Genesis")
+    {:ok, _} = World.start_link(world)
+    World.spawn_initial_agents(10)
+    Ticker.run()
+
+    {:noreply, assign(socket, phase: :simulation, status: :running)}
   end
 
   # ── Simulation Events ──────────────────────────────────────
