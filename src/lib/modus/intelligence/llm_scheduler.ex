@@ -11,8 +11,6 @@ defmodule Modus.Intelligence.LlmScheduler do
   alias Modus.Intelligence.{LlmProvider, DecisionCache}
 
   @batch_interval 100
-  # @conversation_interval 500
-  @conversation_social_threshold 40.0
 
   def start_link(_opts) do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
@@ -74,57 +72,6 @@ defmodule Modus.Intelligence.LlmScheduler do
       end
     end)
     state
-  end
-
-  defp _spawn_conversations(state, tick) do
-    scheduler = self()
-    Task.start(fn ->
-      try do
-        agents = get_alive_agents()
-        pairs = _find_conversation_pairs(agents)
-
-        Enum.each(Enum.take(pairs, 1), fn {a, b} ->
-          case LlmProvider.conversation(a, b, %{tick: tick}) do
-            :fallback -> :ok
-            dialogue ->
-              Logger.info("Conversation at tick #{tick}: #{a.name} <-> #{b.name}")
-              for {speaker, line} <- dialogue do
-                Logger.info("  [#{speaker}]: #{line}")
-              end
-
-              Phoenix.PubSub.broadcast(
-                Modus.PubSub,
-                "modus:events",
-                {:conversation, %{
-                  tick: tick,
-                  agents: {a.id, b.id},
-                  names: {a.name, b.name},
-                  dialogue: dialogue
-                }}
-              )
-          end
-        end)
-      rescue
-        e -> Logger.warning("LLM conversation error: #{inspect(e)}")
-      after
-        send(scheduler, {:llm_done})
-      end
-    end)
-    state
-  end
-
-  defp _find_conversation_pairs(agents) do
-    agents
-    |> Enum.filter(fn a -> a.needs.social < @conversation_social_threshold end)
-    |> Enum.group_by(fn a -> a.position end)
-    |> Enum.flat_map(fn {_pos, group} ->
-      if length(group) >= 2 do
-        [a, b | _] = Enum.shuffle(group)
-        [{a, b}]
-      else
-        []
-      end
-    end)
   end
 
   defp get_alive_agents do

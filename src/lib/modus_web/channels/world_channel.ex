@@ -454,17 +454,6 @@ defmodule ModusWeb.WorldChannel do
     }
   end
 
-  defp _fallback_chat_reply(agent_state) do
-    responses = [
-      "Hello! I'm #{agent_state.name}, a #{agent_state.occupation}. Nice to meet you!",
-      "*waves* I'm busy #{agent_state.current_action} right now, but it's good to see you.",
-      "Ah, a visitor! I'm #{agent_state.name}. The village is quite peaceful today.",
-      "*looks up from work* Oh! I didn't see you there. What brings you to these parts?",
-      "Greetings, friend. #{agent_state.name} at your service."
-    ]
-    Enum.random(responses)
-  end
-
   defp ensure_world_running do
     unless Process.whereis(World) do
       world = World.new("Genesis")

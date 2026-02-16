@@ -4,10 +4,6 @@ defmodule Modus.Protocol.CommandExecutor do
   alias Modus.Protocol.Bridge
   alias Modus.Simulation.Agent
 
-  defp ensure_float(val) when is_float(val), do: val
-  defp ensure_float(val) when is_integer(val), do: val / 1
-  defp ensure_float(_), do: 0.0
-
   @doc "Execute a chain of commands sequentially for an agent"
   def execute_chain(agent_id, commands) when is_list(commands) do
     results = Enum.reduce(commands, [], fn cmd, acc ->
