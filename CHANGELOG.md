@@ -76,3 +76,20 @@ The world was born. 8 overnight iterations created the foundation.
 
 _MODUS — Create worlds. Watch them live._
 _NeuraByte Labs · 2026_
+
+## v0.4.0 — Cerebro (2026-02-16)
+> "The mind's power of thinking is equal to, and simultaneous with, the body's power of acting."
+> — Ethics III, Proposition 28
+
+### Added
+- **SocialNetwork** — ETS relationship graph with strength-based type progression (stranger→acquaintance→friend→close_friend)
+- **AgentConversation** — Async LLM agent-to-agent dialogue with cooldown, concurrent limit, affect-influenced Turkish prompts
+- **SpatialMemory** — Joy-biased exploration (40% pull toward happy memories), fear repulsion
+- **MindView** — Relationship lines between agents, conversation bubbles (💬), 🧠 Mind View toggle
+- **Enhanced detail panel** — İlişkiler (relationships) section, Son Konuşmalar (recent conversations)
+- **LlmProvider persistent_term** — Non-blocking config reads via `:persistent_term`
+
+### Fixed
+- Agent survival rebalance — hunger auto-recovery at 70 (was 85), conatus drain reduced
+- LlmProvider.get_config() no longer blocks on batch_decide
+- Struct access in world_channel (Access protocol → Map.get)
