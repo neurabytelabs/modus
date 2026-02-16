@@ -49,7 +49,7 @@ defmodule Modus.Mind.Cerebro.SpatialMemory do
     end
   end
 
-  defp pick_joy_target(current_pos, joy_memories, default_target) do
+  defp pick_joy_target(_current_pos, joy_memories, default_target) do
     # Weighted random selection by salience
     total = Enum.reduce(joy_memories, 0.0, & &2 + &1.salience)
     roll = :rand.uniform() * total

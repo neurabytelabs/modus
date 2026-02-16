@@ -2,7 +2,7 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
   @moduledoc "LLM-powered agent-to-agent conversations"
 
   alias Modus.Mind.Cerebro.SocialNetwork
-  alias Modus.Mind.{AffectMemory, Affect}
+  alias Modus.Mind.AffectMemory
   alias Modus.Intelligence.LlmProvider
   alias Modus.Simulation.{Agent, EventLog}
   require Logger
@@ -145,7 +145,7 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
     end
 
     memories1 = AffectMemory.memories_for_llm_context(agent1.id, 3) |> Enum.join("; ")
-    memories2 = AffectMemory.memories_for_llm_context(agent2.id, 3) |> Enum.join("; ")
+    _memories2 = AffectMemory.memories_for_llm_context(agent2.id, 3) |> Enum.join("; ")
 
     """
     Sen #{agent1.name} (#{agent1.occupation}). \
@@ -174,7 +174,7 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
 
     # Boost conatus and social need via casts
     rel_bonus = if relationship && relationship.strength > 0.5, do: 0.03, else: 0.0
-    conatus_boost = 0.05 + rel_bonus
+    _conatus_boost = 0.05 + rel_bonus
 
     for id <- [agent.id, partner.id] do
       try do

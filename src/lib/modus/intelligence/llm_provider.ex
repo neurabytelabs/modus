@@ -14,12 +14,12 @@ defmodule Modus.Intelligence.LlmProvider do
   alias Modus.Intelligence.{OllamaClient, AntigravityClient}
 
   # Default config reads from env — prefers Antigravity if configured
-  @default_config %{
-    provider: :ollama,
-    model: "llama3.2:3b-instruct-q4_K_M",
-    base_url: "http://modus-llm:11434",
-    api_key: nil
-  }
+#   @default_config %{
+#     provider: :ollama,
+#     model: "llama3.2:3b-instruct-q4_K_M",
+#     base_url: "http://modus-llm:11434",
+#     api_key: nil
+#   }
 
   defp init_config do
     antigravity_key = System.get_env("ANTIGRAVITY_API_KEY")

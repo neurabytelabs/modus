@@ -434,7 +434,7 @@ defmodule ModusWeb.WorldChannel do
     }
   end
 
-  defp fallback_chat_reply(agent_state) do
+  defp _fallback_chat_reply(agent_state) do
     responses = [
       "Hello! I'm #{agent_state.name}, a #{agent_state.occupation}. Nice to meet you!",
       "*waves* I'm busy #{agent_state.current_action} right now, but it's good to see you.",

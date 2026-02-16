@@ -11,7 +11,7 @@ defmodule Modus.Intelligence.LlmScheduler do
   alias Modus.Intelligence.{LlmProvider, DecisionCache}
 
   @batch_interval 100
-  @conversation_interval 500
+  # @conversation_interval 500
   @conversation_social_threshold 40.0
 
   def start_link(_opts) do
@@ -76,7 +76,7 @@ defmodule Modus.Intelligence.LlmScheduler do
     state
   end
 
-  defp spawn_conversations(state, tick) do
+  defp _spawn_conversations(state, tick) do
     scheduler = self()
     Task.start(fn ->
       try do
@@ -113,7 +113,7 @@ defmodule Modus.Intelligence.LlmScheduler do
     state
   end
 
-  defp find_conversation_pairs(agents) do
+  defp _find_conversation_pairs(agents) do
     agents
     |> Enum.filter(fn a -> a.needs.social < @conversation_social_threshold end)
     |> Enum.group_by(fn a -> a.position end)

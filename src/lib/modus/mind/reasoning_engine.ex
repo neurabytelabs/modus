@@ -14,7 +14,7 @@ defmodule Modus.Mind.ReasoningEngine do
     agent.affect_state == :sadness and persistent_affect?(agent, @persistent_ticks)
   end
 
-  defp persistent_affect?(agent, ticks) do
+  defp persistent_affect?(agent, _ticks) do
     case agent.affect_history do
       [] -> false
       [latest | _] ->
