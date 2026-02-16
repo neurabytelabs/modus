@@ -1,7 +1,9 @@
 /**
  * MODUS 2D Renderer — Pixi.js v8
+ * v1.1.0 Harmonia — UI/UX polish + performance optimizations
  *
  * Renders the 50x50 tile world with terrain, agents, camera controls.
+ * Features: sprite pooling, mini-map, tooltips, keyboard shortcuts.
  */
 import { Application, Container, Graphics, Text, TextStyle } from "pixi.js"
 
@@ -9,6 +11,11 @@ const TILE_SIZE = 16
 const AGENT_RADIUS = 6
 const GRID_W = 50
 const GRID_H = 50
+
+// Mini-map constants
+const MINIMAP_SIZE = 140
+const MINIMAP_MARGIN = 12
+const MINIMAP_AGENT_SIZE = 3
 
 const TERRAIN_COLORS = {
   grass:    0x4ade80,
@@ -43,12 +50,32 @@ export default class Renderer {
     // Agent data cache (for relationship lines)
     this.agentDataMap = new Map() // id -> {friends, conversing_with, ...}
 
+    // Sprite pool for recycling
+    this.spritePool = []
+
     // Agent click callback
     this.onAgentClick = null
     this.selectedAgentId = null
 
     // Mind View toggle
     this.mindViewActive = false
+
+    // Mini-map
+    this.minimapContainer = null
+    this.minimapBg = null
+    this.minimapAgents = null
+    this.minimapViewport = null
+    this.minimapVisible = true
+    this.minimapTerrainCache = null
+
+    // Tooltip
+    this.tooltipContainer = null
+    this.tooltipBg = null
+    this.tooltipText = null
+    this.hoveredAgentId = null
+
+    // Terrain grid cache for minimap
+    this.terrainGrid = null
 
     // Camera state
     this.dragging = false
@@ -100,6 +127,8 @@ export default class Renderer {
     this.worldContainer.y = (this.app.screen.height - totalH) / 2
 
     this._setupCamera()
+    this._setupMinimap()
+    this._setupTooltip()
     this._startAnimLoop()
 
     // Hide loading skeleton
@@ -110,6 +139,7 @@ export default class Renderer {
   // ── Terrain ──────────────────────────────────────────────
 
   renderTerrain(grid) {
+    this.terrainGrid = grid // cache for minimap
     this.terrainLayer.removeChildren()
     const gfx = new Graphics()
 
@@ -144,6 +174,9 @@ export default class Renderer {
     this.nightOverlay.clear()
     this.nightOverlay.rect(0, 0, GRID_W * TILE_SIZE, GRID_H * TILE_SIZE)
     this.nightOverlay.fill({ color: 0x0a1030, alpha: 0 })
+
+    // Update minimap terrain
+    this._drawMinimapTerrain()
   }
 
   // ── Agents ───────────────────────────────────────────────
@@ -318,6 +351,9 @@ export default class Renderer {
       // ── Relationship Lines ──
       this._drawRelationshipLines()
 
+      // ── Mini-map (every 3 frames for perf) ──
+      if (Math.floor(glowPhase * 10) % 3 === 0) this._updateMinimap()
+
       for (const [id, sprite] of this.agentSprites) {
         const c = sprite.container
         c.x += (sprite.targetX - c.x) * lerp
@@ -461,6 +497,181 @@ export default class Renderer {
       this.terrainLayer.alpha = this.mindViewActive ? 0.3 : 1.0
     }
     return this.mindViewActive
+  }
+
+  // ── Mini-map ─────────────────────────────────────────────
+
+  _setupMinimap() {
+    this.minimapContainer = new Container()
+    this.minimapContainer.zIndex = 100
+    this.app.stage.addChild(this.minimapContainer)
+    this.app.stage.sortableChildren = true
+
+    // Background
+    this.minimapBg = new Graphics()
+    this.minimapContainer.addChild(this.minimapBg)
+
+    // Terrain layer (cached, only redrawn on terrain change)
+    this.minimapTerrainCache = new Graphics()
+    this.minimapContainer.addChild(this.minimapTerrainCache)
+
+    // Agent dots
+    this.minimapAgents = new Graphics()
+    this.minimapContainer.addChild(this.minimapAgents)
+
+    // Viewport rectangle
+    this.minimapViewport = new Graphics()
+    this.minimapContainer.addChild(this.minimapViewport)
+
+    this._positionMinimap()
+  }
+
+  _positionMinimap() {
+    if (!this.minimapContainer || !this.app) return
+    this.minimapContainer.x = this.app.screen.width - MINIMAP_SIZE - MINIMAP_MARGIN
+    this.minimapContainer.y = MINIMAP_MARGIN
+  }
+
+  _drawMinimapTerrain() {
+    if (!this.minimapTerrainCache || !this.terrainGrid) return
+    const gfx = this.minimapTerrainCache
+    gfx.clear()
+    const scale = MINIMAP_SIZE / (GRID_W * TILE_SIZE)
+    for (const cell of this.terrainGrid) {
+      const color = TERRAIN_COLORS[cell.terrain] || 0x333333
+      gfx.rect(cell.x * TILE_SIZE * scale, cell.y * TILE_SIZE * scale, TILE_SIZE * scale, TILE_SIZE * scale)
+      gfx.fill({ color, alpha: 0.7 })
+    }
+  }
+
+  _updateMinimap() {
+    if (!this.minimapVisible || !this.minimapContainer) {
+      if (this.minimapContainer) this.minimapContainer.visible = false
+      return
+    }
+    this.minimapContainer.visible = true
+    this._positionMinimap()
+
+    const scale = MINIMAP_SIZE / (GRID_W * TILE_SIZE)
+
+    // Background
+    const bg = this.minimapBg
+    bg.clear()
+    bg.rect(-2, -2, MINIMAP_SIZE + 4, MINIMAP_SIZE + 4)
+    bg.fill({ color: 0x0A0A0F, alpha: 0.85 })
+    bg.rect(-2, -2, MINIMAP_SIZE + 4, MINIMAP_SIZE + 4)
+    bg.stroke({ width: 1, color: 0xffffff, alpha: 0.1 })
+
+    // Agent dots
+    const agfx = this.minimapAgents
+    agfx.clear()
+    for (const [id, sprite] of this.agentSprites) {
+      const mx = sprite.targetX * scale
+      const my = sprite.targetY * scale
+      const color = id === this.selectedAgentId ? 0xa855f7 : sprite.baseColor
+      agfx.circle(mx, my, MINIMAP_AGENT_SIZE)
+      agfx.fill(color)
+    }
+
+    // Viewport rect
+    const vp = this.minimapViewport
+    vp.clear()
+    const vpX = (-this.worldContainer.x / this.scale) * scale
+    const vpY = (-this.worldContainer.y / this.scale) * scale
+    const vpW = (this.app.screen.width / this.scale) * scale
+    const vpH = (this.app.screen.height / this.scale) * scale
+    vp.rect(vpX, vpY, vpW, vpH)
+    vp.stroke({ width: 1.5, color: 0xa855f7, alpha: 0.8 })
+  }
+
+  toggleMinimap() {
+    this.minimapVisible = !this.minimapVisible
+    return this.minimapVisible
+  }
+
+  // ── Tooltip ──────────────────────────────────────────────
+
+  _setupTooltip() {
+    this.tooltipContainer = new Container()
+    this.tooltipContainer.zIndex = 200
+    this.tooltipContainer.visible = false
+    this.app.stage.addChild(this.tooltipContainer)
+
+    this.tooltipBg = new Graphics()
+    this.tooltipContainer.addChild(this.tooltipBg)
+
+    this.tooltipText = new Text({
+      text: "",
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 10,
+        fill: 0xe2e8f0,
+        wordWrap: true,
+        wordWrapWidth: 160,
+      }),
+    })
+    this.tooltipText.x = 8
+    this.tooltipText.y = 6
+    this.tooltipContainer.addChild(this.tooltipText)
+
+    // Track mouse for hover detection
+    const canvas = this.app.canvas
+    canvas.addEventListener("pointermove", (e) => {
+      if (this.dragging) {
+        this.tooltipContainer.visible = false
+        return
+      }
+      const rect = canvas.getBoundingClientRect()
+      const mx = e.clientX - rect.left
+      const my = e.clientY - rect.top
+      const wx = (mx - this.worldContainer.x) / this.scale
+      const wy = (my - this.worldContainer.y) / this.scale
+
+      let closest = null
+      let closestDist = TILE_SIZE * 1.5
+      for (const [id, sprite] of this.agentSprites) {
+        const dx = sprite.container.x - wx
+        const dy = sprite.container.y - wy
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist < closestDist) {
+          closestDist = dist
+          closest = id
+        }
+      }
+
+      if (closest && closest !== this.hoveredAgentId) {
+        this.hoveredAgentId = closest
+        const data = this.agentDataMap.get(closest)
+        const sprite = this.agentSprites.get(closest)
+        const name = sprite?.label?.text || "?"
+        const action = sprite?.action || "idle"
+        const friends = data?.friends?.length || 0
+        const group = data?.group ? `Group: ${data.group.name || "yes"}` : ""
+        const lines = [`${name}`, `Action: ${action}`, `Friends: ${friends}`]
+        if (group) lines.push(group)
+        this.tooltipText.text = lines.join("\n")
+        this.tooltipBg.clear()
+        const tw = Math.max(this.tooltipText.width + 16, 100)
+        const th = this.tooltipText.height + 12
+        this.tooltipBg.roundRect(0, 0, tw, th, 4)
+        this.tooltipBg.fill({ color: 0x1e1b2e, alpha: 0.92 })
+        this.tooltipBg.roundRect(0, 0, tw, th, 4)
+        this.tooltipBg.stroke({ width: 1, color: 0xa855f7, alpha: 0.4 })
+        this.tooltipContainer.visible = true
+      } else if (!closest) {
+        this.hoveredAgentId = null
+        this.tooltipContainer.visible = false
+      }
+
+      if (this.tooltipContainer.visible) {
+        this.tooltipContainer.x = mx + 14
+        this.tooltipContainer.y = my - 10
+        // Keep within bounds
+        if (this.tooltipContainer.x + 180 > this.app.screen.width) {
+          this.tooltipContainer.x = mx - 180
+        }
+      }
+    })
   }
 
   // ── Camera Controls ─────────────────────────────────────

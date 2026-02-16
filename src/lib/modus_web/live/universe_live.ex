@@ -595,7 +595,7 @@ defmodule ModusWeb.UniverseLive do
           <span class="text-xl font-bold tracking-tighter">
             MODUS<span class="text-purple-400">_</span>
           </span>
-          <span class="text-xs text-slate-600 hidden sm:inline">v1.0.0 · Substantia</span>
+          <span class="text-xs text-slate-600 hidden sm:inline">v1.1.0 · Harmonia</span>
         </div>
 
         <div class="flex items-center gap-3 md:gap-6">
@@ -713,7 +713,7 @@ defmodule ModusWeb.UniverseLive do
           </div>
 
           <div class="absolute bottom-4 left-4 text-[10px] text-slate-600 pointer-events-none hidden md:block">
-            Click agent to inspect · Drag to pan · Scroll to zoom
+            Click agent to inspect · Drag to pan · Scroll to zoom · <span class="text-slate-500">Space</span>=pause · <span class="text-slate-500">1/5/0</span>=speed · <span class="text-slate-500">M</span>=minimap · <span class="text-slate-500">B</span>=mind · <span class="text-slate-500">Esc</span>=deselect
           </div>
         </div>
 

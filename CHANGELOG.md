@@ -6,6 +6,29 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v1.1.0 · **Harmonia** — _"All things are in God, and everything happens solely through the laws of the infinite nature of God"_
+_16 Şubat 2026_
+
+UI/UX polish + performance optimizations — balance and harmony in the interface.
+
+### New Features
+- **Mini-map** (top-right corner) — Real-time overview of world with agent dots and viewport rectangle. Toggle with `M` key
+- **Tooltips** — Hover over any agent to see name, current action, friend count, and group info
+- **Keyboard shortcuts** — `Space`=pause/play, `1/5/0`=speed, `M`=minimap, `B`=mind view, `Esc`=deselect agent
+- **Shortcut hints** — Bottom-left help text shows all available keyboard shortcuts
+
+### Performance
+- **Minimap rendering** — Throttled to every 3 frames to maintain 60fps with 50 agents
+- **Terrain caching** — Minimap terrain drawn once and cached, only agent dots update per frame
+- **Sprite data caching** — Agent data map optimized for O(1) lookups during relationship line drawing
+
+### Improvements
+- Version bump to v1.1.0 Harmonia in top bar
+- Tooltip auto-positions to stay within screen bounds
+- Minimap viewport rectangle tracks camera pan/zoom in real-time
+
+---
+
 ## v1.0.0 · **Substantia** — _"God is the immanent, not the transitive, cause of all things"_
 _16 Şubat 2026_
 

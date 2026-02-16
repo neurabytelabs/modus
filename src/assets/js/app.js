@@ -186,6 +186,48 @@ Hooks.WorldCanvas = {
   },
 }
 
+// ── Keyboard Shortcuts ─────────────────────────────────────
+
+document.addEventListener("keydown", (e) => {
+  // Don't trigger shortcuts when typing in inputs
+  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return
+
+  switch (e.code) {
+    case "Space":
+      e.preventDefault()
+      // Toggle play/pause via LiveView
+      const btn = document.querySelector("[phx-click='start'], [phx-click='pause']")
+      if (btn) btn.click()
+      break
+    case "Digit1":
+    case "Numpad1":
+      document.querySelector("[phx-value-speed='1']")?.click()
+      break
+    case "Digit5":
+    case "Numpad5":
+      document.querySelector("[phx-value-speed='5']")?.click()
+      break
+    case "Digit0":
+    case "Numpad0":
+      document.querySelector("[phx-value-speed='10']")?.click()
+      break
+    case "KeyM":
+      if (window.__modusRenderer) {
+        const visible = window.__modusRenderer.toggleMinimap()
+        console.log("[MODUS] Minimap:", visible ? "ON" : "OFF")
+      }
+      break
+    case "KeyB":
+      // Mind view toggle
+      document.getElementById("mind-view-btn")?.click()
+      break
+    case "Escape":
+      // Deselect agent
+      document.querySelector("[phx-click='deselect_agent']")?.click()
+      break
+  }
+})
+
 // ── LiveSocket Setup ───────────────────────────────────────
 
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
