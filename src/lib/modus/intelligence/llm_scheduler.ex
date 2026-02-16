@@ -26,26 +26,9 @@ defmodule Modus.Intelligence.LlmScheduler do
   end
 
   @impl true
-  def handle_info({:tick, tick}, state) do
-    state =
-      if DecisionEngine.llm_tick?(tick) do
-        # Batch decisions
-        spawn_batch(tick)
-
-        # Conversations (every 200 ticks, offset from batch)
-        state =
-          if tick - state.last_conversation_tick >= 200 do
-            spawn_conversations(tick)
-            %{state | last_conversation_tick: tick}
-          else
-            state
-          end
-
-        state
-      else
-        state
-      end
-
+  def handle_info({:tick, _tick}, state) do
+    # LLM disabled for MVP stability — Ollama timeouts crash Finch pool
+    # Re-enable once connection pooling is fixed
     {:noreply, state}
   end
 

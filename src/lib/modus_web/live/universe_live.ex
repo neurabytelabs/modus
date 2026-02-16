@@ -147,6 +147,8 @@ defmodule ModusWeb.UniverseLive do
   end
 
   def handle_event("select_agent", %{"agent" => agent_data}, socket) do
+    require Logger
+    Logger.info("MODUS select_agent received: #{inspect(agent_data["name"])}")
     {:noreply, assign(socket, selected_agent: agent_data, chat_messages: [], mobile_panel: :agent)}
   end
 
@@ -428,7 +430,7 @@ defmodule ModusWeb.UniverseLive do
       </nav>
 
       <%!-- Main Area --%>
-      <div class="flex-1 flex overflow-hidden relative">
+      <div class="flex-1 flex min-h-0 relative">
         <%!-- Event Injection Panel (left sidebar on desktop, bottom drawer on mobile) --%>
         <div class={"shrink-0 border-r border-white/5 bg-[#0A0A0F]/90 backdrop-blur-md overflow-y-auto z-10 transition-all duration-300 " <>
           "hidden md:block md:w-48"}>
@@ -466,7 +468,7 @@ defmodule ModusWeb.UniverseLive do
         </div>
 
         <%!-- Canvas Container --%>
-        <div id="world-canvas" phx-hook="WorldCanvas" phx-update="ignore" class="flex-1 relative">
+        <div id="world-canvas" phx-hook="WorldCanvas" phx-update="ignore" class="flex-1 min-w-0 relative overflow-hidden">
           <%!-- Loading Skeleton --%>
           <div id="canvas-skeleton" class="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div class="flex flex-col items-center gap-3">

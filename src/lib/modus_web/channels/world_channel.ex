@@ -208,9 +208,10 @@ defmodule ModusWeb.WorldChannel do
     # Agents now self-tick via PubSub — we just query state
     agents = get_agent_list()
 
-    if rem(tick_number, 10) == 0 do
-      trigger_agent_conversations(agents, tick_number)
-    end
+    # Disabled: Ollama timeouts crash Finch connection pool
+    # if rem(tick_number, 10) == 0 do
+    #   trigger_agent_conversations(agents, tick_number)
+    # end
 
     delta = %{
       tick: tick_number,

@@ -23,7 +23,9 @@ Hooks.WorldCanvas = {
 
     initWithTimeout.then(() => {
       this.rendererReady = true
-      console.log("[MODUS] Renderer initialized")
+      window.__modusRenderer = this.renderer
+      window.__modusSocket = this.worldSocket
+      console.log("[MODUS] Renderer initialized, exposed on window.__modusRenderer")
     }).catch(err => {
       console.error("[MODUS] Renderer failed:", err)
       const skel = document.getElementById("canvas-skeleton")
@@ -31,12 +33,32 @@ Hooks.WorldCanvas = {
     })
 
     // Set up agent click callback (safe even if renderer not ready)
+    // Store hook ref for async callbacks
+    this.el.__modusHook = this
     this.renderer.onAgentClick = (agentId) => {
-      if (this.rendererReady) this.renderer.selectAgent(agentId)
-      if (this.worldSocket) {
-        this.worldSocket.getAgentDetail(agentId, (detail) => {
-          this.pushEvent("select_agent", { agent: detail })
+      console.log("[MODUS] onAgentClick fired:", agentId)
+      // Get fresh hook reference from DOM element
+      const hook = document.getElementById("world-canvas").__modusHook
+      if (hook && hook.renderer && hook.rendererReady) hook.renderer.selectAgent(agentId)
+      const ws = hook ? hook.worldSocket : null
+      if (ws) {
+        ws.getAgentDetail(agentId, (detail) => {
+          console.log("[MODUS] Got agent detail, pushing to LiveView:", detail?.name)
+          try {
+            // Use fresh hook reference for pushEvent
+            const freshHook = document.getElementById("world-canvas").__modusHook
+            if (freshHook) {
+              freshHook.pushEvent("select_agent", { agent: detail })
+              console.log("[MODUS] pushEvent select_agent sent via hook")
+            } else {
+              console.error("[MODUS] No hook reference available")
+            }
+          } catch (err) {
+            console.error("[MODUS] pushEvent failed:", err)
+          }
         })
+      } else {
+        console.warn("[MODUS] No worldSocket available for agent detail")
       }
     }
 
