@@ -137,27 +137,22 @@ defmodule ModusWeb.WorldChannel do
 
     Task.start(fn ->
       try do
-        state = Agent.get_state(agent_id)
-
-        reply =
-          case LlmProvider.chat(state, message) do
-            {:ok, text} -> text
-            :fallback -> fallback_chat_reply(state)
-            _ -> fallback_chat_reply(state)
-          end
-
-        EventLog.log(:conversation, 0, [agent_id], %{
-          type: :user_chat,
-          user_message: message,
-          agent_reply: reply
-        })
-
-        Logger.info("MODUS chat_reply ready for #{agent_id}: #{String.slice(reply, 0..80)}")
-        send(channel_pid, {:chat_reply, agent_id, reply})
+        case Modus.Protocol.Bridge.process(agent_id, message) do
+          {:ok, reply} ->
+            EventLog.log(:conversation, 0, [agent_id], %{
+              type: :user_chat,
+              user_message: message,
+              agent_reply: reply
+            })
+            Logger.info("MODUS chat_reply ready for #{agent_id}: #{String.slice(reply, 0..80)}")
+            send(channel_pid, {:chat_reply, agent_id, reply})
+          _ ->
+            send(channel_pid, {:chat_reply, agent_id, "Şu an cevap veremiyorum..."})
+        end
       catch
         kind, reason ->
           Logger.warning("Chat failed for #{agent_id}: #{inspect({kind, reason})}")
-          send(channel_pid, {:chat_reply, agent_id, "*yawns and looks around* ...I'm not sure what to say right now."})
+          send(channel_pid, {:chat_reply, agent_id, "Bir sorun oluştu..."})
       end
     end)
 

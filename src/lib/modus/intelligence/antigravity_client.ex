@@ -100,6 +100,13 @@ defmodule Modus.Intelligence.AntigravityClient do
     end
   end
 
+  def chat_completion_direct(messages, config) do
+    case chat_completion(messages, config) do
+      {:ok, text} -> {:ok, String.trim(text)}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   def test_connection(config) do
     messages = [%{role: "user", content: "Say 'ok' in one word."}]
     case chat_completion(messages, config) do

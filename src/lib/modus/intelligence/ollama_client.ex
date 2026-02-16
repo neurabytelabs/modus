@@ -63,6 +63,24 @@ defmodule Modus.Intelligence.OllamaClient do
     end
   end
 
+  @doc "Direct chat completion for Bridge (takes raw messages list)."
+  def chat_completion_direct(messages, config \\ %{}) do
+    # Build a single prompt from messages
+    prompt = messages
+    |> Enum.map(fn
+      %{role: "system", content: c} -> "System: #{c}"
+      %{role: "user", content: c} -> "User: #{c}"
+      %{role: "assistant", content: c} -> "Assistant: #{c}"
+      _ -> ""
+    end)
+    |> Enum.join("\n\n")
+
+    case call_generate(prompt, config, false) do
+      {:ok, text} -> {:ok, String.trim(text)}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   @doc "Test connection to Ollama."
   def test_connection(config \\ %{}) do
     url = Map.get(config, :base_url, @default_url)
