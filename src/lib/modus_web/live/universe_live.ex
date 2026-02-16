@@ -700,6 +700,52 @@ defmodule ModusWeb.UniverseLive do
                 · Conatus: <%= @selected_agent["conatus"] || 0 %>
               </div>
 
+              <%!-- Conatus & Affect --%>
+              <div class="mb-4">
+                <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">Mind State</h3>
+                <%!-- Conatus Energy --%>
+                <div class="mb-2">
+                  <div class="flex justify-between text-[10px] mb-0.5">
+                    <span class="text-slate-500">⚡ Conatus Energy</span>
+                    <span class="text-slate-400 tabular-nums"><%= Float.round((@selected_agent["conatus_energy"] || 0.7) * 100, 1) %>%</span>
+                  </div>
+                  <div class="h-2 bg-white/5 rounded-full overflow-hidden">
+                    <% ce = @selected_agent["conatus_energy"] || 0.7 %>
+                    <div class={"h-full rounded-full transition-all duration-500 #{cond do ce > 0.6 -> "bg-green-500"; ce > 0.3 -> "bg-yellow-500"; true -> "bg-red-500" end}"} style={"width: #{min(ce * 100, 100)}%"} />
+                  </div>
+                </div>
+                <%!-- Affect State --%>
+                <div class="mb-2">
+                  <div class="flex items-center gap-2 text-sm">
+                    <span>
+                      <%= case @selected_agent["affect_state"] || "neutral" do
+                        "joy" -> "😊"
+                        "sadness" -> "😢"
+                        "desire" -> "🔥"
+                        "fear" -> "😨"
+                        _ -> "😐"
+                      end %>
+                    </span>
+                    <span class="text-slate-300 capitalize"><%= @selected_agent["affect_state"] || "neutral" %></span>
+                  </div>
+                </div>
+                <%!-- Affect History --%>
+                <%= if @selected_agent["affect_history"] && @selected_agent["affect_history"] != [] do %>
+                  <div class="mt-2">
+                    <div class="text-[10px] text-slate-600 mb-1">Recent transitions:</div>
+                    <%= for t <- @selected_agent["affect_history"] || [] do %>
+                      <div class="text-[10px] text-slate-400 mb-0.5 flex items-center gap-1">
+                        <span class="text-slate-600">t:<%= t["tick"] %></span>
+                        <span class="text-slate-500"><%= t["from"] %></span>
+                        <span class="text-slate-600">→</span>
+                        <span class="text-cyan-400"><%= t["to"] %></span>
+                        <span class="text-slate-600 truncate ml-1"><%= t["reason"] %></span>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+
               <%!-- Needs Bars --%>
               <div class="mb-4">
                 <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">Needs</h3>

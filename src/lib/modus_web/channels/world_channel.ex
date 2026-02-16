@@ -347,7 +347,9 @@ defmodule ModusWeb.WorldChannel do
           occupation: state.occupation |> to_string(),
           action: state.current_action |> to_string(),
           alive: state.alive?,
-          conatus: state.conatus_score
+          conatus: state.conatus_score,
+          conatus_energy: state.conatus_energy,
+          affect: state.affect_state |> to_string()
         }
       catch
         :exit, _ -> nil
@@ -453,6 +455,19 @@ defmodule ModusWeb.WorldChannel do
         state.relationships
         |> Enum.map(fn {id, {type, strength}} ->
           %{agent_id: id, type: to_string(type), strength: strength}
+        end),
+      conatus_energy: state.conatus_energy,
+      affect_state: to_string(state.affect_state),
+      affect_history:
+        state.affect_history
+        |> Enum.take(5)
+        |> Enum.map(fn entry ->
+          %{
+            tick: entry.tick,
+            from: to_string(entry.from),
+            to: to_string(entry.to),
+            reason: entry.reason
+          }
         end),
       action: to_string(state.current_action),
       recent_events:

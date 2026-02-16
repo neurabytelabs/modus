@@ -22,6 +22,13 @@ const AGENT_COLORS = [
   0xfb7185, 0x818cf8, 0x22d3ee, 0xf59e0b, 0x10b981,
 ]
 
+const AFFECT_COLORS = {
+  joy: 0xfbbf24,
+  sadness: 0x60a5fa,
+  desire: 0x4ade80,
+  fear: 0xef4444,
+}
+
 export default class Renderer {
   constructor(container) {
     this.container = container
@@ -125,6 +132,37 @@ export default class Renderer {
         sprite.targetX = px
         sprite.targetY = py
         sprite.action = agent.action || "idle"
+        // Update affect color
+        const affect = agent.affect || "neutral"
+        const affectColor = AFFECT_COLORS[affect]
+        if (affectColor && affectColor !== sprite.currentColor) {
+          sprite.gfx.clear()
+          sprite.gfx.circle(0, 0, AGENT_RADIUS)
+          sprite.gfx.fill(affectColor)
+          sprite.gfx.circle(0, 0, AGENT_RADIUS)
+          sprite.gfx.stroke({ width: 1.5, color: 0xffffff, alpha: 0.3 })
+          sprite.currentColor = affectColor
+        } else if (!affectColor && sprite.currentColor !== sprite.baseColor) {
+          sprite.gfx.clear()
+          sprite.gfx.circle(0, 0, AGENT_RADIUS)
+          sprite.gfx.fill(sprite.baseColor)
+          sprite.gfx.circle(0, 0, AGENT_RADIUS)
+          sprite.gfx.stroke({ width: 1.5, color: 0xffffff, alpha: 0.3 })
+          sprite.currentColor = sprite.baseColor
+        }
+        // Update conatus bar
+        if (sprite.conatusBar && agent.conatus_energy != null) {
+          const e = Math.max(0, Math.min(1, agent.conatus_energy))
+          const barW = AGENT_RADIUS * 2
+          sprite.conatusBar.clear()
+          // bg
+          sprite.conatusBar.rect(-barW / 2, 0, barW, 2)
+          sprite.conatusBar.fill({ color: 0x333333, alpha: 0.5 })
+          // fill
+          const barColor = e > 0.6 ? 0x4ade80 : e > 0.3 ? 0xfbbf24 : 0xef4444
+          sprite.conatusBar.rect(-barW / 2, 0, barW * e, 2)
+          sprite.conatusBar.fill(barColor)
+        }
         // Update alive status
         if (!agent.alive) {
           sprite.gfx.alpha = 0.3
@@ -158,6 +196,11 @@ export default class Renderer {
         label.y = AGENT_RADIUS + 2
         agentContainer.addChild(label)
 
+        // Conatus energy bar
+        const conatusBar = new Graphics()
+        conatusBar.y = AGENT_RADIUS + 12
+        agentContainer.addChild(conatusBar)
+
         this.agentLayer.addChild(agentContainer)
         // Action emoji indicator
         const actionEmoji = new Text({
@@ -176,6 +219,9 @@ export default class Renderer {
           gfx,
           label,
           actionEmoji,
+          conatusBar,
+          baseColor: color,
+          currentColor: color,
           action: agent.action || "idle",
           targetX: px,
           targetY: py,

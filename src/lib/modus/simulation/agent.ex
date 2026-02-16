@@ -28,7 +28,11 @@ defmodule Modus.Simulation.Agent do
     :current_action,
     :conatus_score,
     :alive?,
-    :age
+    :age,
+    conatus_energy: 0.7,
+    affect_state: :neutral,
+    affect_history: [],
+    conatus_history: []
   ]
 
   @type t :: %__MODULE__{
@@ -43,7 +47,11 @@ defmodule Modus.Simulation.Agent do
           current_action: term(),
           conatus_score: float(),
           alive?: boolean(),
-          age: integer()
+          age: integer(),
+          conatus_energy: float(),
+          affect_state: atom(),
+          affect_history: list(),
+          conatus_history: list()
         }
 
   @perception_radius 5
@@ -64,7 +72,11 @@ defmodule Modus.Simulation.Agent do
       current_action: :idle,
       conatus_score: 5.0,
       alive?: true,
-      age: 0
+      age: 0,
+      conatus_energy: 0.7,
+      affect_state: :neutral,
+      affect_history: [],
+      conatus_history: []
     }
   end
 
@@ -155,6 +167,7 @@ defmodule Modus.Simulation.Agent do
       agent
       |> decay_needs()
       |> apply_action(action, params)
+      |> Modus.Mind.MindEngine.process_tick(action, params, tick_number)
       |> increment_age(tick_number)
       |> check_death(tick_number)
       |> record_memory(tick_number, {action, params})
@@ -271,6 +284,10 @@ defmodule Modus.Simulation.Agent do
 
   defp check_death(agent, tick) do
     cond do
+      agent.conatus_energy <= 0.0 ->
+        Modus.Simulation.EventLog.log(:death, tick, [agent.id], %{cause: "loss_of_will", name: agent.name})
+        %{agent | alive?: false, current_action: :dead}
+
       agent.needs.hunger > 100.0 ->
         Modus.Simulation.EventLog.log(:death, tick, [agent.id], %{cause: "starvation", name: agent.name})
         %{agent | alive?: false, current_action: :dead}
