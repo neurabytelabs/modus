@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MODUS Mind Engine</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#050508;overflow:hidden;height:100vh;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace}
+.scene{position:relative;width:800px;height:500px}
+
+/* Title */
+.title{position:absolute;top:20px;left:50%;transform:translateX(-50%);text-align:center;z-index:10}
+.title h1{font-size:36px;font-weight:900;background:linear-gradient(135deg,#a855f7,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.title .sub{color:#475569;font-size:10px;letter-spacing:4px;text-transform:uppercase;margin-top:2px}
+
+/* Conatus Core */
+.core{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100px;height:100px;border-radius:50%;background:radial-gradient(circle,#a855f7 0%,#7c3aed 40%,transparent 70%);box-shadow:0 0 60px rgba(168,85,247,0.4),0 0 120px rgba(168,85,247,0.15),inset 0 0 30px rgba(168,85,247,0.3);animation:pulse 3s ease-in-out infinite;z-index:5}
+.core-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#e2e8f0;font-size:10px;letter-spacing:3px;font-weight:bold;z-index:6}
+@keyframes pulse{0%,100%{transform:translate(-50%,-50%) scale(1);box-shadow:0 0 60px rgba(168,85,247,0.4),0 0 120px rgba(168,85,247,0.15)}50%{transform:translate(-50%,-50%) scale(1.08);box-shadow:0 0 80px rgba(168,85,247,0.5),0 0 160px rgba(168,85,247,0.2)}}
+
+/* Affect Nodes */
+.node{position:absolute;width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:5;animation:float 4s ease-in-out infinite}
+.node .emoji{font-size:20px}
+.node .label{color:#e2e8f0;font-size:8px;letter-spacing:2px;margin-top:2px;font-weight:bold}
+
+.joy{top:60px;left:50%;transform:translateX(-50%);background:radial-gradient(circle,#fbbf24 0%,transparent 70%);box-shadow:0 0 40px rgba(251,191,36,0.4);animation-delay:0s}
+.sadness{bottom:80px;left:120px;background:radial-gradient(circle,#60a5fa 0%,transparent 70%);box-shadow:0 0 40px rgba(96,165,250,0.4);animation-delay:0.5s}
+.desire{top:50%;right:80px;transform:translateY(-50%);background:radial-gradient(circle,#4ade80 0%,transparent 70%);box-shadow:0 0 40px rgba(74,222,128,0.4);animation-delay:1s}
+.fear{bottom:80px;right:120px;background:radial-gradient(circle,#ef4444 0%,transparent 70%);box-shadow:0 0 40px rgba(239,68,68,0.4);animation-delay:1.5s}
+.neutral{top:50%;left:80px;transform:translateY(-50%);background:radial-gradient(circle,#64748b 0%,transparent 70%);box-shadow:0 0 30px rgba(100,116,139,0.3);animation-delay:2s}
+
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.joy{animation:float-x 4s ease-in-out infinite}
+@keyframes float-x{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-8px)}}
+.desire,.neutral{animation:float-y 4s ease-in-out infinite}
+@keyframes float-y{0%,100%{transform:translateY(-50%)}50%{transform:translateY(calc(-50% - 8px))}}
+
+/* Connection Lines (SVG) */
+.connections{position:absolute;inset:0;z-index:2}
+.connections line{stroke-width:1;opacity:0.3}
+
+/* Energy Ring */
+.ring{position:absolute;top:50%;left:50%;width:280px;height:280px;transform:translate(-50%,-50%);border-radius:50%;border:1px solid rgba(168,85,247,0.1);animation:spin 30s linear infinite;z-index:1}
+.ring2{position:absolute;top:50%;left:50%;width:340px;height:340px;transform:translate(-50%,-50%);border-radius:50%;border:1px solid rgba(6,182,212,0.08);animation:spin 45s linear infinite reverse;z-index:1}
+@keyframes spin{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+
+/* Agents Grid */
+.grid{position:absolute;bottom:30px;left:50%;transform:translateX(-50%);display:flex;gap:16px;z-index:3}
+.agent{width:8px;height:8px;border-radius:50%;animation:agent-pulse 2s ease-in-out infinite}
+.agent:nth-child(1){background:#fbbf24;box-shadow:0 0 8px rgba(251,191,36,0.5);animation-delay:0s}
+.agent:nth-child(2){background:#60a5fa;box-shadow:0 0 8px rgba(96,165,250,0.5);animation-delay:0.3s}
+.agent:nth-child(3){background:#4ade80;box-shadow:0 0 8px rgba(74,222,128,0.5);animation-delay:0.6s}
+.agent:nth-child(4){background:#fbbf24;box-shadow:0 0 8px rgba(251,191,36,0.5);animation-delay:0.9s}
+.agent:nth-child(5){background:#ef4444;box-shadow:0 0 8px rgba(239,68,68,0.5);animation-delay:1.2s}
+.agent:nth-child(6){background:#64748b;box-shadow:0 0 8px rgba(100,116,139,0.5);animation-delay:1.5s}
+.agent:nth-child(7){background:#fbbf24;box-shadow:0 0 8px rgba(251,191,36,0.5);animation-delay:1.8s}
+.agent:nth-child(8){background:#60a5fa;box-shadow:0 0 8px rgba(96,165,250,0.5);animation-delay:0.2s}
+.agent:nth-child(9){background:#4ade80;box-shadow:0 0 8px rgba(74,222,128,0.5);animation-delay:0.7s}
+.agent:nth-child(10){background:#fbbf24;box-shadow:0 0 8px rgba(251,191,36,0.5);animation-delay:1.1s}
+@keyframes agent-pulse{0%,100%{opacity:0.7;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}
+
+/* Grid Lines */
+.gridlines{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);width:300px;height:30px;z-index:2}
+.gridlines div{position:absolute;background:rgba(168,85,247,0.06)}
+.gl-h{width:100%;height:1px}
+.gl-v{width:1px;height:100%}
+
+/* Quote */
+.quote{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);color:#1e293b;font-size:9px;font-style:italic;white-space:nowrap;z-index:10}
+
+/* RUNE Badge */
+.rune{position:absolute;top:20px;right:20px;color:#334155;font-size:8px;letter-spacing:2px;z-index:10}
+
+/* Particles */
+.particle{position:absolute;width:2px;height:2px;border-radius:50%;background:#a855f7;opacity:0;animation:particle-float 6s ease-in-out infinite}
+@keyframes particle-float{0%{opacity:0;transform:translateY(0)}20%{opacity:0.5}80%{opacity:0.3}100%{opacity:0;transform:translateY(-100px)}}
+</style>
+</head>
+<body>
+<div class="scene">
+  <div class="title">
+    <h1>MODUS_</h1>
+    <div class="sub">Spinoza Mind Engine</div>
+  </div>
+  <div class="rune">RUNE ENHANCED · NEURABYTE LABS</div>
+
+  <!-- Energy Rings -->
+  <div class="ring"></div>
+  <div class="ring2"></div>
+
+  <!-- Connection SVG -->
+  <svg class="connections" viewBox="0 0 800 500">
+    <line x1="400" y1="250" x2="400" y2="90" stroke="#fbbf24"/>
+    <line x1="400" y1="250" x2="150" y2="380" stroke="#60a5fa"/>
+    <line x1="400" y1="250" x2="690" y2="250" stroke="#4ade80"/>
+    <line x1="400" y1="250" x2="650" y2="380" stroke="#ef4444"/>
+    <line x1="400" y1="250" x2="110" y2="250" stroke="#64748b"/>
+  </svg>
+
+  <!-- Conatus Core -->
+  <div class="core"></div>
+  <div class="core-label">CONATUS</div>
+
+  <!-- Affect Nodes -->
+  <div class="node joy"><span class="emoji">😊</span><span class="label">JOY</span></div>
+  <div class="node sadness"><span class="emoji">😢</span><span class="label">SADNESS</span></div>
+  <div class="node desire"><span class="emoji">🔥</span><span class="label">DESIRE</span></div>
+  <div class="node fear"><span class="emoji">😨</span><span class="label">FEAR</span></div>
+  <div class="node neutral"><span class="emoji">😐</span><span class="label">NEUTRAL</span></div>
+
+  <!-- Particles -->
+  <div class="particle" style="left:380px;top:200px;animation-delay:0s"></div>
+  <div class="particle" style="left:420px;top:220px;animation-delay:1s"></div>
+  <div class="particle" style="left:360px;top:240px;animation-delay:2s"></div>
+  <div class="particle" style="left:440px;top:210px;animation-delay:3s"></div>
+  <div class="particle" style="left:390px;top:260px;animation-delay:4s"></div>
+  <div class="particle" style="left:410px;top:230px;animation-delay:0.5s"></div>
+
+  <!-- Agent Grid -->
+  <div class="gridlines">
+    <div class="gl-h" style="top:0"></div>
+    <div class="gl-h" style="top:50%"></div>
+    <div class="gl-h" style="bottom:0"></div>
+    <div class="gl-v" style="left:0"></div>
+    <div class="gl-v" style="left:25%"></div>
+    <div class="gl-v" style="left:50%"></div>
+    <div class="gl-v" style="left:75%"></div>
+    <div class="gl-v" style="right:0"></div>
+  </div>
+  <div class="grid">
+    <div class="agent"></div><div class="agent"></div><div class="agent"></div>
+    <div class="agent"></div><div class="agent"></div><div class="agent"></div>
+    <div class="agent"></div><div class="agent"></div><div class="agent"></div>
+    <div class="agent"></div>
+  </div>
+
+  <div class="quote">"Each thing strives to persevere in its being" — Spinoza, Ethics III</div>
+</div>
+</body>
+</html>

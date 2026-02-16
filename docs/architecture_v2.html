@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MODUS — Spinoza Mind Engine Architecture v0.2</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #050508; color: #e2e8f0; font-family: 'JetBrains Mono', 'Fira Code', monospace; padding: 40px; min-height: 100vh; }
+  .container { max-width: 1000px; margin: 0 auto; }
+  h1 { text-align: center; font-size: 28px; margin-bottom: 8px; }
+  h1 span.modus { background: linear-gradient(135deg, #a855f7, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  h1 span.cursor { color: #a855f7; animation: blink 1s infinite; }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+  .subtitle { text-align: center; color: #64748b; font-size: 12px; margin-bottom: 40px; letter-spacing: 2px; }
+  .layer { border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px 20px; margin-bottom: 12px; position: relative; backdrop-filter: blur(10px); }
+  .layer-label { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 10px; font-weight: bold; }
+  .layer-content { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .component { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 8px 16px; font-size: 12px; white-space: nowrap; transition: all 0.3s; }
+  .component:hover { background: rgba(255,255,255,0.08); transform: translateY(-1px); }
+  .new-badge { background: #fbbf24; color: #000; font-size: 8px; padding: 1px 5px; border-radius: 4px; font-weight: bold; margin-left: 6px; }
+  
+  .l1 { border-color: rgba(6,182,212,0.3); background: rgba(6,182,212,0.03); }
+  .l1 .layer-label { color: #06b6d4; }
+  .l1 .component { border-color: rgba(6,182,212,0.15); }
+  
+  .l2 { border-color: rgba(251,191,36,0.4); background: rgba(251,191,36,0.05); box-shadow: 0 0 20px rgba(251,191,36,0.05); }
+  .l2 .layer-label { color: #fbbf24; }
+  .l2 .component { border-color: rgba(251,191,36,0.2); }
+  
+  .l3 { border-color: rgba(74,222,128,0.3); background: rgba(74,222,128,0.03); }
+  .l3 .layer-label { color: #4ade80; }
+  .l3 .component { border-color: rgba(74,222,128,0.15); }
+  
+  .l4 { border-color: rgba(168,85,247,0.3); background: rgba(168,85,247,0.03); }
+  .l4 .layer-label { color: #a855f7; }
+  .l4 .component { border-color: rgba(168,85,247,0.15); }
+  
+  .l5 { border-color: rgba(96,165,250,0.3); background: rgba(96,165,250,0.03); }
+  .l5 .layer-label { color: #60a5fa; }
+  .l5 .component { border-color: rgba(96,165,250,0.15); }
+  
+  .l6 { border-color: rgba(148,163,184,0.2); background: rgba(148,163,184,0.02); }
+  .l6 .layer-label { color: #94a3b8; }
+  .l6 .component { border-color: rgba(148,163,184,0.1); }
+  
+  .arrow { text-align: center; color: #334155; font-size: 18px; margin: 4px 0; }
+  .quote { text-align: center; color: #475569; font-size: 11px; font-style: italic; margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); }
+  .quote em { color: #94a3b8; }
+  .watermark { text-align: right; color: #1e293b; font-size: 10px; margin-top: 12px; letter-spacing: 2px; }
+  
+  .stats { display: flex; justify-content: center; gap: 24px; margin-bottom: 30px; }
+  .stat { text-align: center; }
+  .stat-value { font-size: 20px; font-weight: bold; }
+  .stat-label { font-size: 9px; color: #64748b; letter-spacing: 2px; text-transform: uppercase; }
+  .stat-value.purple { color: #a855f7; }
+  .stat-value.cyan { color: #06b6d4; }
+  .stat-value.gold { color: #fbbf24; }
+  .stat-value.green { color: #4ade80; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1><span class="modus">MODUS</span><span class="cursor">_</span></h1>
+  <div class="subtitle">SPINOZA MIND ENGINE ARCHITECTURE — v0.2</div>
+  
+  <div class="stats">
+    <div class="stat"><div class="stat-value purple">22</div><div class="stat-label">Modules</div></div>
+    <div class="stat"><div class="stat-value cyan">6</div><div class="stat-label">Layers</div></div>
+    <div class="stat"><div class="stat-value gold">5</div><div class="stat-label">Affect States</div></div>
+    <div class="stat"><div class="stat-value green">60+</div><div class="stat-label">LLM Models</div></div>
+  </div>
+
+  <div class="layer l1">
+    <div class="layer-label">① Frontend — User Interface</div>
+    <div class="layer-content">
+      <div class="component">🎨 Pixi.js 2D Renderer</div>
+      <div class="component">⚡ Phoenix LiveView</div>
+      <div class="component">🔌 WebSocket Channel</div>
+      <div class="component">🎭 Affect Colors</div>
+      <div class="component">⚡ Conatus Bars</div>
+    </div>
+  </div>
+  
+  <div class="arrow">↕</div>
+  
+  <div class="layer l2">
+    <div class="layer-label">② Mind Engine — Spinoza's Psychology <span class="new-badge">★ NEW</span></div>
+    <div class="layer-content">
+      <div class="component">⚡ Conatus Engine <small style="color:#fbbf24">(will to persist 0.0→1.0)</small></div>
+      <div class="component">🎭 Affect State Machine <small style="color:#fbbf24">(😊😢🔥😨😐)</small></div>
+      <div class="component">🧠 MindEngine Orchestrator</div>
+    </div>
+  </div>
+  
+  <div class="arrow">↕</div>
+  
+  <div class="layer l3">
+    <div class="layer-label">③ Simulation — BEAM Process Per Agent</div>
+    <div class="layer-content">
+      <div class="component">🤖 Agent GenServer</div>
+      <div class="component">🌳 BehaviorTree</div>
+      <div class="component">⏱️ Ticker (PubSub)</div>
+      <div class="component">🗺️ World (ETS Grid)</div>
+      <div class="component">📍 Registry (Fast Lookup)</div>
+    </div>
+  </div>
+  
+  <div class="arrow">↕</div>
+  
+  <div class="layer l4">
+    <div class="layer-label">④ Intelligence — Multi-LLM Provider</div>
+    <div class="layer-content">
+      <div class="component">🔀 LlmProvider GenServer</div>
+      <div class="component">🚀 Antigravity Gateway <small style="color:#a855f7">(60+ models)</small></div>
+      <div class="component">🦙 Ollama Local <small style="color:#a855f7">(Llama 3.2)</small></div>
+      <div class="component">📋 Decision Cache</div>
+      <div class="component">⏰ LlmScheduler</div>
+    </div>
+  </div>
+  
+  <div class="arrow">↕</div>
+  
+  <div class="layer l5">
+    <div class="layer-label">⑤ Persistence — State Management</div>
+    <div class="layer-content">
+      <div class="component">💾 SQLite via Ecto</div>
+      <div class="component">📡 EventLog (PubSub)</div>
+      <div class="component">🗃️ World Save/Load</div>
+    </div>
+  </div>
+  
+  <div class="arrow">↕</div>
+  
+  <div class="layer l6">
+    <div class="layer-label">⑥ Infrastructure — Docker Isolation</div>
+    <div class="layer-content">
+      <div class="component">🐳 modus-app (Elixir/Phoenix :4000)</div>
+      <div class="component">🦙 modus-llm (Ollama :11434)</div>
+      <div class="component">🌐 Antigravity Gateway (host :8045)</div>
+    </div>
+  </div>
+
+  <div class="quote">
+    <em>"Unaquæque res, quantum in se est, in suo esse perseverare conatur"</em><br>
+    "Each thing, as far as it lies in itself, strives to persevere in its being" — Spinoza, Ethics III, Prop. 6
+  </div>
+  <div class="watermark">NEURABYTE LABS — 2026</div>
+</div>
+</body>
+</html>
