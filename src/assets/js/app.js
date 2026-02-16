@@ -156,6 +156,14 @@ Hooks.WorldCanvas = {
     this.handleEvent("create_world", (data) => {
       if (this.worldSocket) this.worldSocket.createWorld(data.template, data.population, data.danger)
     })
+    this.handleEvent("toggle_mind_view", (data) => {
+      if (this.rendererReady && this.renderer) {
+        this.renderer.mindViewActive = data.active
+        if (this.renderer.terrainLayer) {
+          this.renderer.terrainLayer.alpha = data.active ? 0.3 : 1.0
+        }
+      }
+    })
     this.handleEvent("world_loaded", (_data) => {
       // After load, the channel will push full_state which re-renders everything
       console.log("[MODUS] World loaded, waiting for full_state broadcast")

@@ -51,6 +51,7 @@ defmodule ModusWeb.UniverseLive do
        save_name: "",
        save_load_status: nil,
        # UI
+       mind_view_active: false,
        mobile_panel: nil,
        event_feed: [],
        templates: @templates
@@ -418,6 +419,14 @@ defmodule ModusWeb.UniverseLive do
 
   # ── Mobile Panel Toggle ────────────────────────────────────
 
+  def handle_event("toggle_mind_view", _params, socket) do
+    new_val = !socket.assigns.mind_view_active
+    {:noreply,
+     socket
+     |> assign(mind_view_active: new_val)
+     |> push_event("toggle_mind_view", %{active: new_val})}
+  end
+
   def handle_event("toggle_panel", %{"panel" => panel}, socket) do
     current = socket.assigns.mobile_panel
     new_panel = if current == String.to_existing_atom(panel), do: nil, else: String.to_existing_atom(panel)
@@ -610,6 +619,11 @@ defmodule ModusWeb.UniverseLive do
             <% end %>
             <button phx-click="reset" class="ctrl-btn">↻</button>
           </div>
+
+          <%!-- Mind View Toggle --%>
+          <button id="mind-view-btn" phx-click="toggle_mind_view" class={"ctrl-btn #{if @mind_view_active, do: "ctrl-btn-primary"}"} title="Mind View">
+            🧠
+          </button>
 
           <%!-- Save/Load --%>
           <button phx-click="open_save_load" class="ctrl-btn" title="Save / Load World">
@@ -818,18 +832,54 @@ defmodule ModusWeb.UniverseLive do
                 <% end %>
               </div>
 
-              <%!-- Relationships --%>
+              <%!-- İlişkiler (Relationships) --%>
               <div class="mb-4">
-                <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">Relationships</h3>
+                <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">🤝 İlişkiler</h3>
                 <%= if @selected_agent["relationships"] && @selected_agent["relationships"] != [] do %>
-                  <%= for rel <- @selected_agent["relationships"] do %>
-                    <div class="text-xs text-slate-400 mb-1">
-                      <span class="text-purple-400"><%= rel["type"] %></span>
-                      · strength: <%= rel["strength"] %>
-                    </div>
-                  <% end %>
+                  <div class="space-y-1.5">
+                    <%= for rel <- @selected_agent["relationships"] do %>
+                      <div class="mb-1">
+                        <div class="flex justify-between text-[10px] mb-0.5">
+                          <span class="text-slate-400">
+                            <%= rel_type_emoji(rel["type"]) %>
+                            <%= resolve_agent_name(rel["agent_id"]) %>
+                          </span>
+                          <span class={"text-[9px] #{rel_type_color(rel["type"])}"}><%= rel["type"] %></span>
+                        </div>
+                        <div class="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                          <div class={"h-full rounded-full transition-all duration-500 #{rel_bar_color(rel["strength"] || 0)}"} style={"width: #{min((rel["strength"] || 0) * 100, 100)}%"} />
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
                 <% else %>
-                  <p class="text-xs text-slate-600 italic">No relationships yet</p>
+                  <p class="text-xs text-slate-600 italic">Henüz ilişki yok</p>
+                <% end %>
+              </div>
+
+              <%!-- Son Konuşmalar (Recent Conversations) --%>
+              <div class="mb-4">
+                <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">💬 Son Konuşmalar</h3>
+                <%= if conversation_events(@selected_agent) != [] do %>
+                  <div class="space-y-1.5">
+                    <%= for event <- conversation_events(@selected_agent) do %>
+                      <div class="text-[10px] text-slate-400 border-l-2 border-cyan-500/20 pl-2">
+                        <span class="text-slate-600">t:<%= event["tick"] %></span>
+                        <%= if event["data"] && event["data"]["dialogue"] do %>
+                          <%= for line <- Enum.take(event["data"]["dialogue"] || [], 2) do %>
+                            <div class="text-slate-300 mt-0.5">
+                              <span class="text-cyan-400"><%= line["speaker"] %>:</span>
+                              <span class="truncate"><%= line["line"] %></span>
+                            </div>
+                          <% end %>
+                        <% else %>
+                          <span class="italic">Konuşma</span>
+                        <% end %>
+                      </div>
+                    <% end %>
+                  </div>
+                <% else %>
+                  <p class="text-xs text-slate-600 italic">Henüz konuşma yok</p>
                 <% end %>
               </div>
 
@@ -1139,6 +1189,38 @@ defmodule ModusWeb.UniverseLive do
   defp status_color(:running), do: "bg-cyan-500/20 text-cyan-400"
   defp status_color(:paused), do: "bg-amber-500/20 text-amber-400"
   defp status_color(_), do: "bg-slate-500/20 text-slate-400"
+
+  defp resolve_agent_name(agent_id) when is_binary(agent_id) do
+    try do
+      state = Modus.Simulation.Agent.get_state(agent_id)
+      state.name
+    catch
+      :exit, _ -> String.slice(agent_id, 0..7)
+    end
+  end
+  defp resolve_agent_name(_), do: "?"
+
+  defp rel_type_emoji("close_friend"), do: "💛"
+  defp rel_type_emoji("friend"), do: "💚"
+  defp rel_type_emoji("acquaintance"), do: "🤝"
+  defp rel_type_emoji(_), do: "👤"
+
+  defp rel_type_color("close_friend"), do: "text-yellow-400"
+  defp rel_type_color("friend"), do: "text-green-400"
+  defp rel_type_color("acquaintance"), do: "text-slate-400"
+  defp rel_type_color(_), do: "text-slate-500"
+
+  defp rel_bar_color(strength) when strength > 0.8, do: "bg-yellow-500"
+  defp rel_bar_color(strength) when strength > 0.5, do: "bg-green-500"
+  defp rel_bar_color(strength) when strength > 0.3, do: "bg-cyan-500"
+  defp rel_bar_color(_), do: "bg-slate-500"
+
+  defp conversation_events(agent) when is_map(agent) do
+    (agent["recent_events"] || [])
+    |> Enum.filter(fn e -> e["type"] == "conversation" end)
+    |> Enum.take(3)
+  end
+  defp conversation_events(_), do: []
 
   defp event_emoji("birth"), do: "👶"
   defp event_emoji("death"), do: "💀"

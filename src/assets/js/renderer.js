@@ -36,11 +36,19 @@ export default class Renderer {
     this.worldContainer = null
     this.terrainLayer = null
     this.agentLayer = null
+    this.relationshipLayer = null
+    this.relationshipGfx = null
     this.agentSprites = new Map() // id -> {gfx, label, targetX, targetY}
+
+    // Agent data cache (for relationship lines)
+    this.agentDataMap = new Map() // id -> {friends, conversing_with, ...}
 
     // Agent click callback
     this.onAgentClick = null
     this.selectedAgentId = null
+
+    // Mind View toggle
+    this.mindViewActive = false
 
     // Camera state
     this.dragging = false
@@ -70,9 +78,15 @@ export default class Renderer {
 
     // Layers
     this.terrainLayer = new Container()
+    this.relationshipLayer = new Container()
     this.agentLayer = new Container()
     this.worldContainer.addChild(this.terrainLayer)
+    this.worldContainer.addChild(this.relationshipLayer)
     this.worldContainer.addChild(this.agentLayer)
+
+    // Single Graphics object for relationship lines (cleared each frame)
+    this.relationshipGfx = new Graphics()
+    this.relationshipLayer.addChild(this.relationshipGfx)
 
     // Center camera
     const totalW = GRID_W * TILE_SIZE
@@ -123,6 +137,11 @@ export default class Renderer {
 
     for (const agent of agents) {
       seen.add(agent.id)
+      // Cache agent data for relationship lines
+      this.agentDataMap.set(agent.id, {
+        friends: agent.friends || [],
+        conversing_with: agent.conversing_with,
+      })
       const px = agent.x * TILE_SIZE + TILE_SIZE / 2
       const py = agent.y * TILE_SIZE + TILE_SIZE / 2
 
@@ -133,6 +152,19 @@ export default class Renderer {
         sprite.targetY = py
         sprite.action = agent.action || "idle"
         sprite.reasoning = agent.reasoning || false
+
+        // Update conversation bubble
+        if (agent.conversing_with) {
+          if (!sprite.convoBubble) {
+            sprite.convoBubble = new Text({ text: "💬", style: new TextStyle({ fontSize: 12, align: "center" }) })
+            sprite.convoBubble.anchor.set(0.5, 1)
+            sprite.convoBubble.y = -AGENT_RADIUS - 14
+            sprite.container.addChild(sprite.convoBubble)
+          }
+          sprite.convoBubble.visible = true
+        } else if (sprite.convoBubble) {
+          sprite.convoBubble.visible = false
+        }
         // Update affect color
         const affect = agent.affect || "neutral"
         const affectColor = AFFECT_COLORS[affect]
@@ -237,6 +269,7 @@ export default class Renderer {
         this.agentLayer.removeChild(sprite.container)
         sprite.container.destroy({ children: true })
         this.agentSprites.delete(id)
+        this.agentDataMap.delete(id)
       }
     }
   }
@@ -264,6 +297,9 @@ export default class Renderer {
       const glowAlpha = 0.3 + Math.sin(glowPhase) * 0.2
       const breathScale = 1.0 + Math.sin(glowPhase * 1.5) * 0.03
       const bounceY = Math.sin(glowPhase * 3) * 1.5
+
+      // ── Relationship Lines ──
+      this._drawRelationshipLines()
 
       for (const [id, sprite] of this.agentSprites) {
         const c = sprite.container
@@ -304,6 +340,64 @@ export default class Renderer {
         }
       }
     })
+  }
+
+  // ── Relationship Lines ──────────────────────────────────
+
+  _drawRelationshipLines() {
+    const gfx = this.relationshipGfx
+    if (!gfx) return
+    gfx.clear()
+
+    const mindView = this.mindViewActive
+    const drawn = new Set()
+
+    for (const [id, data] of this.agentDataMap) {
+      const sprite = this.agentSprites.get(id)
+      if (!sprite || !data.friends) continue
+
+      for (const friend of data.friends) {
+        const strength = friend.strength || 0
+        if (strength < 0.3) continue
+
+        const otherId = friend.id
+        const otherSprite = this.agentSprites.get(otherId)
+        if (!otherSprite) continue
+
+        // Avoid drawing duplicate lines
+        const pairKey = id < otherId ? `${id}-${otherId}` : `${otherId}-${id}`
+        if (drawn.has(pairKey)) continue
+        drawn.add(pairKey)
+
+        // Determine color and opacity by strength
+        let color, alpha
+        if (strength > 0.8) {
+          color = 0xfbbf24 // gold
+          alpha = mindView ? 0.9 : 0.6
+        } else if (strength > 0.5) {
+          color = 0x4ade80 // green
+          alpha = mindView ? 0.7 : 0.4
+        } else {
+          color = 0xffffff // white
+          alpha = mindView ? 0.4 : 0.2
+        }
+
+        gfx.setStrokeStyle({ width: mindView ? 2 : 1, color, alpha })
+        gfx.moveTo(sprite.container.x, sprite.container.y)
+        gfx.lineTo(otherSprite.container.x, otherSprite.container.y)
+        gfx.stroke()
+      }
+    }
+  }
+
+  // ── Mind View Toggle ──────────────────────────────────────
+
+  toggleMindView() {
+    this.mindViewActive = !this.mindViewActive
+    if (this.terrainLayer) {
+      this.terrainLayer.alpha = this.mindViewActive ? 0.3 : 1.0
+    }
+    return this.mindViewActive
   }
 
   // ── Camera Controls ─────────────────────────────────────

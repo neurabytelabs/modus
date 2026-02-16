@@ -355,7 +355,9 @@ defmodule ModusWeb.WorldChannel do
           conatus_energy: state.conatus_energy,
           affect: state.affect_state |> to_string(),
           reasoning: state.last_reasoning != nil,
-          friends: Modus.Mind.Cerebro.SocialNetwork.get_friends(state.id) |> Enum.take(3) |> Enum.map(& &1.id),
+          friends: Modus.Mind.Cerebro.SocialNetwork.get_friends(state.id)
+                   |> Enum.take(5)
+                   |> Enum.map(fn f -> %{id: f.id, strength: Float.round(f.strength, 2)} end),
           conversing_with: state[:conversing_with]
         }
       catch
