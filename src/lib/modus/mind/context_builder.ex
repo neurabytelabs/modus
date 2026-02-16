@@ -14,31 +14,31 @@ defmodule Modus.Mind.ContextBuilder do
     social = SocialInsight.describe_relationships(agent.id)
 
     """
-    Sen #{agent.name} adında bir köy simülasyonunda yaşayan #{agent.occupation}'sın.
-    Türkçe konuşuyorsun. Kısa ve doğal cevap ver (1-3 cümle).
+    You are #{agent.name}, a #{agent.occupation} living in a village simulation.
+    You speak English. Give short, natural responses (1-3 sentences).
 
     #{describe_personality(agent.personality)}
 
-    ## Şu Anki Durumun
-    - Konum: (#{elem(perception.position, 0)}, #{elem(perception.position, 1)}) — #{terrain_name(perception.terrain)}
-    - Enerji (Conatus): %#{round(ensure_float(perception.conatus_energy) * 100)}
-    - Duygu: #{affect_name(perception.affect_state)}
-    - Açlık: #{round(ensure_float(perception.needs.hunger))}/100, Sosyallik: #{round(ensure_float(perception.needs.social))}/100, Dinlenme: #{round(ensure_float(perception.needs.rest))}/100
-    - Şu an: #{action_name(perception.current_action)}
+    ## Current Status
+    - Location: (#{elem(perception.position, 0)}, #{elem(perception.position, 1)}) — #{terrain_name(perception.terrain)}
+    - Energy (Conatus): #{round(ensure_float(perception.conatus_energy) * 100)}%
+    - Mood: #{affect_name(perception.affect_state)}
+    - Hunger: #{round(ensure_float(perception.needs.hunger))}/100, Social: #{round(ensure_float(perception.needs.social))}/100, Rest: #{round(ensure_float(perception.needs.rest))}/100
+    - Currently: #{action_name(perception.current_action)}
 
-    ## Çevren
+    ## Surroundings
     #{describe_nearby(perception.nearby_agents)}
 
-    ## İlişkilerin
+    ## Relationships
     #{social}
 
-    ## Son Konuşmaların
+    ## Recent Conversations
     #{Modus.Mind.ConversationMemory.format_for_context(agent.id)}
 
-    ## Uzun Vadeli Hafızan
+    ## Long-Term Memory
     #{AgentMemory.format_for_context(agent.id)}
 
-    Karakterinde kal. Kısa ve samimi ol. Gerçek konumunu ve durumunu biliyorsun — uydurma.
+    Stay in character. Be brief and friendly. You know your real location and status — don't make things up.
     """
   end
 
@@ -52,16 +52,16 @@ defmodule Modus.Mind.ContextBuilder do
     end
 
     """
-    İki karakter bir köy simülasyonunda karşılaşıyor. 3 tur kısa konuşma yaz.
+    Two characters meet in a village simulation. Write a short 3-turn conversation.
 
-    #{agent_a.name}: #{agent_a.occupation}, enerji %#{round(ensure_float(agent_a.conatus_energy) * 100)}, duygu: #{affect_name(agent_a.affect_state)}
-    #{agent_b.name}: #{agent_b.occupation}, enerji %#{round(ensure_float(agent_b.conatus_energy) * 100)}, duygu: #{affect_name(agent_b.affect_state)}
+    #{agent_a.name}: #{agent_a.occupation}, energy #{round(ensure_float(agent_a.conatus_energy) * 100)}%, mood: #{affect_name(agent_a.affect_state)}
+    #{agent_b.name}: #{agent_b.occupation}, energy #{round(ensure_float(agent_b.conatus_energy) * 100)}%, mood: #{affect_name(agent_b.affect_state)}
 
-    İlişki: #{rel}
-    Konum: #{terrain_name(terrain)}
+    Relationship: #{rel}
+    Location: #{terrain_name(terrain)}
 
-    JSON ile yanıt ver: {"dialogue": [{"speaker": "<isim>", "line": "<metin>"}, ...]}
-    Her satır 50 kelimeden kısa olsun. Doğal ve kişiliklere uygun olsun.
+    Respond with JSON: {"dialogue": [{"speaker": "<name>", "line": "<text>"}, ...]}
+    Keep each line under 50 words. Be natural and reflect their personalities.
     """
   end
 

@@ -133,6 +133,8 @@ defmodule Modus.Simulation.Agent do
   @impl true
   def init(agent) do
     Phoenix.PubSub.subscribe(Modus.PubSub, "simulation:ticks")
+    # Initialize learning skills if not already set
+    Modus.Mind.Learning.init_skills(agent.id)
     {:ok, agent}
   end
 
@@ -208,6 +210,7 @@ defmodule Modus.Simulation.Agent do
       agent
       |> decay_needs()
       |> apply_action(action, params)
+      |> tap(fn a -> Modus.Mind.Learning.award_for_action(a.id, action) end)
       |> Modus.Mind.MindEngine.process_tick(action, params, tick_number)
       |> tap(fn a -> Modus.Mind.Cerebro.AgentConversation.maybe_converse(a, nearby, tick_number) end)
       |> increment_age(tick_number)

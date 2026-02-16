@@ -76,16 +76,16 @@ defmodule Modus.Intelligence.AntigravityClient do
     personality_desc = describe_personality_detailed(agent.personality)
 
     system = """
-    Sen #{agent.name} adında bir köy simülasyonunda yaşayan #{agent.occupation}'sın.
-    Türkçe konuşuyorsun. Kısa ve doğal cevap ver (1-3 cümle).
+    You are #{agent.name}, a #{agent.occupation} living in a village simulation.
+    You speak English. Give short, natural responses (1-3 sentences).
 
-    Kişiliğin: #{personality_desc}
-    Şu an #{px},#{py} konumundasın.
-    Durumun: açlık=#{round(agent.needs.hunger)}, sosyallik=#{round(agent.needs.social)}, dinlenme=#{round(agent.needs.rest)}
-    Şu an #{agent.current_action} yapıyorsun.
-    #{if memories != "", do: "\nSon anıların:\n#{memories}", else: ""}
+    Personality: #{personality_desc}
+    You are currently at position #{px},#{py}.
+    Status: hunger=#{round(agent.needs.hunger)}, social=#{round(agent.needs.social)}, rest=#{round(agent.needs.rest)}
+    You are currently #{agent.current_action}.
+    #{if memories != "", do: "\nRecent memories:\n#{memories}", else: ""}
 
-    Karakterinde kal. Kısa ve samimi ol.
+    Stay in character. Be brief and friendly.
     """
     messages = [
       %{role: "system", content: system},
@@ -222,12 +222,12 @@ defmodule Modus.Intelligence.AntigravityClient do
 
   defp describe_personality_detailed(p) do
     traits = []
-    traits = if p.openness > 0.7, do: ["meraklı ve yeniliklere açık" | traits], else: if(p.openness < 0.3, do: ["gelenekçi ve alışkanlıklarına bağlı" | traits], else: traits)
-    traits = if p.extraversion > 0.7, do: ["sosyal ve enerjik" | traits], else: if(p.extraversion < 0.3, do: ["içe dönük ve sessiz" | traits], else: traits)
-    traits = if p.agreeableness > 0.7, do: ["yardımsever ve nazik" | traits], else: if(p.agreeableness < 0.3, do: ["rekabetçi ve bağımsız" | traits], else: traits)
-    traits = if p.conscientiousness > 0.7, do: ["çalışkan ve düzenli" | traits], else: if(p.conscientiousness < 0.3, do: ["rahat ve spontan" | traits], else: traits)
-    traits = if p.neuroticism > 0.7, do: ["kaygılı ve duygusal" | traits], else: if(p.neuroticism < 0.3, do: ["sakin ve soğukkanlı" | traits], else: traits)
-    if traits == [], do: "sıradan birisi", else: Enum.join(traits, ", ")
+    traits = if p.openness > 0.7, do: ["curious and open-minded" | traits], else: if(p.openness < 0.3, do: ["traditional and set in their ways" | traits], else: traits)
+    traits = if p.extraversion > 0.7, do: ["social and energetic" | traits], else: if(p.extraversion < 0.3, do: ["introverted and quiet" | traits], else: traits)
+    traits = if p.agreeableness > 0.7, do: ["helpful and kind" | traits], else: if(p.agreeableness < 0.3, do: ["competitive and independent" | traits], else: traits)
+    traits = if p.conscientiousness > 0.7, do: ["hardworking and organized" | traits], else: if(p.conscientiousness < 0.3, do: ["easygoing and spontaneous" | traits], else: traits)
+    traits = if p.neuroticism > 0.7, do: ["anxious and emotional" | traits], else: if(p.neuroticism < 0.3, do: ["calm and composed" | traits], else: traits)
+    if traits == [], do: "an ordinary person", else: Enum.join(traits, ", ")
   end
 
   defp describe_agent(a) do

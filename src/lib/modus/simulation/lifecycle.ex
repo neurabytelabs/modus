@@ -120,6 +120,9 @@ defmodule Modus.Simulation.Lifecycle do
 
     case Modus.Simulation.AgentSupervisor.spawn_agent(child) do
       {:ok, _pid} ->
+        # Cultural transmission: child inherits skills from parents
+        Modus.Mind.Learning.init_skills_with_inheritance(child.id, parent_a.id, parent_b.id)
+
         Modus.Simulation.EventLog.log(:birth, tick, [child.id, parent_a.id, parent_b.id], %{
           name: name,
           parents: [parent_a.name, parent_b.name]

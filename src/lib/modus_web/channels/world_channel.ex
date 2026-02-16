@@ -459,7 +459,8 @@ defmodule ModusWeb.WorldChannel do
         catch
           _, _ -> []
         end,
-      last_reasoning: state.last_reasoning
+      last_reasoning: state.last_reasoning,
+      skills: Modus.Mind.Learning.to_map(state.id)
     }
   end
 

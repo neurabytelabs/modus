@@ -898,6 +898,33 @@ defmodule ModusWeb.UniverseLive do
                 <% end %>
               </div>
 
+              <%!-- Skills (Sapientia) --%>
+              <%= if @selected_agent["skills"] && @selected_agent["skills"] != %{} do %>
+                <div class="mb-4">
+                  <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">📚 Skills</h3>
+                  <%= for {skill, data} <- @selected_agent["skills"] || %{} do %>
+                    <% skill_emoji = case skill do
+                      "farming" -> "🌾"
+                      "building" -> "🏗️"
+                      "social" -> "💬"
+                      "exploration" -> "🧭"
+                      "healing" -> "💚"
+                      "trading" -> "💰"
+                      _ -> "⭐"
+                    end %>
+                    <div class="mb-1.5">
+                      <div class="flex justify-between text-[10px] mb-0.5">
+                        <span class="text-slate-500"><%= skill_emoji %> <%= String.capitalize(skill) %></span>
+                        <span class="text-slate-400 tabular-nums">Lv.<%= data["level"] || 0 %> · <%= data["xp"] || 0 %> xp</span>
+                      </div>
+                      <div class="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                        <div class="h-full bg-amber-500/70 rounded-full transition-all duration-500" style={"width: #{data["progress"] || 0}%"} />
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+
               <%!-- Personality --%>
               <div class="mb-4">
                 <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">Personality (Big Five)</h3>

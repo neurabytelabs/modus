@@ -13,6 +13,7 @@ defmodule Modus.Application do
     Modus.Mind.Cerebro.AgentConversation.init()
     Modus.Simulation.Economy.init()
     Modus.Simulation.Lifecycle.init()
+    Modus.Mind.Learning.init()
 
     children = [
       Modus.Repo,
