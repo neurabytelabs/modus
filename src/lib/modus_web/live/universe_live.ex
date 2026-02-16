@@ -578,7 +578,7 @@ defmodule ModusWeb.UniverseLive do
           <span class="text-xl font-bold tracking-tighter">
             MODUS<span class="text-purple-400">_</span>
           </span>
-          <span class="text-xs text-slate-600 hidden sm:inline">v0.5.0 · Libertas</span>
+          <span class="text-xs text-slate-600 hidden sm:inline">v0.6.0 · Imperium</span>
         </div>
 
         <div class="flex items-center gap-3 md:gap-6">
