@@ -27,6 +27,8 @@ defmodule ModusWeb.UniverseLive do
        template: "village",
        population: 10,
        danger: "normal",
+       world_seed: "",
+       grid_size: 100,
        # Simulation
        status: :paused,
        tick: 0,
@@ -78,16 +80,27 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, danger: val)}
   end
 
+  def handle_event("set_seed", %{"value" => val}, socket) do
+    {:noreply, assign(socket, world_seed: val)}
+  end
+
+  def handle_event("set_grid_size", %{"value" => val}, socket) do
+    {size, _} = Integer.parse(val)
+    {:noreply, assign(socket, grid_size: max(20, min(size, 200)))}
+  end
+
   def handle_event("launch_world", _params, socket) do
     # Start World and agents server-side directly
     template = socket.assigns.template
     pop = socket.assigns.population
     danger = socket.assigns.danger
+    seed_str = socket.assigns.world_seed
+    grid_size = socket.assigns.grid_size
 
     require Logger
     alias Modus.Simulation.{World, Ticker, AgentSupervisor}
 
-    Logger.info("MODUS launch_world: template=#{template} pop=#{pop} danger=#{danger}")
+    Logger.info("MODUS launch_world: template=#{template} pop=#{pop} danger=#{danger} grid=#{grid_size}")
 
     # Clean up if already running
     try do
@@ -104,10 +117,22 @@ defmodule ModusWeb.UniverseLive do
       end
     end
 
-    world = World.new("Genesis",
+    opts = [
       template: String.to_atom(template),
-      danger_level: String.to_atom(danger)
-    )
+      danger_level: String.to_atom(danger),
+      grid_size: {grid_size, grid_size}
+    ]
+
+    opts = if seed_str != "" do
+      case Integer.parse(seed_str) do
+        {seed_int, _} -> Keyword.put(opts, :seed, seed_int)
+        :error -> opts
+      end
+    else
+      opts
+    end
+
+    world = World.new("Genesis", opts)
 
     case World.start_link(world) do
       {:ok, pid} ->
@@ -568,6 +593,40 @@ defmodule ModusWeb.UniverseLive do
           </div>
         </div>
 
+        <%!-- Step 4: Grid Size --%>
+        <div class="mb-6">
+          <h3 class="text-[10px] uppercase tracking-wider text-slate-500 mb-3">
+            World Size: <span class="text-purple-400"><%= @grid_size %>×<%= @grid_size %></span>
+          </h3>
+          <input
+            type="range"
+            min="20"
+            max="200"
+            step="10"
+            value={@grid_size}
+            phx-change="set_grid_size"
+            name="value"
+            class="w-full accent-purple-500 bg-white/5"
+          />
+          <div class="flex justify-between text-[10px] text-slate-600 mt-1">
+            <span>20</span><span>100</span><span>200</span>
+          </div>
+        </div>
+
+        <%!-- Step 5: World Seed --%>
+        <div class="mb-8">
+          <h3 class="text-[10px] uppercase tracking-wider text-slate-500 mb-3">World Seed (optional)</h3>
+          <input
+            type="text"
+            value={@world_seed}
+            phx-change="set_seed"
+            name="value"
+            placeholder="Leave empty for random..."
+            class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-500/50"
+          />
+          <p class="text-[10px] text-slate-600 mt-1">Same seed = same world</p>
+        </div>
+
         <%!-- Launch --%>
         <button
           phx-click="launch_world"
@@ -595,7 +654,7 @@ defmodule ModusWeb.UniverseLive do
           <span class="text-xl font-bold tracking-tighter">
             MODUS<span class="text-purple-400">_</span>
           </span>
-          <span class="text-xs text-slate-600 hidden sm:inline">v1.1.0 · Harmonia</span>
+          <span class="text-xs text-slate-600 hidden sm:inline">v1.2.0 · Infinitas</span>
         </div>
 
         <div class="flex items-center gap-3 md:gap-6">

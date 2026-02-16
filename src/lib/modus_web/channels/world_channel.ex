@@ -114,12 +114,16 @@ defmodule ModusWeb.WorldChannel do
     {:noreply, socket}
   end
 
-  def handle_in("create_world", %{"template" => template, "population" => pop, "danger" => danger}, socket) do
+  def handle_in("create_world", %{"template" => template, "population" => pop, "danger" => danger} = payload, socket) do
     Ticker.pause()
     AgentSupervisor.terminate_all()
     if Process.whereis(World), do: GenServer.stop(World)
 
-    world = World.new("Genesis", template: String.to_atom(template), danger_level: String.to_atom(danger))
+    opts = [template: String.to_atom(template), danger_level: String.to_atom(danger)]
+    opts = if payload["seed"], do: Keyword.put(opts, :seed, payload["seed"]), else: opts
+    opts = if payload["grid_size"], do: Keyword.put(opts, :grid_size, {payload["grid_size"], payload["grid_size"]}), else: opts
+
+    world = World.new("Genesis", opts)
     {:ok, _} = World.start_link(world)
     pop_count = max(2, min(pop, 50))
     World.spawn_initial_agents(pop_count)
@@ -325,12 +329,17 @@ defmodule ModusWeb.WorldChannel do
       :exit, _ -> %{time_of_day: :day, cycle_progress: 0.0}
     end
 
+    grid_size = if world_state, do: world_state.grid_size, else: {100, 100}
+    {gw, gh} = grid_size
+
     %{
       grid: grid,
       agents: agents,
       tick: tick,
       status: status,
       agent_count: length(agents),
+      grid_width: gw,
+      grid_height: gh,
       time_of_day: to_string(env.time_of_day),
       cycle_progress: Float.round(ensure_float(env.cycle_progress), 4)
     }

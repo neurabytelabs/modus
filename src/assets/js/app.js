@@ -72,6 +72,9 @@ Hooks.WorldCanvas = {
     this.worldSocket = new WorldSocket({
       onFullState: (state) => {
         if (this.rendererReady) {
+          if (state.grid_width && state.grid_height) {
+            this.renderer.setGridSize(state.grid_width, state.grid_height)
+          }
           if (state.grid) this.renderer.renderTerrain(state.grid)
           if (state.agents) this.renderer.updateAgents(state.agents)
           // Environment

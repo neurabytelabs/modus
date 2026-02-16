@@ -9,8 +9,8 @@ import { Application, Container, Graphics, Text, TextStyle } from "pixi.js"
 
 const TILE_SIZE = 16
 const AGENT_RADIUS = 6
-const GRID_W = 50
-const GRID_H = 50
+let GRID_W = 100
+let GRID_H = 100
 
 // Mini-map constants
 const MINIMAP_SIZE = 140
@@ -85,6 +85,11 @@ export default class Renderer {
     this.scale = 1.0
   }
 
+  setGridSize(w, h) {
+    GRID_W = w || GRID_W
+    GRID_H = h || GRID_H
+  }
+
   async init() {
     console.log("[MODUS] Renderer.init() starting, container:", this.container?.clientWidth, "x", this.container?.clientHeight)
     this.app = new Application()
@@ -140,29 +145,12 @@ export default class Renderer {
 
   renderTerrain(grid) {
     this.terrainGrid = grid // cache for minimap
-    this.terrainLayer.removeChildren()
-    const gfx = new Graphics()
-
+    // Build a lookup map for chunk rendering
+    this._terrainMap = new Map()
     for (const cell of grid) {
-      const color = TERRAIN_COLORS[cell.terrain] || 0x333333
-      gfx.rect(cell.x * TILE_SIZE, cell.y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
-      gfx.fill(color)
+      this._terrainMap.set(`${cell.x},${cell.y}`, cell.terrain)
     }
-
-    // Grid lines (subtle)
-    gfx.setStrokeStyle({ width: 0.5, color: 0xffffff, alpha: 0.04 })
-    for (let x = 0; x <= GRID_W; x++) {
-      gfx.moveTo(x * TILE_SIZE, 0)
-      gfx.lineTo(x * TILE_SIZE, GRID_H * TILE_SIZE)
-      gfx.stroke()
-    }
-    for (let y = 0; y <= GRID_H; y++) {
-      gfx.moveTo(0, y * TILE_SIZE)
-      gfx.lineTo(GRID_W * TILE_SIZE, y * TILE_SIZE)
-      gfx.stroke()
-    }
-
-    this.terrainLayer.addChild(gfx)
+    this._renderVisibleChunks()
 
     // Create night overlay (dark blue tint above terrain, below agents)
     if (!this.nightOverlay) {
@@ -177,6 +165,52 @@ export default class Renderer {
 
     // Update minimap terrain
     this._drawMinimapTerrain()
+  }
+
+  // Chunk-based rendering: only draw tiles visible in the camera viewport
+  _renderVisibleChunks() {
+    if (!this._terrainMap || !this.app) return
+    this.terrainLayer.removeChildren()
+    const gfx = new Graphics()
+
+    // Calculate visible tile range from camera
+    const margin = 2 // extra tiles around edges
+    const camX = -this.worldContainer.x / this.scale
+    const camY = -this.worldContainer.y / this.scale
+    const vpW = this.app.screen.width / this.scale
+    const vpH = this.app.screen.height / this.scale
+
+    const minTX = Math.max(0, Math.floor(camX / TILE_SIZE) - margin)
+    const minTY = Math.max(0, Math.floor(camY / TILE_SIZE) - margin)
+    const maxTX = Math.min(GRID_W - 1, Math.ceil((camX + vpW) / TILE_SIZE) + margin)
+    const maxTY = Math.min(GRID_H - 1, Math.ceil((camY + vpH) / TILE_SIZE) + margin)
+
+    for (let x = minTX; x <= maxTX; x++) {
+      for (let y = minTY; y <= maxTY; y++) {
+        const terrain = this._terrainMap.get(`${x},${y}`) || "grass"
+        const color = TERRAIN_COLORS[terrain] || 0x333333
+        gfx.rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+        gfx.fill(color)
+      }
+    }
+
+    // Grid lines only for visible area
+    if (this.scale > 0.5) {
+      gfx.setStrokeStyle({ width: 0.5, color: 0xffffff, alpha: 0.04 })
+      for (let x = minTX; x <= maxTX + 1; x++) {
+        gfx.moveTo(x * TILE_SIZE, minTY * TILE_SIZE)
+        gfx.lineTo(x * TILE_SIZE, (maxTY + 1) * TILE_SIZE)
+        gfx.stroke()
+      }
+      for (let y = minTY; y <= maxTY + 1; y++) {
+        gfx.moveTo(minTX * TILE_SIZE, y * TILE_SIZE)
+        gfx.lineTo((maxTX + 1) * TILE_SIZE, y * TILE_SIZE)
+        gfx.stroke()
+      }
+    }
+
+    this.terrainLayer.addChild(gfx)
+    this._lastChunkBounds = { minTX, minTY, maxTX, maxTY }
   }
 
   // ── Agents ───────────────────────────────────────────────
@@ -347,6 +381,12 @@ export default class Renderer {
       const glowAlpha = 0.3 + Math.sin(glowPhase) * 0.2
       const breathScale = 1.0 + Math.sin(glowPhase * 1.5) * 0.03
       const bounceY = Math.sin(glowPhase * 3) * 1.5
+
+      // ── Chunk re-render on camera move ──
+      if (this._chunksDirty && this._terrainMap) {
+        this._chunksDirty = false
+        this._renderVisibleChunks()
+      }
 
       // ── Relationship Lines ──
       this._drawRelationshipLines()
@@ -695,6 +735,7 @@ export default class Renderer {
       if (Math.abs(dx) > 3 || Math.abs(dy) > 3) this.didDrag = true
       this.worldContainer.x = this.camStart.x + dx
       this.worldContainer.y = this.camStart.y + dy
+      this._chunksDirty = true
     })
 
     canvas.addEventListener("pointerup", (e) => {
@@ -734,6 +775,7 @@ export default class Renderer {
       this.worldContainer.scale.set(this.scale)
       this.worldContainer.x = mx - wx * this.scale
       this.worldContainer.y = my - wy * this.scale
+      this._chunksDirty = true
     }, { passive: false })
   }
 
