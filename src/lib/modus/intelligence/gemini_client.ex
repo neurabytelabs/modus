@@ -3,7 +3,7 @@ defmodule Modus.Intelligence.GeminiClient do
   require Logger
 
   @api_key "***REMOVED***"
-  @model "gemini-2.0-flash"
+  @model "gemini-2.0-flash-lite"
   @timeout 30_000
 
   def chat(messages) do
