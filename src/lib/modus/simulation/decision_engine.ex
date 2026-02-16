@@ -19,13 +19,23 @@ defmodule Modus.Simulation.DecisionEngine do
   - `{:flee, %{from: {x, y}}}`
   """
 
-  alias Modus.Intelligence.BehaviorTree
+  alias Modus.Intelligence.{BehaviorTree, DecisionCache, OllamaClient}
   alias Modus.Simulation.Agent
+
+  require Logger
 
   @type decision :: {atom(), map()}
 
+  @llm_interval 100
+  @llm_batch_size 10
+
   @doc """
   Decide an agent's next action given context.
+
+  Decision pipeline:
+  1. Check LLM cache for a recent decision
+  2. Every #{@llm_interval} ticks, batch LLM decisions for up to #{@llm_batch_size} agents
+  3. Fall back to BehaviorTree + resolve
 
   Context map may contain:
   - `:tick` — current tick number
@@ -37,9 +47,45 @@ defmodule Modus.Simulation.DecisionEngine do
   def decide(%Agent{} = agent, context \\ %{}) do
     tick = Map.get(context, :tick, 0)
 
-    agent
-    |> BehaviorTree.evaluate(tick)
-    |> resolve(agent, context)
+    # Check cache first
+    case DecisionCache.get(agent.id) do
+      {action, params} ->
+        {action, params}
+
+      nil ->
+        # Behavior tree is the reliable fallback
+        bt_action = BehaviorTree.evaluate(agent, tick)
+        resolve(bt_action, agent, context)
+    end
+  end
+
+  @doc """
+  Run LLM batch decisions for a list of agents. Call this from the Ticker
+  every #{@llm_interval} ticks. Caches results for individual decide/2 lookups.
+  """
+  @spec llm_batch([Agent.t()], map()) :: :ok
+  def llm_batch(agents, context) do
+    batch = Enum.take(agents, @llm_batch_size)
+
+    case OllamaClient.batch_decide(batch, context) do
+      :fallback ->
+        :ok
+
+      decisions when is_list(decisions) ->
+        for {agent_id, action, params} <- decisions do
+          resolved = resolve(action, find_agent(agent_id, batch), context, params)
+          DecisionCache.put(agent_id, resolved)
+        end
+        :ok
+    end
+  end
+
+  @doc "Check if this tick should trigger an LLM batch."
+  @spec llm_tick?(non_neg_integer()) :: boolean()
+  def llm_tick?(tick), do: rem(tick, @llm_interval) == 0 and tick > 0
+
+  defp find_agent(id, agents) do
+    Enum.find(agents, %Agent{id: id, position: {0, 0}, personality: %{}, needs: %{hunger: 50, social: 50, rest: 50}, current_action: :idle}, fn a -> a.id == id end)
   end
 
   # ── Action Resolution ───────────────────────────────────────
@@ -95,6 +141,12 @@ defmodule Modus.Simulation.DecisionEngine do
   end
 
   defp resolve(_unknown, _agent, _context), do: {:idle, %{}}
+
+  # Resolve with extra LLM params merged in
+  defp resolve(action, agent, context, extra_params) do
+    {resolved_action, params} = resolve(action, agent, context)
+    {resolved_action, Map.merge(params, extra_params)}
+  end
 
   # ── Helpers ─────────────────────────────────────────────────
 

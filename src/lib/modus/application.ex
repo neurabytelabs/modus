@@ -17,7 +17,9 @@ defmodule Modus.Application do
       Modus.Repo,
       {Phoenix.PubSub, name: Modus.PubSub},
       {Registry, keys: :unique, name: Modus.AgentRegistry},
+      Modus.Intelligence.DecisionCache,
       Modus.Simulation.AgentSupervisor,
+      Modus.Intelligence.LlmScheduler,
       ModusWeb.Endpoint
     ]
 
