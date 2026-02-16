@@ -2,13 +2,11 @@ defmodule Modus.Intelligence.BehaviorTree do
   @moduledoc """
   BehaviorTree — Need-driven and personality-based decision making.
 
-  Implements a simple priority-based behavior tree:
-  1. **Critical needs** — survival-level urgency (hunger, rest, social)
-  2. **Personality-driven** — probabilistic actions based on Big Five traits
-  3. **Default** — idle fallback
-
-  In Spinoza's terms, this is the conatus expressing itself through
-  the agent's affects and dispositions.
+  Implements a priority-based behavior tree with low idle rates:
+  1. **Critical needs** — survival-level urgency (lowered thresholds)
+  2. **Moderate needs** — proactive behavior before crisis
+  3. **Personality-driven** — every tick, probabilistic actions based on Big Five
+  4. **Default** — mostly explore, rarely idle
   """
 
   alias Modus.Simulation.Agent
@@ -16,47 +14,60 @@ defmodule Modus.Intelligence.BehaviorTree do
   @type action :: :find_food | :go_home_sleep | :find_friend | :explore |
                   :help_nearby | :gather | :idle
 
-  @doc """
-  Evaluate the behavior tree for an agent, returning an action atom.
-
-  Priority order:
-  1. Need-driven (critical thresholds)
-  2. Personality-driven (every 10 ticks, probabilistic)
-  3. Fallback to :idle
-  """
   @spec evaluate(Agent.t(), non_neg_integer()) :: action()
   def evaluate(%Agent{} = agent, tick) do
-    case check_needs(agent) do
-      nil -> check_personality(agent, tick)
+    case check_critical_needs(agent) do
+      nil ->
+        case check_moderate_needs(agent) do
+          nil -> check_personality(agent, tick)
+          action -> action
+        end
       action -> action
     end
   end
 
-  # ── Need-driven decisions ───────────────────────────────────
+  # ── Critical needs (immediate action) ──────────────────────
 
-  @spec check_needs(Agent.t()) :: action() | nil
-  defp check_needs(%Agent{needs: needs}) do
+  defp check_critical_needs(%Agent{needs: needs}) do
     cond do
-      needs.hunger > 80.0  -> :find_food
-      needs.rest < 20.0    -> :go_home_sleep
-      needs.social < 30.0  -> :find_friend
-      true                 -> nil
+      needs.hunger > 70.0 -> :find_food
+      needs.rest < 25.0   -> :go_home_sleep
+      needs.social < 20.0 -> :find_friend
+      true                -> nil
     end
   end
 
-  # ── Personality-driven decisions (every 10 ticks) ───────────
+  # ── Moderate needs (proactive) ─────────────────────────────
 
-  @spec check_personality(Agent.t(), non_neg_integer()) :: action()
-  defp check_personality(%Agent{personality: p}, tick) when rem(tick, 10) == 0 do
+  defp check_moderate_needs(%Agent{needs: needs, personality: p}) do
+    cond do
+      needs.hunger > 40.0 and :rand.uniform() < 0.4 -> :find_food
+      needs.hunger > 40.0 and :rand.uniform() < 0.3 -> :gather
+      needs.rest < 40.0 and :rand.uniform() < 0.3   -> :go_home_sleep
+      needs.social < 60.0 and p.extraversion > 0.5 and :rand.uniform() < 0.5 -> :find_friend
+      needs.social < 60.0 and :rand.uniform() < 0.25 -> :find_friend
+      true -> nil
+    end
+  end
+
+  # ── Personality-driven decisions (every tick now) ───────────
+
+  defp check_personality(%Agent{personality: p}, _tick) do
     roll = :rand.uniform()
 
+    # Personality weights
+    explore_chance = 0.30 + p.openness * 0.2
+    gather_chance = p.conscientiousness * 0.25
+    social_chance = p.extraversion * 0.2
+    help_chance = p.agreeableness * 0.15
+
     cond do
-      p.openness > 0.7 and roll < 0.3       -> :explore
-      p.agreeableness > 0.8 and roll < 0.5   -> :help_nearby
-      p.conscientiousness > 0.7 and roll < 0.4 -> :gather
-      true                                    -> :idle
+      roll < explore_chance                              -> :explore
+      roll < explore_chance + gather_chance               -> :gather
+      roll < explore_chance + gather_chance + social_chance -> :find_friend
+      roll < explore_chance + gather_chance + social_chance + help_chance -> :help_nearby
+      :rand.uniform() < 0.7                              -> :explore
+      true                                                -> :idle
     end
   end
-
-  defp check_personality(_agent, _tick), do: :idle
 end

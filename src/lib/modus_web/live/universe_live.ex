@@ -43,6 +43,8 @@ defmodule ModusWeb.UniverseLive do
        settings_base_url: "http://modus-llm:11434",
        settings_api_key: "",
        settings_test_result: nil,
+       settings_saved: false,
+       settings_testing: false,
        # Save/Load
        save_load_open: false,
        saved_worlds: [],
@@ -247,9 +249,16 @@ defmodule ModusWeb.UniverseLive do
       params["api_key"] || socket.assigns.settings_api_key
     end
 
+    selected_model = if provider_changed do
+      model
+    else
+      m = params["model"] || model
+      if m == "__custom__", do: "", else: m
+    end
+
     {:noreply, assign(socket,
       settings_provider: provider,
-      settings_model: if(provider_changed, do: model, else: params["model"] || model),
+      settings_model: selected_model,
       settings_base_url: params["base_url"] || base_url,
       settings_api_key: api_key,
       settings_test_result: nil
@@ -275,7 +284,8 @@ defmodule ModusWeb.UniverseLive do
       api_key: api_key
     })
 
-    {:noreply, assign(socket, settings_open: false)}
+    Process.send_after(self(), :clear_settings_saved, 1500)
+    {:noreply, assign(socket, settings_saved: true)}
   end
 
   def handle_event("test_llm", _params, socket) do
@@ -292,12 +302,17 @@ defmodule ModusWeb.UniverseLive do
       api_key: socket.assigns.settings_api_key
     })
 
-    result = case Modus.Intelligence.LlmProvider.test_connection() do
-      :ok -> "ok"
-      {:error, reason} -> "error: #{inspect(reason)}"
-    end
+    # Run test async to show loading state
+    pid = self()
+    Task.start(fn ->
+      result = case Modus.Intelligence.LlmProvider.test_connection() do
+        :ok -> "ok"
+        {:error, reason} -> "error: #{inspect(reason)}"
+      end
+      send(pid, {:test_llm_result, result})
+    end)
 
-    {:noreply, assign(socket, settings_test_result: result)}
+    {:noreply, assign(socket, settings_testing: true, settings_test_result: nil)}
   end
 
   # ── Save / Load ───────────────────────────────────────────────
@@ -426,6 +441,14 @@ defmodule ModusWeb.UniverseLive do
 
     feed = [%{emoji: emoji, label: label, tick: event.tick} | Enum.take(socket.assigns.event_feed, 19)]
     {:noreply, assign(socket, event_feed: feed)}
+  end
+
+  def handle_info(:clear_settings_saved, socket) do
+    {:noreply, assign(socket, settings_saved: false, settings_open: false)}
+  end
+
+  def handle_info({:test_llm_result, result}, socket) do
+    {:noreply, assign(socket, settings_testing: false, settings_test_result: result)}
   end
 
   def handle_info(_msg, socket), do: {:noreply, socket}
@@ -778,7 +801,7 @@ defmodule ModusWeb.UniverseLive do
               <%!-- Model --%>
               <div>
                 <label class="text-[10px] uppercase tracking-wider text-slate-600 block mb-1">Model</label>
-                <select phx-change="settings_change" name="model"
+                <select id={"model-select-#{@settings_provider}"} phx-change="settings_change" name="model"
                   class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50">
                   <%= if @settings_provider == "ollama" do %>
                     <option value="llama3.2:3b-instruct-q4_K_M" selected={@settings_model == "llama3.2:3b-instruct-q4_K_M"}>🦙 Llama 3.2 3B (Q4)</option>
@@ -788,8 +811,13 @@ defmodule ModusWeb.UniverseLive do
                     <option value="claude-sonnet-4-5-thinking" selected={@settings_model == "claude-sonnet-4-5-thinking"}>💜 Claude Sonnet 4.5</option>
                     <option value="claude-opus-4-6-thinking" selected={@settings_model == "claude-opus-4-6-thinking"}>👑 Claude Opus 4.6</option>
                     <option value="gpt-4.1" selected={@settings_model == "gpt-4.1"}>🟢 GPT-4.1</option>
+                    <option value="__custom__" selected={@settings_model not in ~w(gemini-3-flash gemini-3-pro-high claude-sonnet-4-5-thinking claude-opus-4-6-thinking gpt-4.1)}>✏️ Custom...</option>
                   <% end %>
                 </select>
+                <%= if @settings_provider == "antigravity" and @settings_model not in ~w(gemini-3-flash gemini-3-pro-high claude-sonnet-4-5-thinking claude-opus-4-6-thinking gpt-4.1) do %>
+                  <input type="text" name="model" value={@settings_model} placeholder="Custom model name..." phx-change="settings_change"
+                    class="w-full mt-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50" />
+                <% end %>
               </div>
 
               <%!-- Base URL --%>
@@ -819,9 +847,18 @@ defmodule ModusWeb.UniverseLive do
                 </div>
               <% end %>
 
+              <%!-- Save feedback --%>
+              <%= if @settings_saved do %>
+                <div class="text-sm px-3 py-2 rounded-lg bg-green-500/10 text-green-400 text-center">
+                  ✅ Saved!
+                </div>
+              <% end %>
+
               <%!-- Buttons --%>
               <div class="flex gap-2">
-                <button phx-click="test_llm" class="ctrl-btn flex-1 text-center">🔌 Test</button>
+                <button phx-click="test_llm" class="ctrl-btn flex-1 text-center" disabled={@settings_testing}>
+                  <%= if @settings_testing, do: "⏳ Testing...", else: "🔌 Test" %>
+                </button>
                 <button phx-click="save_settings" class="ctrl-btn ctrl-btn-primary flex-1 text-center">💾 Save</button>
               </div>
             </div>

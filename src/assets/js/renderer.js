@@ -124,6 +124,7 @@ export default class Renderer {
         const sprite = this.agentSprites.get(agent.id)
         sprite.targetX = px
         sprite.targetY = py
+        sprite.action = agent.action || "idle"
         // Update alive status
         if (!agent.alive) {
           sprite.gfx.alpha = 0.3
@@ -158,10 +159,24 @@ export default class Renderer {
         agentContainer.addChild(label)
 
         this.agentLayer.addChild(agentContainer)
+        // Action emoji indicator
+        const actionEmoji = new Text({
+          text: "",
+          style: new TextStyle({
+            fontSize: 10,
+            align: "center",
+          }),
+        })
+        actionEmoji.anchor.set(0.5, 1)
+        actionEmoji.y = -AGENT_RADIUS - 2
+        agentContainer.addChild(actionEmoji)
+
         this.agentSprites.set(agent.id, {
           container: agentContainer,
           gfx,
           label,
+          actionEmoji,
+          action: agent.action || "idle",
           targetX: px,
           targetY: py,
         })
@@ -186,15 +201,44 @@ export default class Renderer {
 
   _startAnimLoop() {
     let glowPhase = 0
+    const ACTION_EMOJIS = {
+      explore: "🧭", exploring: "🧭",
+      gather: "🌾", find_food: "🍖",
+      find_friend: "💬", talk: "💬",
+      go_home_sleep: "😴", sleep: "😴",
+      help_nearby: "🤝", flee: "🏃",
+      idle: "",
+    }
     this.app.ticker.add((ticker) => {
       const lerp = 0.15
       glowPhase += ticker.deltaTime * 0.08
       const glowAlpha = 0.3 + Math.sin(glowPhase) * 0.2
+      const breathScale = 1.0 + Math.sin(glowPhase * 1.5) * 0.03
+      const bounceY = Math.sin(glowPhase * 3) * 1.5
 
       for (const [id, sprite] of this.agentSprites) {
         const c = sprite.container
         c.x += (sprite.targetX - c.x) * lerp
         c.y += (sprite.targetY - c.y) * lerp
+
+        // Action-based animation
+        const action = sprite.action || "idle"
+        if (action === "explore" || action === "exploring") {
+          sprite.gfx.y = bounceY
+        } else if (action === "idle") {
+          sprite.gfx.scale.set(breathScale)
+        } else {
+          sprite.gfx.y = 0
+          sprite.gfx.scale.set(1)
+        }
+
+        // Action emoji
+        if (sprite.actionEmoji) {
+          const emoji = ACTION_EMOJIS[action] || ""
+          if (sprite.actionEmoji.text !== emoji) {
+            sprite.actionEmoji.text = emoji
+          }
+        }
 
         // Selection glow
         if (id === this.selectedAgentId) {

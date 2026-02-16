@@ -35,12 +35,21 @@ defmodule Modus.Intelligence.AntigravityClient do
   end
 
   def chat_with_agent(agent, user_message, config) do
+    {px, py} = agent.position
+    memories = agent |> Map.get(:memory, []) |> Enum.take(-3) |> Enum.map(& "- #{&1}") |> Enum.join("\n")
+    personality_desc = describe_personality_detailed(agent.personality)
+
     system = """
-    You are #{agent.name}, a #{agent.occupation} in a village simulation.
-    Your personality traits: #{describe_agent(agent)}
-    Current state: hunger=#{round(agent.needs.hunger)}, social=#{round(agent.needs.social)}, rest=#{round(agent.needs.rest)}
-    You are currently #{agent.current_action}.
-    Stay in character. Be brief (1-3 sentences). Respond naturally.
+    Sen #{agent.name} adında bir köy simülasyonunda yaşayan #{agent.occupation}'sın.
+    Türkçe konuşuyorsun. Kısa ve doğal cevap ver (1-3 cümle).
+
+    Kişiliğin: #{personality_desc}
+    Şu an #{px},#{py} konumundasın.
+    Durumun: açlık=#{round(agent.needs.hunger)}, sosyallik=#{round(agent.needs.social)}, dinlenme=#{round(agent.needs.rest)}
+    Şu an #{agent.current_action} yapıyorsun.
+    #{if memories != "", do: "\nSon anıların:\n#{memories}", else: ""}
+
+    Karakterinde kal. Kısa ve samimi ol.
     """
     messages = [
       %{role: "system", content: system},
@@ -145,6 +154,16 @@ defmodule Modus.Intelligence.AntigravityClient do
     Respond with JSON: {"dialogue": [{"speaker": "<name>", "line": "<text>"}, ...]}
     Keep each line under 50 words. Be natural and reflect their personalities.
     """
+  end
+
+  defp describe_personality_detailed(p) do
+    traits = []
+    traits = if p.openness > 0.7, do: ["meraklı ve yeniliklere açık" | traits], else: if(p.openness < 0.3, do: ["gelenekçi ve alışkanlıklarına bağlı" | traits], else: traits)
+    traits = if p.extraversion > 0.7, do: ["sosyal ve enerjik" | traits], else: if(p.extraversion < 0.3, do: ["içe dönük ve sessiz" | traits], else: traits)
+    traits = if p.agreeableness > 0.7, do: ["yardımsever ve nazik" | traits], else: if(p.agreeableness < 0.3, do: ["rekabetçi ve bağımsız" | traits], else: traits)
+    traits = if p.conscientiousness > 0.7, do: ["çalışkan ve düzenli" | traits], else: if(p.conscientiousness < 0.3, do: ["rahat ve spontan" | traits], else: traits)
+    traits = if p.neuroticism > 0.7, do: ["kaygılı ve duygusal" | traits], else: if(p.neuroticism < 0.3, do: ["sakin ve soğukkanlı" | traits], else: traits)
+    if traits == [], do: "sıradan birisi", else: Enum.join(traits, ", ")
   end
 
   defp describe_agent(a) do

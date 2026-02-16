@@ -11,12 +11,12 @@ defmodule Modus.Intelligence.BehaviorTreeTest do
     end
 
     test "exhausted agent goes to sleep" do
-      agent = %{Agent.new("Test", {5, 5}) | needs: %{hunger: 50.0, social: 50.0, rest: 15.0, shelter: 70.0}}
+      agent = %{Agent.new("Test", {5, 5}) | needs: %{hunger: 30.0, social: 50.0, rest: 15.0, shelter: 70.0}}
       assert BehaviorTree.evaluate(agent, 1) == :go_home_sleep
     end
 
-    test "lonely agent seeks friend" do
-      agent = %{Agent.new("Test", {5, 5}) | needs: %{hunger: 50.0, social: 25.0, rest: 80.0, shelter: 70.0}}
+    test "lonely agent seeks friend (critical)" do
+      agent = %{Agent.new("Test", {5, 5}) | needs: %{hunger: 30.0, social: 15.0, rest: 80.0, shelter: 70.0}}
       assert BehaviorTree.evaluate(agent, 1) == :find_friend
     end
 
@@ -27,19 +27,24 @@ defmodule Modus.Intelligence.BehaviorTreeTest do
   end
 
   describe "evaluate/2 — personality-driven" do
-    test "returns :idle on non-10th ticks with satisfied needs" do
-      agent = Agent.new("Test", {5, 5})
-      assert BehaviorTree.evaluate(agent, 3) == :idle
+    test "agents with satisfied needs are active (not always idle)" do
+      agent = %{Agent.new("Test", {5, 5}) | personality: %{
+        openness: 0.8, conscientiousness: 0.5,
+        extraversion: 0.5, agreeableness: 0.5, neuroticism: 0.3
+      }, needs: %{hunger: 30.0, social: 70.0, rest: 80.0, shelter: 70.0}}
+      results = for _ <- 1..100, do: BehaviorTree.evaluate(agent, 3)
+      # Most should NOT be idle
+      idle_count = Enum.count(results, &(&1 == :idle))
+      assert idle_count < 30, "Too many idle actions: #{idle_count}/100"
     end
 
-    test "personality check fires on tick divisible by 10" do
-      # Run many times — should not crash
+    test "personality check produces valid actions" do
       agent = %{Agent.new("Test", {5, 5}) | personality: %{
         openness: 0.9, conscientiousness: 0.5,
         extraversion: 0.5, agreeableness: 0.9, neuroticism: 0.3
       }}
       results = for _ <- 1..100, do: BehaviorTree.evaluate(agent, 10)
-      assert Enum.all?(results, &(&1 in [:explore, :help_nearby, :gather, :idle]))
+      assert Enum.all?(results, &(&1 in [:explore, :help_nearby, :gather, :find_friend, :idle, :find_food, :go_home_sleep]))
     end
   end
 end

@@ -146,18 +146,36 @@ defmodule Modus.Intelligence.OllamaClient do
   end
 
   defp build_chat_prompt(agent, user_message) do
+    {px, py} = agent.position
+    memories = agent |> Map.get(:memory, []) |> Enum.take(-3) |> Enum.map(& "- #{&1}") |> Enum.join("\n")
+    personality_desc = describe_personality_detailed(agent.personality)
+
     """
-    You are #{agent.name}, a #{agent.occupation} in a village simulation.
-    Your personality: #{describe_agent(agent)}
-    Your current state: hunger=#{round(agent.needs.hunger)}, social=#{round(agent.needs.social)}, rest=#{round(agent.needs.rest)}
-    You are currently #{agent.current_action}.
+    Sen #{agent.name} adında bir köy simülasyonunda yaşayan #{agent.occupation}'sın.
+    Türkçe konuşuyorsun. Kısa ve doğal cevap ver (1-3 cümle).
 
-    Stay in character. Be brief (1-3 sentences). Respond naturally as this character would.
+    Kişiliğin: #{personality_desc}
+    Şu an #{px},#{py} konumundasın.
+    Durumun: açlık=#{round(agent.needs.hunger)}, sosyallik=#{round(agent.needs.social)}, dinlenme=#{round(agent.needs.rest)}
+    Şu an #{agent.current_action} yapıyorsun.
+    #{if memories != "", do: "\nSon anıların:\n#{memories}", else: ""}
 
-    The user says: "#{user_message}"
+    Karakterinde kal. Kısa ve samimi ol.
 
-    Respond with JSON: {"reply": "<your response>"}
+    Kullanıcı diyor ki: "#{user_message}"
+
+    JSON ile cevap ver: {"reply": "<senin cevabın>"}
     """
+  end
+
+  defp describe_personality_detailed(p) do
+    traits = []
+    traits = if p.openness > 0.7, do: ["meraklı ve yeniliklere açık" | traits], else: if(p.openness < 0.3, do: ["gelenekçi ve alışkanlıklarına bağlı" | traits], else: traits)
+    traits = if p.extraversion > 0.7, do: ["sosyal ve enerjik" | traits], else: if(p.extraversion < 0.3, do: ["içe dönük ve sessiz" | traits], else: traits)
+    traits = if p.agreeableness > 0.7, do: ["yardımsever ve nazik" | traits], else: if(p.agreeableness < 0.3, do: ["rekabetçi ve bağımsız" | traits], else: traits)
+    traits = if p.conscientiousness > 0.7, do: ["çalışkan ve düzenli" | traits], else: if(p.conscientiousness < 0.3, do: ["rahat ve spontan" | traits], else: traits)
+    traits = if p.neuroticism > 0.7, do: ["kaygılı ve duygusal" | traits], else: if(p.neuroticism < 0.3, do: ["sakin ve soğukkanlı" | traits], else: traits)
+    if traits == [], do: "sıradan birisi", else: Enum.join(traits, ", ")
   end
 
   defp describe_agent(a) do
