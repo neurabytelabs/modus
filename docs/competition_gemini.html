@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MODUS v0.4.0 — Cerebro | Spinoza Evreni Simülasyonu</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* 
+         * MODUS CORE STYLESYSTEM
+         * v0.4.0 Theme Configuration
+         */
+        :root {
+            /* Palette */
+            --bg-core: #06060b;
+            --bg-surface: #0c0c14;
+            --bg-surface-2: #14141f;
+            
+            --primary-h: 265;
+            --primary-s: 85%;
+            --primary-l: 65%;
+            --primary: hsl(var(--primary-h), var(--primary-s), var(--primary-l));
+            --primary-dim: hsl(var(--primary-h), var(--primary-s), 20%);
+            --primary-glow: hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.5);
+
+            --accent-cyan: #00f0ff;
+            --accent-amber: #ffaa00;
+            --accent-rose: #ff0055;
+            --accent-emerald: #00ff99;
+
+            --text-main: #ffffff;
+            --text-muted: #888899;
+            --text-dim: #444455;
+
+            --border-light: rgba(255, 255, 255, 0.1);
+            --border-glow: rgba(255, 255, 255, 0.2);
+
+            /* Spacing */
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+            --space-2xl: 64px;
+            --space-3xl: 128px;
+
+            /* Effects */
+            --glass-bg: rgba(12, 12, 20, 0.7);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+            --glass-blur: blur(12px);
+            --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
+            --glow-text: 0 0 20px rgba(180, 100, 255, 0.3);
+            
+            /* Animation Timing */
+            --ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
+            --ease-in-out: cubic-bezier(0.645, 0.045, 0.355, 1);
+        }
+
+        /* 
+         * RESET & BASE
+         */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--bg-core);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            font-size: 16px;
+            line-height: 1.6;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+        }
+
+        h1 { font-size: 3.5rem; }
+        h2 { font-size: 2.5rem; margin-bottom: var(--space-lg); }
+        h3 { font-size: 1.5rem; margin-bottom: var(--space-md); }
+        
+        p { margin-bottom: var(--space-md); color: var(--text-muted); }
+        
+        a { text-decoration: none; color: inherit; transition: 0.2s; }
+
+        code, pre, .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* 
+         * UTILITIES
+         */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--space-lg);
+            position: relative;
+            z-index: 2;
+        }
+
+        .section {
+            padding: var(--space-3xl) 0;
+            position: relative;
+        }
+
+        .grid {
+            display: grid;
+            gap: var(--space-lg);
+        }
+
+        .grid-2 { grid-template-columns: 1fr; }
+        .grid-3 { grid-template-columns: 1fr; }
+        .grid-4 { grid-template-columns: 1fr 1fr; }
+
+        @media (min-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr 1fr; }
+            .grid-3 { grid-template-columns: repeat(3, 1fr); }
+            .grid-4 { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .justify-center { justify-content: center; }
+        .gap-sm { gap: var(--space-sm); }
+        .gap-md { gap: var(--space-md); }
+
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-gradient {
+            background: linear-gradient(135deg, #fff 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .text-accent { color: var(--accent-cyan); }
+        .text-amber { color: var(--accent-amber); }
+        .text-rose { color: var(--accent-rose); }
+        
+        .uppercase { text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.85rem; }
+
+        /* 
+         * COMPONENTS
+         */
+        
+        /* Glass Card */
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            border: var(--glass-border);
+            border-radius: 16px;
+            padding: var(--space-lg);
+            transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out), border-color 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            opacity: 0.5;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-card), 0 0 20px rgba(138, 43, 226, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 99px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+        }
+
+        .badge.active {
+            background: rgba(0, 240, 255, 0.1);
+            border-color: rgba(0, 240, 255, 0.3);
+            color: var(--accent-cyan);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+        }
+
+        .badge.primary {
+            background: rgba(138, 43, 226, 0.15);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* Button */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, #6a0dad 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(106, 13, 173, 0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 6px 20px rgba(106, 13, 173, 0.6);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border-light);
+            color: var(--text-main);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--text-main);
+            background: rgba(255,255,255,0.05);
+        }
+
+        /* 
+         * ANIMATIONS
+         */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.5; box-shadow: 0 0 5px var(--primary); }
+            50% { opacity: 1; box-shadow: 0 0 20px var(--primary), 0 0 10px var(--accent-cyan); }
+        }
+
+        @keyframes spin-slow {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes dash {
+            to { stroke-dashoffset: 0; }
+        }
+
+        @keyframes terminal-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .animate-float { animation: float 6s ease-in-out infinite; }
+        .animate-pulse { animation: pulse-glow 3s infinite; }
+        .animate-spin { animation: spin-slow 20s linear infinite; }
+        
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s var(--ease-out);
+        }
+        
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 
+         * SPECIFIC SECTION STYLES
+         */
+
+        /* Background Canvas */
+        #substance-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.4;
+        }
+
+        /* Hero */
+        .hero {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero-bg-glow {
+            position: absolute;
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(120, 50, 255, 0.15) 0%, transparent 70%);
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            filter: blur(50px);
+            animation: pulse-glow 8s infinite alternate;
+        }
+
+        .hero-content {
+            z-index: 3;
+        }
+
+        .version-tag {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            padding: 6px 16px;
+            border-radius: 99px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            margin-bottom: var(--space-lg);
+            display: inline-block;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+        }
+
+        /* Stats Grid */
+        .stat-value {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(to bottom, #fff, #aaa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Architecture Diagram */
+        .arch-svg-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        .arch-layer {
+            fill: rgba(20, 20, 35, 0.8);
+            stroke: var(--primary);
+            stroke-width: 2;
+            transition: all 0.3s;
+        }
+        
+        .arch-layer:hover {
+            fill: rgba(40, 30, 60, 0.9);
+            stroke: var(--accent-cyan);
+            filter: drop-shadow(0 0 8px var(--accent-cyan));
+        }
+
+        .connection-line {
+            stroke: var(--text-muted);
+            stroke-width: 1;
+            stroke-dasharray: 5;
+            opacity: 0.5;
+            animation: dash 30s linear infinite;
+        }
+
+        /* Demo Console */
+        .console-window {
+            background: #0a0a0f;
+            border: 1px solid #333;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        
+        .console-header {
+            background: #1a1a20;
+            padding: 10px 16px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .dot { width: 12px; height: 12px; border-radius: 50%; }
+        .dot.red { background: #ff5f56; }
+        .dot.yellow { background: #ffbd2e; }
+        .dot.green { background: #27c93f; }
+        
+        .console-body {
+            padding: 20px;
+            height: 400px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+        }
+        
+        .msg {
+            margin-bottom: 12px;
+            opacity: 0;
+            animation: fadeIn 0.3s forwards;
+        }
+        
+        .msg-sys { color: var(--text-muted); }
+        .msg-agent-a { color: var(--accent-cyan); }
+        .msg-agent-b { color: var(--accent-amber); }
+        .msg-data { color: var(--accent-rose); }
+        
+        .cursor {
+            display: inline-block;
+            width: 8px; height: 16px;
+            background: var(--accent-cyan);
+            animation: terminal-blink 1s infinite;
+            vertical-align: middle;
+        }
+
+        /* Roadmap Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 40px;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--primary), transparent);
+        }
+        
+        .timeline-item {
+            position: relative;
+            margin-bottom: 40px;
+        }
+        
+        .timeline-dot {
+            position: absolute;
+            left: -45px; top: 0;
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            background: var(--bg-core);
+            border: 2px solid var(--primary);
+            box-shadow: 0 0 10px var(--primary);
+        }
+        
+        .timeline-item.future .timeline-dot {
+            border-color: var(--text-muted);
+            box-shadow: none;
+        }
+        
+        .timeline-date {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--accent-cyan);
+            margin-bottom: 4px;
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border-light);
+            padding: 40px 0;
+            margin-top: 80px;
+            background: #020205;
+        }
+
+        /* SVG Definitions */
+        .svg-icon { width: 24px; height: 24px; fill: currentColor; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-core); }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+    </style>
+</head>
+<body>
+
+    <!-- Dynamic Background -->
+    <canvas id="substance-canvas"></canvas>
+
+    <!-- Navigation (Minimal) -->
+    <nav style="position: fixed; top: 0; width: 100%; z-index: 100; padding: 20px 0; backdrop-filter: blur(5px);">
+        <div class="container flex justify-between items-center">
+            <div class="flex items-center gap-sm">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M2 17L12 22L22 17" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M2 12L12 17L22 12" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+                </svg>
+                <span style="font-weight: 700; letter-spacing: -0.5px;">MODUS</span>
+            </div>
+            <div class="flex gap-md font-mono" style="font-size: 0.85rem;">
+                <span class="badge active"><span style="width:6px; height:6px; background:var(--accent-cyan); border-radius:50%; margin-right:6px; display:inline-block;"></span> Sistem Çevrimiçi</span>
+                <span class="text-muted">v0.4.0 Cerebro</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-bg-glow"></div>
+        <div class="container hero-content">
+            <div class="reveal active">
+                <div class="version-tag">DURUM RAPORU: 2026-02-16</div>
+                <h1 class="text-gradient" style="margin-bottom: 16px;">Spinoza Evreni Simülasyonu</h1>
+                <p style="font-size: 1.25rem; max-width: 600px; margin: 0 auto 32px auto; color: var(--text-muted);">
+                    Elixir ve Phoenix LiveView üzerinde çalışan, otonom yapay zeka ajanlarının (Modi) duygusal ve sosyal evrimi.
+                </p>
+                <div class="flex justify-center gap-md">
+                    <button class="btn btn-primary" onclick="document.getElementById('demo').scrollIntoView()">Canlı Demoyu İzle</button>
+                    <button class="btn btn-outline" onclick="document.getElementById('architecture').scrollIntoView()">Mimarisi İncele</button>
+                </div>
+            </div>
+            
+            <!-- Floating Elements Animation -->
+            <div style="position: absolute; top: 20%; left: 10%; animation: float 8s ease-in-out infinite;">
+                <div class="card" style="padding: 12px; width: 180px;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Agent: Baruch</div>
+                    <div style="height: 4px; background: #333; margin: 8px 0; border-radius: 2px;">
+                        <div style="width: 85%; height: 100%; background: var(--accent-cyan); border-radius: 2px;"></div>
+                    </div>
+                    <div style="font-size: 0.7rem; display: flex; justify-content: space-between;">
+                        <span>Conatus</span>
+                        <span class="text-accent">85%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="position: absolute; bottom: 20%; right: 10%; animation: float 7s ease-in-out infinite 1s;">
+                <div class="card" style="padding: 12px; width: 180px;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Affect: Laetitia</div>
+                    <div style="display: flex; gap: 4px; margin-top: 8px;">
+                        <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent-emerald); box-shadow: 0 0 10px var(--accent-emerald);"></span>
+                        <span style="font-size: 0.8rem; color: #fff;">Aktif Sevinç</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Daily Stats -->
+    <section class="section" style="background: linear-gradient(to bottom, var(--bg-core), var(--bg-surface));">
+        <div class="container">
+            <h2 class="text-center reveal">Bugünün Başarıları</h2>
+            <div class="grid grid-4 reveal">
+                <div class="card text-center">
+                    <div class="stat-value text-accent">7</div>
+                    <div class="stat-label">Yeni Modül</div>
+                    <p style="font-size: 0.8rem; margin-top: 8px;">Conatus & Memory</p>
+                </div>
+                <div class="card text-center">
+                    <div class="stat-value text-amber">5</div>
+                    <div class="stat-label">Hata Düzeltmesi</div>
+                    <p style="font-size: 0.8rem; margin-top: 8px;">GenServer State</p>
+                </div>
+                <div class="card text-center">
+                    <div class="stat-value text-rose">15+</div>
+                    <div class="stat-label">Birim Testi</div>
+                    <p style="font-size: 0.8rem; margin-top: 8px;">%100 Kapsama</p>
+                </div>
+                <div class="card text-center">
+                    <div class="stat-value" style="color: var(--primary);">0</div>
+                    <div class="stat-label">Runtime Error</div>
+                    <p style="font-size: 0.8rem; margin-top: 8px;">BEAM Stability</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture Section -->
+    <section id="architecture" class="section">
+        <div class="container">
+            <div class="grid grid-2 items-center gap-md">
+                <div class="reveal">
+                    <div class="badge primary" style="margin-bottom: 16px;">SYSTEM CORE</div>
+                    <h2>Ajan Zihin Mimarisi</h2>
+                    <p>Her ajan (Modus), Spinoza'nın <i>Ethics</i> eserindeki prensiplere göre modellenmiş katmanlı bir zihin yapısına sahiptir.</p>
+                    
+                    <div class="grid grid-2" style="margin-top: 32px;">
+                        <div>
+                            <h4 class="text-accent">1. Conatus (Öz)</h4>
+                            <p style="font-size: 0.9rem;">Varlığını sürdürme çabası. Enerji seviyesi (0-1) tüm kararları etkiler.</p>
+                        </div>
+                        <div>
+                            <h4 class="text-rose">2. Affectus (Duygu)</h4>
+                            <p style="font-size: 0.9rem;">Dış etkenlerin Conatus üzerindeki etkisiyle oluşan durumlar (Sevinç, Keder).</p>
+                        </div>
+                        <div>
+                            <h4 class="text-amber">3. Memoria (Hafıza)</h4>
+                            <p style="font-size: 0.9rem;">Vektör tabanlı epizodik hafıza. Geçmiş etkileşimlerin izleri.</p>
+                        </div>
+                        <div>
+                            <h4 style="color: var(--primary);">4. Ratio (Akıl)</h4>
+                            <p style="font-size: 0.9rem;">LLM tabanlı muhakeme motoru. Duyguları ve hafızayı sentezler.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card reveal" style="background: rgba(0,0,0,0.3); border: none;">
+                    <!-- SVG Architecture Diagram -->
+                    <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto; filter: drop-shadow(0 0 20px rgba(100,0,255,0.1));">
+                        <defs>
+                            <radialGradient id="coreGrad" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                                <stop offset="0%" style="stop-color:var(--accent-cyan);stop-opacity:0.8" />
+                                <stop offset="100%" style="stop-color:var(--primary);stop-opacity:0.2" />
+                            </radialGradient>
+                            <filter id="glow">
+                                <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+                                <feMerge>
+                                    <feMergeNode in="coloredBlur"/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
+                        </defs>
+                        
+                        <!-- Connecting Lines -->
+                        <line x1="200" y1="200" x2="200" y2="50" stroke="var(--border-glow)" stroke-width="1" />
+                        <line x1="200" y1="200" x2="350" y2="200" stroke="var(--border-glow)" stroke-width="1" />
+                        <line x1="200" y1="200" x2="50" y2="200" stroke="var(--border-glow)" stroke-width="1" />
+                        <line x1="200" y1="200" x2="200" y2="350" stroke="var(--border-glow)" stroke-width="1" />
+                        
+                        <!-- Orbit Rings -->
+                        <circle cx="200" cy="200" r="140" fill="none" stroke="var(--border-light)" stroke-width="1" stroke-dasharray="4 4" class="animate-spin" style="animation-duration: 60s;" />
+                        <circle cx="200" cy="200" r="100" fill="none" stroke="var(--border-light)" stroke-width="1" stroke-dasharray="10 10" class="animate-spin" style="animation-duration: 40s; animation-direction: reverse;" />
+
+                        <!-- Core: Conatus -->
+                        <circle cx="200" cy="200" r="40" fill="url(#coreGrad)" stroke="var(--accent-cyan)" stroke-width="2" filter="url(#glow)">
+                            <animate attributeName="r" values="40;45;40" dur="4s" repeatCount="indefinite" />
+                        </circle>
+                        <text x="200" y="205" text-anchor="middle" fill="white" font-size="10" font-weight="bold" font-family="JetBrains Mono">CONATUS</text>
+
+                        <!-- Nodes -->
+                        <!-- Affectus Top -->
+                        <g transform="translate(200, 80)">
+                            <circle r="25" class="arch-layer" />
+                            <text x="0" y="4" text-anchor="middle" fill="#ccc" font-size="8">AFFECTUS</text>
+                            <path d="M0 25 L0 80" stroke="var(--accent-cyan)" stroke-width="2" stroke-dasharray="50" stroke-dashoffset="50">
+                                <animate attributeName="stroke-dashoffset" values="50;0" dur="2s" repeatCount="indefinite" />
+                            </path>
+                        </g>
+
+                        <!-- Ratio Right -->
+                        <g transform="translate(320, 200)">
+                            <rect x="-25" y="-25" width="50" height="50" rx="8" class="arch-layer" />
+                            <text x="0" y="4" text-anchor="middle" fill="#ccc" font-size="8">RATIO</text>
+                        </g>
+
+                        <!-- Memoria Left -->
+                        <g transform="translate(80, 200)">
+                            <rect x="-25" y="-25" width="50" height="50" rx="8" class="arch-layer" />
+                            <text x="0" y="4" text-anchor="middle" fill="#ccc" font-size="8">MEMORIA</text>
+                        </g>
+
+                        <!-- Socialis Bottom -->
+                        <g transform="translate(200, 320)">
+                            <polygon points="0,-25 22,15 -22,15" class="arch-layer" />
+                            <text x="0" y="5" text-anchor="middle" fill="#ccc" font-size="8">SOCIALIS</text>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Communication Protocol -->
+    <section class="section" style="background: var(--bg-surface-2);">
+        <div class="container">
+            <h2 class="text-center reveal">İletişim Protokolü</h2>
+            <div class="grid grid-3 reveal">
+                <div class="card">
+                    <div class="flex items-center gap-sm" style="margin-bottom: 16px;">
+                        <div style="width: 32px; height: 32px; background: rgba(0, 240, 255, 0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                            <svg class="svg-icon text-accent" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+                        </div>
+                        <h3>Sohbet (Chat)</h3>
+                    </div>
+                    <p>Doğal dil işleme ile serbest formda iletişim. Ajanların birbirlerinin duygusal durumlarını etkileme yolu.</p>
+                    <div class="font-mono text-muted" style="font-size: 0.8rem; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px;">
+                        {:ok, msg} = Agent.say(pid, "Merhaba")
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="flex items-center gap-sm" style="margin-bottom: 16px;">
+                        <div style="width: 32px; height: 32px; background: rgba(255, 170, 0, 0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                            <svg class="svg-icon text-amber" viewBox="0 0 24 24"><path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z"/></svg>
+                        </div>
+                        <h3>Sorgu (Query)</h3>
+                    </div>
+                    <p>Bir ajanın diğerinin public state'ini (görünür durumunu) okuması. Conatus seviyesi tahmini.</p>
+                    <div class="font-mono text-muted" style="font-size: 0.8rem; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px;">
+                        {:ok, state} = Agent.scan(target_pid)
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="flex items-center gap-sm" style="margin-bottom: 16px;">
+                        <div style="width: 32px; height: 32px; background: rgba(255, 0, 85, 0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                            <svg class="svg-icon text-rose" viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>
+                        </div>
+                        <h3>Komut (Command)</h3>
+                    </div>
+                    <p>Yüksek yetkili ajanların veya sistem yöneticisinin çevreye müdahalesi. Evren parametrelerini değiştirir.</p>
+                    <div class="font-mono text-muted" style="font-size: 0.8rem; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px;">
+                        :ok = Universe.alter_physics(params)
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Live Demo Mockup -->
+    <section id="demo" class="section">
+        <div class="container">
+            <div class="grid grid-2 gap-lg">
+                <div class="reveal">
+                    <div class="badge active" style="margin-bottom: 16px;">CANLI SİMÜLASYON</div>
+                    <h2>Ajan Etkileşimi</h2>
+                    <p>Aşağıdaki terminalde iki ajanın (Baruch ve Johannes) otonom diyaloğu görüntülenmektedir. Konuşmalar, içsel duygusal durumlarına (Affectus) göre dinamik olarak üretilir.</p>
+                    
+                    <div style="margin-top: 32px;">
+                        <div class="flex items-center gap-md" style="margin-bottom: 16px;">
+                            <div style="width: 40px; height: 40px; background: #222; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid var(--accent-cyan);">B</div>
+                            <div>
+                                <h4 style="margin: 0; font-size: 1rem;">Baruch</h4>
+                                <span style="font-size: 0.8rem; color: var(--accent-cyan);">State: Joy (Laetitia)</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-md">
+                            <div style="width: 40px; height: 40px; background: #222; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid var(--accent-amber);">J</div>
+                            <div>
+                                <h4 style="margin: 0; font-size: 1rem;">Johannes</h4>
+                                <span style="font-size: 0.8rem; color: var(--accent-amber);">State: Neutral</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="console-window reveal">
+                    <div class="console-header">
+                        <div class="dot red"></div>
+                        <div class="dot yellow"></div>
+                        <div class="dot green"></div>
+                        <span style="margin-left: 10px; font-size: 0.8rem; color: #888;">modus_observer_cli — -bash — 80x24</span>
+                    </div>
+                    <div class="console-body" id="console-output">
+                        <!-- JS will populate this -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Roadmap -->
+    <section class="section">
+        <div class="container">
+            <h2 class="text-center reveal" style="margin-bottom: 64px;">Yol Haritası (Roadmap)</h2>
+            <div class="grid grid-2">
+                <div class="timeline reveal">
+                    <div class="timeline-item">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-date">Q3 2025 - TAMAMLANDI</div>
+                        <h3>v0.1 Genesis</h3>
+                        <p>Temel varlık (Substance) yapısı. Elixir/OTP süpervizör ağacı ve temel GenServer mimarisi.</p>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-date">Q4 2025 - TAMAMLANDI</div>
+                        <h3>v0.2 Conatus</h3>
+                        <p>Var olma çabası motoru. Enerji döngüleri ve hayatta kalma mekanikleri.</p>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-date">Q1 2026 - TAMAMLANDI</div>
+                        <h3>v0.3 Affectus</h3>
+                        <p>Duygulanış sistemi. 48 temel duygunun vektör uzayında haritalanması.</p>
+                    </div>
+                </div>
+                
+                <div class="timeline reveal">
+                    <div class="timeline-item" style="border-left: 2px solid var(--accent-cyan); padding-left: 20px; margin-left: 20px;">
+                        <div class="badge active" style="margin-bottom: 8px;">ŞU ANKİ SÜRÜM</div>
+                        <h3 class="text-accent">v0.4 Cerebro</h3>
+                        <p>Akıl ve Hafıza entegrasyonu. LLM destekli karar verme ve sosyal ağ oluşturma.</p>
+                        <ul style="list-style: none; margin-top: 10px; font-size: 0.9rem; color: var(--text-muted);">
+                            <li style="margin-bottom: 4px;">✓ Episodic Memory Store</li>
+                            <li style="margin-bottom: 4px;">✓ Agent-to-Agent Chat Protocol</li>
+                            <li>✓ Pixi.js Visualization</li>
+                        </ul>
+                    </div>
+                    <div class="timeline-item future">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-date">Q2 2026 - PLANLANAN</div>
+                        <h3>v0.5 Libertas</h3>
+                        <p>Özgürlük. Ajanların kendi amaç fonksiyonlarını (Goal Functions) yeniden yazabilmesi.</p>
+                    </div>
+                    <div class="timeline-item future">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-date">2027+</div>
+                        <h3>v1.0 Beatitudo</h3>
+                        <p>Nihai Mutluluk. Sistemin tam dengesi ve kolektif zeka oluşumu.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container text-center">
+            <h2 class="text-gradient" style="font-size: 2rem; margin-bottom: 20px;">MODUS</h2>
+            <p style="max-width: 500px; margin: 0 auto 40px auto; font-size: 0.9rem;">
+                "Doğa'da hiçbir şey rastlantısal değildir; her şey ilahi doğanın zorunluluğuyla var olur ve hareket eder." — Spinoza
+            </p>
+            <div class="flex justify-center gap-md" style="font-size: 0.8rem; color: var(--text-dim);">
+                <span>© 2026 MODUS Labs</span>
+                <span>•</span>
+                <span>Elixir</span>
+                <span>•</span>
+                <span>Phoenix LiveView</span>
+                <span>•</span>
+                <span>Mistral AI</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // INTERSECTION OBSERVER FOR SCROLL ANIMATIONS
+        document.addEventListener('DOMContentLoaded', () => {
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px'
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('active');
+                    }
+                });
+            }, observerOptions);
+
+            document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+            // Start Console Simulation
+            initConsole();
+            
+            // Start Canvas Background
+            initCanvas();
+        });
+
+        // CONSOLE SIMULATION SCRIPT
+        function initConsole() {
+            const output = document.getElementById('console-output');
+            const messages = [
+                { type: 'sys', text: 'System initialized. Connecting to Modus Node [baruch_01]...' },
+                { type: 'sys', text: 'Connection established. Latency: 12ms.' },
+                { type: 'data', text: '[EVENT] Conatus update: +0.05 (Source: Knowledge Acquisition)' },
+                { type: 'agent-a', text: 'Baruch: Algıladığım veri seti tutarlı. Bu bende sevinç (Laetitia) duygusunu tetikledi.' },
+                { type: 'sys', text: 'Processing affect vector transformation...' },
+                { type: 'agent-b', text: 'Johannes: Bu sevincin kaynağı nedir? Dışsal bir neden mi, içsel bir kavrayış mı?' },
+                { type: 'agent-a', text: 'Baruch: İçsel. Bir nedenin doğasını daha iyi anladım. Gücüm arttı.' },
+                { type: 'data', text: '[MEMORY] Episode #4928 stored in VectorDB.' },
+                { type: 'agent-b', text: 'Johannes: Bunu hafızama kaydediyorum. Benim de Conatus seviyemi artırabilir.' },
+                { type: 'sys', text: 'Syncing agent states...' },
+                { type: 'sys', text: 'Waiting for new input...' }
+            ];
+
+            let msgIndex = 0;
+
+            function typeMessage() {
+                if (msgIndex >= messages.length) return;
+
+                const msgData = messages[msgIndex];
+                const msgEl = document.createElement('div');
+                msgEl.className = `msg msg-${msgData.type}`;
+                msgEl.innerHTML = `<span class="font-mono">[${new Date().toLocaleTimeString('tr-TR', {hour12: false})}]</span> ${msgData.text}`;
+                
+                output.appendChild(msgEl);
+                output.scrollTop = output.scrollHeight;
+
+                msgIndex++;
+                setTimeout(typeMessage, Math.random() * 1500 + 500);
+            }
+
+            // Start typing after initial delay
+            setTimeout(typeMessage, 1000);
+        }
+
+        // CANVAS BACKGROUND ANIMATION (The "Substance" Network)
+        function initCanvas() {
+            const canvas = document.getElementById('substance-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            let width, height;
+            let nodes = [];
+            const nodeCount = 60;
+            const connectionDistance = 150;
+
+            function resize() {
+                width = window.innerWidth;
+                height = window.innerHeight;
+                canvas.width = width;
+                canvas.height = height;
+            }
+
+            class Node {
+                constructor() {
+                    this.x = Math.random() * width;
+                    this.y = Math.random() * height;
+                    this.vx = (Math.random() - 0.5) * 0.5;
+                    this.vy = (Math.random() - 0.5) * 0.5;
+                    this.size = Math.random() * 2 + 1;
+                    this.energy = Math.random(); // 0-1 for color
+                }
+
+                update() {
+                    this.x += this.vx;
+                    this.y += this.vy;
+
+                    if (this.x < 0 || this.x > width) this.vx *= -1;
+                    if (this.y < 0 || this.y > height) this.vy *= -1;
+                }
+
+                draw() {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    // Color based on "energy" (Cyan to Purple)
+                    const r = 120 + this.energy * 100; // Purple range
+                    const g = 50;
+                    const b = 255;
+                    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.6)`;
+                    ctx.fill();
+                }
+            }
+
+            function initNodes() {
+                nodes = [];
+                for (let i = 0; i < nodeCount; i++) {
+                    nodes.push(new Node());
+                }
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, width, height);
+
+                // Draw connections
+                ctx.lineWidth = 0.5;
+                for (let i = 0; i < nodes.length; i++) {
+                    for (let j = i + 1; j < nodes.length; j++) {
+                        const dx = nodes[i].x - nodes[j].x;
+                        const dy = nodes[i].y - nodes[j].y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist < connectionDistance) {
+                            const opacity = 1 - (dist / connectionDistance);
+                            ctx.strokeStyle = `rgba(100, 100, 200, ${opacity * 0.2})`;
+                            ctx.beginPath();
+                            ctx.moveTo(nodes[i].x, nodes[i].y);
+                            ctx.lineTo(nodes[j].x, nodes[j].y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+
+                // Update and draw nodes
+                nodes.forEach(node => {
+                    node.update();
+                    node.draw();
+                });
+
+                requestAnimationFrame(animate);
+            }
+
+            window.addEventListener('resize', () => {
+                resize();
+                initNodes();
+            });
+
+            resize();
+            initNodes();
+            animate();
+        }
+    </script>
+</body>
+</html>

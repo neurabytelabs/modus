@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MODUS | v0.4.0 Cerebro -> v0.5.0 Libertas</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-dark: #06060b;
+            --bg-card: #0c0c14;
+            --primary-purple: #8b5cf6;
+            --primary-purple-glow: rgba(139, 92, 246, 0.5);
+            --accent-cyan: #06b6d4;
+            --accent-cyan-glow: rgba(6, 182, 212, 0.5);
+            --alert-amber: #f59e0b;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --glass-bg: rgba(12, 12, 20, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #fff;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-purple);
+        }
+
+        /* Utility Classes */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .justify-center { justify-content: center; }
+        .grid { display: grid; }
+        .gap-4 { gap: 1rem; }
+        .gap-8 { gap: 2rem; }
+        
+        .text-center { text-align: center; }
+        .text-purple { color: var(--primary-purple); }
+        .text-cyan { color: var(--accent-cyan); }
+        .text-amber { color: var(--alert-amber); }
+        .text-gradient {
+            background: linear-gradient(135deg, #fff 0%, var(--primary-purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .mt-4 { margin-top: 1rem; }
+        .mt-8 { margin-top: 2rem; }
+        .mb-4 { margin-bottom: 1rem; }
+        .mb-8 { margin-bottom: 2rem; }
+        .py-12 { padding-top: 3rem; padding-bottom: 3rem; }
+        .py-20 { padding-top: 5rem; padding-bottom: 5rem; }
+
+        /* Glassmorphism Card */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 24px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+            border-color: var(--primary-purple);
+        }
+
+        /* Hero Section */
+        #hero {
+            position: relative;
+            height: 100vh;
+            min-height: 700px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, var(--bg-dark) 70%);
+        }
+
+        #hero-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            opacity: 0.4;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            max-width: 800px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background: rgba(6, 182, 212, 0.1);
+            border: 1px solid var(--accent-cyan);
+            border-radius: 50px;
+            color: var(--accent-cyan);
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+            box-shadow: 0 0 15px var(--accent-cyan-glow);
+            animation: pulse 2s infinite;
+        }
+
+        .hero-title {
+            font-size: 4rem;
+            line-height: 1.1;
+            margin-bottom: 20px;
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            margin-bottom: 40px;
+        }
+
+        /* Stats Section */
+        .stats-grid {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Timeline Section */
+        .timeline-container {
+            position: relative;
+            padding: 40px 0;
+        }
+
+        .timeline-line {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--bg-dark), var(--primary-purple), var(--accent-cyan), var(--bg-dark));
+            transform: translateX(-50%);
+        }
+
+        .timeline-item {
+            position: relative;
+            width: 50%;
+            padding: 20px 40px;
+            box-sizing: border-box;
+        }
+
+        .timeline-item:nth-child(odd) { left: 0; text-align: right; }
+        .timeline-item:nth-child(even) { left: 50%; text-align: left; }
+
+        .timeline-dot {
+            position: absolute;
+            top: 24px;
+            width: 20px;
+            height: 20px;
+            background: var(--bg-dark);
+            border: 2px solid var(--primary-purple);
+            border-radius: 50%;
+            z-index: 2;
+        }
+
+        .timeline-item:nth-child(odd) .timeline-dot { right: -10px; }
+        .timeline-item:nth-child(even) .timeline-dot { left: -10px; }
+
+        .timeline-item.active .timeline-dot {
+            background: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 15px var(--accent-cyan-glow);
+        }
+
+        .timeline-date {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--primary-purple);
+            margin-bottom: 8px;
+        }
+
+        /* Libertas Plan Section */
+        .feature-card {
+            border-left: 3px solid var(--primary-purple);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(139, 92, 246, 0.05) 0%, transparent 100%);
+            z-index: -1;
+        }
+
+        .feature-icon {
+            font-size: 1.5rem;
+            margin-bottom: 16px;
+            color: var(--accent-cyan);
+        }
+
+        .effort-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-top: 12px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Architecture SVG */
+        .arch-diagram {
+            width: 100%;
+            height: auto;
+            max-height: 500px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        .arch-node rect {
+            fill: #1e1e2e;
+            stroke: var(--primary-purple);
+            stroke-width: 2;
+        }
+        
+        .arch-node text {
+            fill: #fff;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
+
+        .arch-link {
+            stroke: var(--text-muted);
+            stroke-width: 2;
+            fill: none;
+            stroke-dasharray: 5;
+            animation: dash 30s linear infinite;
+        }
+
+        .arch-link.active {
+            stroke: var(--accent-cyan);
+            stroke-dasharray: 0;
+        }
+
+        /* Terminal Demo */
+        .terminal-window {
+            background: #0f0f15;
+            border-radius: 8px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            font-family: 'JetBrains Mono', monospace;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+
+        .terminal-header {
+            background: #1a1a23;
+            padding: 10px 15px;
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid #333;
+        }
+
+        .dot { width: 12px; height: 12px; border-radius: 50%; }
+        .dot-red { background: #ff5f56; }
+        .dot-yellow { background: #ffbd2e; }
+        .dot-green { background: #27c93f; }
+
+        .terminal-body {
+            padding: 20px;
+            height: 300px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+        }
+
+        .cmd-line { margin-bottom: 10px; display: flex; }
+        .prompt { color: var(--accent-cyan); margin-right: 10px; }
+        .cmd-text { color: #fff; }
+        .output-text { color: var(--text-muted); margin-bottom: 15px; display: block; white-space: pre-wrap; }
+        .json-key { color: var(--primary-purple); }
+        .json-string { color: var(--accent-cyan); }
+        .json-number { color: var(--alert-amber); }
+
+        /* Animations */
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(6, 182, 212, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0); }
+        }
+
+        @keyframes dash {
+            to { stroke-dashoffset: -1000; }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-in {
+            opacity: 0;
+            animation: fadeInUp 0.8s forwards;
+        }
+
+        .delay-100 { animation-delay: 0.1s; }
+        .delay-200 { animation-delay: 0.2s; }
+        .delay-300 { animation-delay: 0.3s; }
+
+        /* Quote */
+        .quote-box {
+            border-left: 4px solid var(--alert-amber);
+            padding-left: 20px;
+            font-style: italic;
+            color: #d1d5db;
+            margin: 40px 0;
+            background: rgba(245, 158, 11, 0.05);
+            padding: 20px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        /* Image Placeholder */
+        #plan-image {
+            width: 100%;
+            height: 300px;
+            background: repeating-linear-gradient(
+                45deg,
+                #1a1a23,
+                #1a1a23 10px,
+                #222 10px,
+                #222 20px
+            );
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed #444;
+            color: #666;
+            margin: 40px 0;
+        }
+
+        footer {
+            border-top: 1px solid var(--border-color);
+            background: #020205;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero-title { font-size: 2.5rem; }
+            .timeline-line { left: 20px; }
+            .timeline-item { width: 100%; padding-left: 50px; text-align: left; }
+            .timeline-item:nth-child(odd) { text-align: left; }
+            .timeline-item:nth-child(odd) .timeline-dot,
+            .timeline-item:nth-child(even) .timeline-dot { left: 10px; }
+            .stats-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav style="position: fixed; top: 0; width: 100%; z-index: 100; backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <div class="container flex justify-between items-center" style="height: 70px;">
+            <div class="flex items-center gap-4">
+                <div style="width: 32px; height: 32px; background: var(--primary-purple); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold;">M</div>
+                <span style="font-weight: 700; letter-spacing: 1px;">MODUS</span>
+            </div>
+            <div class="font-mono text-xs flex items-center gap-4">
+                <span class="text-muted">CURRENT:</span>
+                <span class="text-cyan">v0.4.0</span>
+                <i class="fas fa-arrow-right text-muted" style="font-size: 0.8rem;"></i>
+                <span class="text-muted">NEXT:</span>
+                <span class="text-purple">v0.5.0</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="hero">
+        <canvas id="hero-canvas"></canvas>
+        <div class="hero-content container animate-in">
+            <div class="status-badge">
+                <i class="fas fa-check-circle"></i> CEREBRO TAMAMLANDI (16 ŞUB 2026)
+            </div>
+            <h1 class="hero-title">
+                Zorunluluğun Bilincine Varmak: <br>
+                <span class="text-gradient">LIBERTAS</span>
+            </h1>
+            <p class="hero-subtitle">
+                MODUS v0.5.0 ile ajanlar "Kör Kahin" modundan çıkıp, simülasyonun zorunluluklarını kavrayan "Gören Filozof"lara dönüşüyor.
+            </p>
+            <div class="flex justify-center gap-4">
+                <a href="#plan" style="padding: 12px 32px; background: var(--primary-purple); color: white; border-radius: 8px; text-decoration: none; font-weight: 600; transition: 0.3s;">
+                    Geliştirme Planını İncele
+                </a>
+                <a href="#demo" style="padding: 12px 32px; border: 1px solid var(--border-color); color: white; border-radius: 8px; text-decoration: none; font-weight: 600; transition: 0.3s; backdrop-filter: blur(5px);">
+                    Canlı Demo
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="py-12" style="background: #090910;">
+        <div class="container">
+            <div class="grid stats-grid gap-4">
+                <div class="glass-card text-center animate-in delay-100">
+                    <i class="fas fa-cube text-purple mb-4" style="font-size: 2rem;"></i>
+                    <div class="stat-value">28+</div>
+                    <div class="stat-label">Modül Entegre Edildi</div>
+                </div>
+                <div class="glass-card text-center animate-in delay-200">
+                    <i class="fas fa-vial text-cyan mb-4" style="font-size: 2rem;"></i>
+                    <div class="stat-value">82</div>
+                    <div class="stat-label">Başarılı Test</div>
+                </div>
+                <div class="glass-card text-center animate-in delay-300">
+                    <i class="fas fa-bug text-amber mb-4" style="font-size: 2rem;"></i>
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Kritik Hata</div>
+                </div>
+                <div class="glass-card text-center animate-in delay-300">
+                    <i class="fas fa-heartbeat text-purple mb-4" style="font-size: 2rem;"></i>
+                    <div class="stat-value">8k+</div>
+                    <div class="stat-label">Tick (POP 10 Stable)</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Roadmap Timeline -->
+    <section class="py-20">
+        <div class="container">
+            <h2 class="text-center mb-8">MODUS Evrim Haritası</h2>
+            <div class="timeline-container">
+                <div class="timeline-line"></div>
+                
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="glass-card">
+                        <div class="timeline-date">GEÇMİŞ</div>
+                        <h3>v0.1 - v0.3 Genesis</h3>
+                        <p class="text-muted">Temel simülasyon motoru, basit hareket ve enerji mekanikleri.</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item active">
+                    <div class="timeline-dot"></div>
+                    <div class="glass-card" style="border-color: var(--accent-cyan);">
+                        <div class="timeline-date">BUGÜN (16 ŞUB 2026)</div>
+                        <h3 class="text-cyan">v0.4.0 Cerebro</h3>
+                        <p class="text-muted">Conatus Motoru, Duygu Durumları (Affect), Epizodik Hafıza, Sosyal Ağ, Uzamsal Hafıza.</p>
+                        <div class="mt-4 font-mono text-xs text-cyan">STATUS: COMPLETE</div>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-dot" style="border-color: var(--alert-amber); background: var(--bg-dark);"></div>
+                    <div class="glass-card" style="border-color: var(--primary-purple);">
+                        <div class="timeline-date">GELECEK (SPRINT 1-2)</div>
+                        <h3 class="text-purple">v0.5.0 Libertas</h3>
+                        <p class="text-muted">ContextEngine, IntentParser, ActionBridge. Ajanın çevresini algılayıp bilinçli eyleme geçmesi.</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-dot" style="border-color: #333;"></div>
+                    <div class="glass-card">
+                        <div class="timeline-date">PLANLANAN</div>
+                        <h3>v0.6.0 Imperium</h3>
+                        <p class="text-muted">Karmaşık komut setleri, çok adımlı görev yönetimi.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Detailed Plan Content -->
+    <section id="plan" class="py-20" style="background: #08080e;">
+        <div class="container">
+            <div class="flex flex-col items-center mb-12">
+                <div class="status-badge" style="border-color: var(--primary-purple); color: var(--primary-purple);">
+                    GELİŞTİRME PLANI
+                </div>
+                <h2 class="text-center" style="font-size: 2.5rem;">v0.5.0 Libertas</h2>
+                <p class="text-center text-muted" style="max-width: 600px;">
+                    Agent Protocol Bridge & Contextual Awareness
+                </p>
+            </div>
+
+            <!-- Introduction -->
+            <div class="glass-card mb-12 animate-in">
+                <p class="mb-4">
+                    Harika bir aşama. v0.4.0 Cerebro'nun başarısı üzerine inşa edilecek <strong>v0.5.0 Libertas</strong>, MODUS evrenindeki ajanların "sadece konuşan" botlardan, "çevresinin farkında olan ve eyleme geçebilen" varlıklara dönüşeceği kritik köprü sürümüdür.
+                </p>
+                <div class="quote-box">
+                    "Spinoza'nın Libertas (Özgürlük) kavramı, 'zorunluluğun bilincine varmak'tır. Ajanlar artık simülasyonun zorunluluklarını (arazi, enerji, sosyal ağ) bilecek ve buna göre tepki verecektir."
+                </div>
+            </div>
+
+            <!-- Image Placeholder -->
+            <div id="plan-image">
+                <div class="text-center">
+                    <i class="fas fa-image fa-2x mb-2"></i>
+                    <p>LIBERTAS MIMARI TASARIM GÖRSELİ (RESERVED)</p>
+                </div>
+            </div>
+
+            <!-- Features Grid -->
+            <h3 class="mb-8 border-b border-gray-800 pb-2">1. Özellik Dağılımı (Feature Breakdown)</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+                
+                <!-- F1 -->
+                <div class="glass-card feature-card">
+                    <i class="fas fa-eye feature-icon"></i>
+                    <h4>F1: Perception Engine</h4>
+                    <p class="text-sm text-muted mt-2">Algı Motoru. Ajanın anlık fiziksel ve içsel durumunu sorgulanabilir bir veri yapısına dönüştürür.</p>
+                    <ul class="text-xs text-muted mt-4 list-disc pl-4">
+                        <li>Modus.Mind.Perception</li>
+                        <li>Modus.World.Spatial</li>
+                    </ul>
+                    <div class="effort-badge text-cyan">Efor: 3 Gün</div>
+                </div>
+
+                <!-- F2 -->
+                <div class="glass-card feature-card">
+                    <i class="fas fa-project-diagram feature-icon"></i>
+                    <h4>F2: Social Graph Query</h4>
+                    <p class="text-sm text-muted mt-2">Sosyal Çizge Sorgusu. ETS tabanlı sosyal ağın LLM bağlamına enjekte edilebilir hale gelmesi.</p>
+                    <ul class="text-xs text-muted mt-4 list-disc pl-4">
+                        <li>Modus.Social.Insight</li>
+                        <li>İlişki raporlama API'si</li>
+                    </ul>
+                    <div class="effort-badge text-cyan">Efor: 2 Gün</div>
+                </div>
+
+                <!-- F3 -->
+                <div class="glass-card feature-card">
+                    <i class="fas fa-brain feature-icon" style="color: var(--primary-purple);"></i>
+                    <h4>F3: Intent Parser</h4>
+                    <p class="text-sm text-muted mt-2">Niyet Ayrıştırıcı. Kullanıcı mesajlarını ham metinden yapılandırılmış komutlara dönüştürür.</p>
+                    <ul class="text-xs text-muted mt-4 list-disc pl-4">
+                        <li>Modus.Protocol.Interpreter</li>
+                        <li>Chat / Query / Command tespiti</li>
+                    </ul>
+                    <div class="effort-badge text-purple">Efor: 4 Gün</div>
+                </div>
+
+                <!-- F4 -->
+                <div class="glass-card feature-card">
+                    <i class="fas fa-syringe feature-icon"></i>
+                    <h4>F4: Dynamic Context Injector</h4>
+                    <p class="text-sm text-muted mt-2">Dinamik Bağlam Enjektörü. LLM System Prompt'unun statik halden dinamik hale geçişi.</p>
+                    <ul class="text-xs text-muted mt-4 list-disc pl-4">
+                        <li>Modus.Mind.ContextBuilder</li>
+                        <li>Prompt hidrasyonu</li>
+                    </ul>
+                    <div class="effort-badge text-cyan">Efor: 3 Gün</div>
+                </div>
+
+                <!-- F5 -->
+                <div class="glass-card feature-card">
+                    <i class="fas fa-sync-alt feature-icon" style="color: var(--primary-purple);"></i>
+                    <h4>F5: Feedback Loop</h4>
+                    <p class="text-sm text-muted mt-2">Geri Bildirim Döngüsü. Ajanın eylemlerinin simülasyona yansıması ve sonucun sohbete dönmesi.</p>
+                    <ul class="text-xs text-muted mt-4 list-disc pl-4">
+                        <li>Modus.Protocol.Bridge</li>
+                        <li>Action Dispatcher</li>
+                    </ul>
+                    <div class="effort-badge text-purple">Efor: 4 Gün</div>
+                </div>
+            </div>
+
+            <!-- Sprint Structure -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+                <div class="glass-card">
+                    <h4 class="mb-4 text-cyan">Hafta 1: Algı ve Anlamlandırma</h4>
+                    <ul class="space-y-4 text-sm text-muted">
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-calendar-day mt-1"></i>
+                            <div>
+                                <strong class="text-white">Pzt-Salı:</strong> F1 (Perception Engine). Modus.World entegrasyonu.
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-calendar-day mt-1"></i>
+                            <div>
+                                <strong class="text-white">Çarşamba:</strong> F2 (Social Graph Query). ETS tablo dönüşümleri.
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-calendar-day mt-1"></i>
+                            <div>
+                                <strong class="text-white">Perş-Cuma:</strong> F4 (Dynamic Context Injector). Antigravity ağ geçidi prompt güncellemesi.
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="glass-card">
+                    <h4 class="mb-4 text-purple">Hafta 2: Protokol ve Köprü</h4>
+                    <ul class="space-y-4 text-sm text-muted">
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-calendar-day mt-1"></i>
+                            <div>
+                                <strong class="text-white">Pzt-Salı:</strong> F3 (Intent Parser). LLM zinciri kurulumu.
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-calendar-day mt-1"></i>
+                            <div>
+                                <strong class="text-white">Çarş-Perş:</strong> F5 (Feedback Loop). Simülasyon komut iletimi.
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-flag-checkered mt-1 text-amber"></i>
+                            <div>
+                                <strong class="text-white">Cuma:</strong> Entegrasyon testleri, POP 10 yük testi ve Demo.
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Technical Architecture SVG -->
+            <h3 class="mb-8 border-b border-gray-800 pb-2">3. Teknik Mimari (v0.5.0 Flow)</h3>
+            <div class="glass-card mb-12">
+                <svg class="arch-diagram" viewBox="0 0 800 300">
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#8b5cf6" />
+                        </marker>
+                    </defs>
+
+                    <!-- Nodes -->
+                    <g class="arch-node" transform="translate(50, 120)">
+                        <rect width="100" height="60" rx="8"></rect>
+                        <text x="50" y="30">USER INPUT</text>
+                    </g>
+
+                    <g class="arch-node" transform="translate(200, 120)">
+                        <rect width="120" height="60" rx="8" stroke="#06b6d4"></rect>
+                        <text x="60" y="20" font-size="10" fill="#06b6d4">F3</text>
+                        <text x="60" y="40">INTERPRETER</text>
+                    </g>
+
+                    <g class="arch-node" transform="translate(380, 50)">
+                        <rect width="120" height="60" rx="8" stroke="#06b6d4"></rect>
+                        <text x="60" y="20" font-size="10" fill="#06b6d4">F1 & F2</text>
+                        <text x="60" y="40">CONTEXT</text>
+                    </g>
+
+                    <g class="arch-node" transform="translate(380, 190)">
+                        <rect width="120" height="60" rx="8" stroke="#8b5cf6"></rect>
+                        <text x="60" y="30">LLM CORE</text>
+                    </g>
+
+                    <g class="arch-node" transform="translate(580, 120)">
+                        <rect width="120" height="60" rx="8" stroke="#f59e0b"></rect>
+                        <text x="60" y="20" font-size="10" fill="#f59e0b">F5</text>
+                        <text x="60" y="40">BRIDGE</text>
+                    </g>
+
+                    <!-- Links -->
+                    <path class="arch-link active" d="M150,150 L200,150" marker-end="url(#arrow)"></path>
+                    <path class="arch-link active" d="M320,150 L380,220" marker-end="url(#arrow)"></path> <!-- Interpreter to LLM -->
+                    <path class="arch-link active" d="M440,110 L440,190" marker-end="url(#arrow)"></path> <!-- Context to LLM -->
+                    <path class="arch-link active" d="M500,220 L580,150" marker-end="url(#arrow)"></path> <!-- LLM to Bridge -->
+                    <path class="arch-link" d="M640,180 L640,250 L100,250 L100,180" stroke-dasharray="5,5" style="opacity:0.5"></path> <!-- Feedback -->
+
+                    <!-- Labels -->
+                    <text x="175" y="140" fill="#999" font-size="10" font-family="monospace">Text</text>
+                    <text x="350" y="190" fill="#999" font-size="10" font-family="monospace">Intent</text>
+                    <text x="540" y="200" fill="#999" font-size="10" font-family="monospace">Action</text>
+                </svg>
+            </div>
+
+            <!-- Risk & Success -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="glass-card">
+                    <h3 class="mb-4 text-amber"><i class="fas fa-exclamation-triangle mr-2"></i>Risk Yönetimi</h3>
+                    <ul class="space-y-4 text-sm text-muted">
+                        <li>
+                            <strong class="text-white">Gecikme (Latency):</strong> Çift LLM çağrısı (Intent + Gen) yavaşlatabilir.
+                            <br><span class="text-xs text-cyan">Önlem:</span> Intent için GPT-4o-mini/Flash kullanımı.
+                        </li>
+                        <li>
+                            <strong class="text-white">Halüsinasyon:</strong> Ajanın yapmadığı eylemi söylemesi.
+                            <br><span class="text-xs text-cyan">Önlem:</span> Grounding mekanizması ile sıkı bağlama.
+                        </li>
+                        <li>
+                            <strong class="text-white">Token Maliyeti:</strong> Context şişmesi.
+                            <br><span class="text-xs text-cyan">Önlem:</span> En yakın 3 obje filtresi.
+                        </li>
+                    </ul>
+                </div>
+                <div class="glass-card">
+                    <h3 class="mb-4 text-green-400"><i class="fas fa-check-double mr-2"></i>Başarı Kriterleri</h3>
+                    <ul class="space-y-4 text-sm text-muted">
+                        <li>
+                            <strong class="text-white">Konumsal Farkındalık:</strong> "Neredesin?" sorusuna gerçek koordinat (120,50) ve çevre verisi ile yanıt.
+                        </li>
+                        <li>
+                            <strong class="text-white">Sosyal Hafıza:</strong> "Ahmet'i tanıyor musun?" -> ETS grafiğinden "Yakın Arkadaş" yanıtı.
+                        </li>
+                        <li>
+                            <strong class="text-white">Eylem-Söz Uyumu:</strong> "Dur ve dinlen" komutu -> Simülasyonda Idle state + Enerji artışı.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Terminal Demo Section -->
+    <section id="demo" class="py-20">
+        <div class="container">
+            <h2 class="text-center mb-8">Canlı Protokol Simülasyonu</h2>
+            <div class="terminal-window">
+                <div class="terminal-header">
+                    <div class="dot dot-red"></div>
+                    <div class="dot dot-yellow"></div>
+                    <div class="dot dot-green"></div>
+                    <span class="text-xs text-muted ml-2">modus_libertas_debug_tool.exe</span>
+                </div>
+                <div class="terminal-body" id="terminal-content">
+                    <!-- JS will populate this -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-8 text-center text-muted text-sm">
+        <div class="container">
+            <p class="mb-2">MODUS PROJECT &copy; 2026</p>
+            <p class="font-mono text-xs text-gray-600">
+                v0.4.0 (Stable) | v0.5.0 (In Development) <br>
+                Antigravity AI Agent System
+            </p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        // Particle System for Hero
+        const canvas = document.getElementById('hero-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.size = Math.random() * 2;
+                this.color = Math.random() > 0.5 ? 'rgba(139, 92, 246, ' : 'rgba(6, 182, 212, ';
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if(this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if(this.y < 0 || this.y > canvas.height) this.vy *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color + Math.random() * 0.5 + ')';
+                ctx.fill();
+            }
+        }
+
+        for(let i=0; i<100; i++) particles.push(new Particle());
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            
+            // Connect particles
+            particles.forEach((p1, i) => {
+                particles.slice(i+1).forEach(p2 => {
+                    const dx = p1.x - p2.x;
+                    const dy = p1.y - p2.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if(dist < 100) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(255,255,255,${0.1 - dist/1000})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                    }
+                });
+            });
+            
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // Terminal Simulation Logic
+        const terminalContent = document.getElementById('terminal-content');
+        
+        const scenarios = [
+            {
+                input: "Neredesin ve yanında kim var?",
+                steps: [
+                    { type: 'log', text: "Analyzing input stream..." },
+                    { type: 'json', data: { module: "IntentParser", intent: "QUERY", target: ["location", "surroundings"], confidence: 0.98 } },
+                    { type: 'log', text: "Fetching Perception Snapshot..." },
+                    { type: 'json', data: { pos: {x: 120, y: 50}, zone: "Forest_Edge", nearby: [{id: 42, type: "Agent", name: "Agent_X"}] } },
+                    { type: 'output', text: "Ormanın kenarındayım, (120, 50) koordinatındayım ve yanımda Agent X var." }
+                ]
+            },
+            {
+                input: "Sağındaki ağaca git.",
+                steps: [
+                    { type: 'log', text: "Analyzing input stream..." },
+                    { type: 'json', data: { module: "IntentParser", intent: "COMMAND", action: "MOVE", target_obj: "tree", direction: "right" } },
+                    { type: 'log', text: "Validating action with Conatus Engine (Energy: 80%)..." },
+                    { type: 'json', data: { status: "APPROVED", signal: "Modus.Simulation.Action.move_to(target=55)" } },
+                    { type: 'output', text: "Tamam, sağdaki yaşlı meşeye doğru yürüyorum." }
+                ]
+            }
+        ];
+
+        let scenarioIndex = 0;
+
+        async function typeWriter(text, element, speed = 30) {
+            for (let i = 0; i < text.length; i++) {
+                element.textContent += text.charAt(i);
+                await new Promise(r => setTimeout(r, speed));
+                element.scrollTop = element.scrollHeight;
+            }
+        }
+
+        async function runTerminal() {
+            while(true) {
+                const scenario = scenarios[scenarioIndex % scenarios.length];
+                terminalContent.innerHTML = '';
+                
+                // User Input
+                const cmdLine = document.createElement('div');
+                cmdLine.className = 'cmd-line';
+                cmdLine.innerHTML = `<span class="prompt">></span><span class="cmd-text"></span>`;
+                terminalContent.appendChild(cmdLine);
+                await typeWriter(scenario.input, cmdLine.querySelector('.cmd-text'), 50);
+                await new Promise(r => setTimeout(r, 500));
+
+                // Processing Steps
+                for (const step of scenario.steps) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '8px';
+                    line.style.fontFamily = 'monospace';
+                    
+                    if (step.type === 'log') {
+                        line.className = 'text-muted';
+                        line.textContent = `[SYSTEM] ${step.text}`;
+                    } else if (step.type === 'json') {
+                        line.innerHTML = `<span class="text-purple">[DATA]</span> ` + syntaxHighlight(step.data);
+                    } else if (step.type === 'output') {
+                        line.className = 'text-cyan';
+                        line.innerHTML = `<span class="text-white">AGENT:</span> "${step.text}"`;
+                    }
+                    
+                    terminalContent.appendChild(line);
+                    terminalContent.scrollTop = terminalContent.scrollHeight;
+                    await new Promise(r => setTimeout(r, 800));
+                }
+
+                await new Promise(r => setTimeout(r, 3000));
+                scenarioIndex++;
+            }
+        }
+
+        function syntaxHighlight(json) {
+            let str = JSON.stringify(json, null, 2);
+            str = str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return str.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'json-number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'json-key';
+                    } else {
+                        cls = 'json-string';
+                    }
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+
+        runTerminal();
+
+        // Scroll Observer for Animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.animationPlayState = 'running';
+                }
+            });
+        });
+
+        document.querySelectorAll('.animate-in').forEach((el) => {
+            el.style.animationPlayState = 'paused';
+            observer.observe(el);
+        });
+
+    </script>
+</body>
+</html>

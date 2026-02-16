@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MODUS — Agent Communication Protocol</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+:root { --bg: #06060b; --surface: #0c0c14; --border: #1a1a2e; --purple: #7c3aed; --cyan: #06b6d4; --amber: #f59e0b; --green: #10b981; --red: #ef4444; --text: #e2e8f0; --muted: #64748b; --dim: #334155; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; overflow-x: hidden; }
+
+/* Animated background */
+.bg-grid { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-image: radial-gradient(circle at 1px 1px, #1a1a2e22 1px, transparent 0); background-size: 40px 40px; z-index: 0; }
+.bg-glow { position: fixed; top: -200px; left: 50%; transform: translateX(-50%); width: 800px; height: 600px; background: radial-gradient(ellipse, #7c3aed15 0%, transparent 70%); z-index: 0; animation: bgPulse 8s ease-in-out infinite; }
+@keyframes bgPulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+.container { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+/* Hero */
+.hero { text-align: center; padding: 80px 0 60px; }
+.hero-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 24px; border: 1px solid var(--purple); background: #7c3aed11; font-size: 12px; color: var(--purple); font-weight: 500; margin-bottom: 24px; animation: fadeIn 1s ease; }
+.hero-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; box-shadow: 0 0 0 0 #10b98144; } 50% { opacity: 0.8; box-shadow: 0 0 0 8px #10b98100; } }
+.hero h1 { font-size: 48px; font-weight: 800; margin-bottom: 16px; animation: fadeIn 1s ease 0.2s both; }
+.hero h1 .gradient { background: linear-gradient(135deg, var(--purple), var(--cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.hero p { font-size: 18px; color: var(--muted); max-width: 600px; margin: 0 auto; line-height: 1.7; animation: fadeIn 1s ease 0.4s both; }
+.hero .quote { font-size: 13px; color: var(--dim); font-style: italic; margin-top: 24px; animation: fadeIn 1s ease 0.6s both; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Protocol Diagram */
+.diagram { margin: 60px 0; padding: 48px 32px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; position: relative; overflow: hidden; }
+.diagram::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--purple), var(--cyan), transparent); }
+.diagram-title { text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 3px; color: var(--muted); margin-bottom: 40px; }
+.diagram-flow { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.d-node { text-align: center; padding: 24px 20px; border-radius: 16px; min-width: 150px; position: relative; transition: transform 0.3s; }
+.d-node:hover { transform: translateY(-4px); }
+.d-node-user { background: linear-gradient(135deg, #7c3aed15, #7c3aed08); border: 1px solid #7c3aed44; box-shadow: 0 0 30px #7c3aed11; }
+.d-node-bridge { background: linear-gradient(135deg, #06b6d415, #06b6d408); border: 1px solid #06b6d444; box-shadow: 0 0 30px #06b6d411; }
+.d-node-agent { background: linear-gradient(135deg, #f59e0b15, #f59e0b08); border: 1px solid #f59e0b44; box-shadow: 0 0 30px #f59e0b11; }
+.d-node-team { background: linear-gradient(135deg, #10b98115, #10b98108); border: 1px solid #10b98144; box-shadow: 0 0 30px #10b98111; }
+.d-icon { font-size: 36px; margin-bottom: 12px; }
+.d-label { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.d-desc { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.d-arrow { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 60px; }
+.d-arrow-line { width: 40px; height: 2px; background: linear-gradient(90deg, var(--purple), var(--cyan)); position: relative; animation: dashFlow 2s linear infinite; }
+.d-arrow-line::after { content: '▸'; position: absolute; right: -8px; top: -8px; color: var(--cyan); font-size: 14px; }
+@keyframes dashFlow { 0% { opacity: 0.3; } 50% { opacity: 1; } 100% { opacity: 0.3; } }
+.d-arrow-text { font-size: 9px; color: var(--dim); text-align: center; }
+
+/* Agents showcase */
+.agents-row { display: flex; justify-content: center; gap: 16px; margin: 48px 0 0; flex-wrap: wrap; }
+.agent-avatar { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; position: relative; animation: float 3s ease-in-out infinite; }
+.agent-avatar::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid transparent; animation: glowRing 3s ease-in-out infinite; }
+.av-joy { background: #f59e0b22; border: 2px solid #f59e0b; box-shadow: 0 0 20px #f59e0b33; }
+.av-joy::after { border-color: #f59e0b44; }
+.av-sad { background: #60a5fa22; border: 2px solid #60a5fa; box-shadow: 0 0 20px #60a5fa33; }
+.av-sad::after { border-color: #60a5fa44; }
+.av-desire { background: #4ade8022; border: 2px solid #4ade80; box-shadow: 0 0 20px #4ade8033; }
+.av-desire::after { border-color: #4ade8044; }
+.av-fear { background: #ef444422; border: 2px solid #ef4444; box-shadow: 0 0 20px #ef444433; }
+.av-fear::after { border-color: #ef444444; }
+.av-neutral { background: #94a3b822; border: 2px solid #94a3b8; box-shadow: 0 0 20px #94a3b833; }
+.av-neutral::after { border-color: #94a3b844; }
+@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes glowRing { 0%,100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.1); } }
+.agent-avatar:nth-child(2) { animation-delay: 0.5s; }
+.agent-avatar:nth-child(3) { animation-delay: 1s; }
+.agent-avatar:nth-child(4) { animation-delay: 1.5s; }
+.agent-avatar:nth-child(5) { animation-delay: 2s; }
+.av-name { font-size: 10px; color: var(--muted); text-align: center; margin-top: 6px; }
+
+/* Section */
+.section { margin: 80px 0; }
+.section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 3px; color: var(--purple); font-weight: 600; margin-bottom: 12px; }
+.section-title { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+.section-desc { font-size: 14px; color: var(--muted); margin-bottom: 32px; max-width: 600px; }
+
+/* Protocol Cards */
+.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+@media (max-width: 768px) { .cards { grid-template-columns: 1fr; } }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; position: relative; overflow: hidden; transition: all 0.3s; }
+.card:hover { border-color: var(--purple); transform: translateY(-2px); box-shadow: 0 8px 32px #7c3aed11; }
+.card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; transition: opacity 0.3s; opacity: 0; }
+.card:hover::before { opacity: 1; }
+.card:nth-child(1)::before { background: linear-gradient(90deg, var(--green), var(--cyan)); }
+.card:nth-child(2)::before { background: linear-gradient(90deg, var(--cyan), var(--purple)); }
+.card:nth-child(3)::before { background: linear-gradient(90deg, var(--purple), var(--amber)); }
+.card-phase { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px; font-weight: 600; }
+.card-phase.active { color: var(--green); }
+.card-phase.planned { color: var(--amber); }
+.card-phase.vision { color: var(--purple); }
+.card-icon { font-size: 28px; margin-bottom: 12px; }
+.card-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+.card-desc { font-size: 12px; color: var(--muted); line-height: 1.7; margin-bottom: 16px; }
+.card-list { list-style: none; }
+.card-list li { font-size: 12px; color: #94a3b8; padding: 5px 0; border-bottom: 1px solid #1a1a2e; display: flex; align-items: center; gap: 8px; }
+.card-list li::before { content: ''; width: 4px; height: 4px; border-radius: 50%; flex-shrink: 0; }
+.card:nth-child(1) .card-list li::before { background: var(--green); }
+.card:nth-child(2) .card-list li::before { background: var(--cyan); }
+.card:nth-child(3) .card-list li::before { background: var(--purple); }
+.card-tag { display: inline-block; font-size: 10px; padding: 3px 10px; border-radius: 12px; font-weight: 500; }
+.tag-active { background: #10b98122; color: var(--green); border: 1px solid #10b98144; }
+.tag-planned { background: #f59e0b22; color: var(--amber); border: 1px solid #f59e0b44; }
+.tag-vision { background: #7c3aed22; color: var(--purple); border: 1px solid #7c3aed44; }
+
+/* Chat Mock */
+.chat-section { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
+@media (max-width: 768px) { .chat-section { grid-template-columns: 1fr; } }
+.chat-mock { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+.chat-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.chat-header .ch-avatar { width: 32px; height: 32px; border-radius: 50%; background: #f59e0b22; border: 2px solid var(--amber); display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.chat-header .ch-name { font-size: 14px; font-weight: 600; }
+.chat-header .ch-status { font-size: 11px; color: var(--green); }
+.chat-body { padding: 20px; display: flex; flex-direction: column; gap: 12px; min-height: 320px; }
+.msg { max-width: 85%; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.6; animation: msgIn 0.5s ease both; }
+.msg-user { align-self: flex-end; background: linear-gradient(135deg, #7c3aed33, #7c3aed22); border: 1px solid #7c3aed44; color: #c4b5fd; }
+.msg-agent { align-self: flex-start; background: #1e293b; border: 1px solid var(--border); }
+.msg-agent .speaker { font-size: 11px; color: var(--amber); font-weight: 600; margin-bottom: 4px; }
+.msg:nth-child(2) { animation-delay: 0.3s; }
+.msg:nth-child(3) { animation-delay: 0.6s; }
+.msg:nth-child(4) { animation-delay: 0.9s; }
+.msg:nth-child(5) { animation-delay: 1.2s; }
+.msg:nth-child(6) { animation-delay: 1.5s; }
+@keyframes msgIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.chat-input { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+.chat-input input { flex: 1; background: #1e293b; border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; color: var(--text); font-size: 13px; font-family: inherit; outline: none; }
+.chat-input button { background: var(--purple); border: none; color: white; padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; font-weight: 500; }
+.chat-explain { }
+.chat-explain h3 { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+.explain-step { display: flex; gap: 14px; margin-bottom: 20px; }
+.explain-num { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; border: 1px solid; }
+.explain-num.n1 { background: #7c3aed22; border-color: var(--purple); color: var(--purple); }
+.explain-num.n2 { background: #06b6d422; border-color: var(--cyan); color: var(--cyan); }
+.explain-num.n3 { background: #f59e0b22; border-color: var(--amber); color: var(--amber); }
+.explain-num.n4 { background: #10b98122; border-color: var(--green); color: var(--green); }
+.explain-text { }
+.explain-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.explain-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.explain-code { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--cyan); background: #0c0c14; padding: 6px 10px; border-radius: 6px; margin-top: 6px; border: 1px solid var(--border); }
+
+/* Timeline */
+.timeline { display: flex; align-items: flex-start; gap: 0; margin: 40px 0; position: relative; overflow-x: auto; padding-bottom: 20px; }
+.tl-item { flex: 1; min-width: 180px; text-align: center; position: relative; }
+.tl-line { position: absolute; top: 20px; left: 50%; right: -50%; height: 2px; background: var(--border); z-index: 0; }
+.tl-item:last-child .tl-line { display: none; }
+.tl-dot { width: 40px; height: 40px; border-radius: 50%; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 16px; position: relative; z-index: 1; }
+.tl-dot.done { background: #10b98122; border: 2px solid var(--green); box-shadow: 0 0 20px #10b98133; }
+.tl-dot.current { background: #7c3aed22; border: 2px solid var(--purple); box-shadow: 0 0 20px #7c3aed44; animation: pulse 2s infinite; }
+.tl-dot.future { background: #1e293b; border: 2px solid var(--border); }
+.tl-version { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+.tl-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.tl-desc { font-size: 11px; color: var(--muted); line-height: 1.5; padding: 0 8px; }
+
+/* Footer */
+.footer { text-align: center; padding: 60px 0 40px; border-top: 1px solid var(--border); margin-top: 80px; }
+.footer .spinoza { font-size: 16px; font-style: italic; color: var(--dim); max-width: 600px; margin: 0 auto 16px; line-height: 1.7; }
+.footer .source { font-size: 12px; color: #475569; }
+.footer .tools { margin-top: 16px; display: flex; gap: 8px; justify-content: center; }
+.footer .tool-tag { font-size: 10px; padding: 4px 12px; border-radius: 16px; font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+
+<div class="container">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-badge"><span class="dot"></span> MODUS v0.4.0 Cerebro</div>
+    <h1>Agent <span class="gradient">Communication</span> Protocol</h1>
+    <p>Her agent bir modus — bağımsız iradesiyle yaşayan, hisseden, hatırlayan bir varlık. Bu protokol, seni onların dünyasına bağlayan köprü.</p>
+    <div class="quote">"Zihnin düşünme gücü, bedenin eylem gücüne eşittir ve onunla eşzamanlıdır." — Spinoza, Ethics III</div>
+  </div>
+
+  <!-- Protocol Diagram -->
+  <div class="diagram">
+    <div class="diagram-title">Genel Mimari</div>
+    <div class="diagram-flow">
+      <div class="d-node d-node-user">
+        <div class="d-icon">👤</div>
+        <div class="d-label">Yaratıcı</div>
+        <div class="d-desc">Doğal dil ile<br>Türkçe konuşur</div>
+      </div>
+      <div class="d-arrow">
+        <div class="d-arrow-line"></div>
+        <div class="d-arrow-text">doğal dil</div>
+      </div>
+      <div class="d-node d-node-bridge">
+        <div class="d-icon">🌉</div>
+        <div class="d-label">Protocol Bridge</div>
+        <div class="d-desc">Intent ayrıştırma<br>Bağlam enjeksiyonu<br>Yanıt formatlama</div>
+      </div>
+      <div class="d-arrow">
+        <div class="d-arrow-line"></div>
+        <div class="d-arrow-text">structured</div>
+      </div>
+      <div class="d-node d-node-agent">
+        <div class="d-icon">🤖</div>
+        <div class="d-label">Agents</div>
+        <div class="d-desc">Kişilik + Hafıza<br>Conatus + Affect<br>Bağımsız irade</div>
+      </div>
+      <div class="d-arrow">
+        <div class="d-arrow-line"></div>
+        <div class="d-arrow-text">organize</div>
+      </div>
+      <div class="d-node d-node-team">
+        <div class="d-icon">👥</div>
+        <div class="d-label">Takımlar</div>
+        <div class="d-desc">Grup görevleri<br>Kolektif hafıza<br>Lider seçimi</div>
+      </div>
+    </div>
+    <div class="agents-row">
+      <div style="text-align:center"><div class="agent-avatar av-joy">😊</div><div class="av-name">Elif · joy</div></div>
+      <div style="text-align:center"><div class="agent-avatar av-sad">😢</div><div class="av-name">Deniz · sad</div></div>
+      <div style="text-align:center"><div class="agent-avatar av-desire">🔥</div><div class="av-name">Emre · desire</div></div>
+      <div style="text-align:center"><div class="agent-avatar av-fear">😰</div><div class="av-name">Selin · fear</div></div>
+      <div style="text-align:center"><div class="agent-avatar av-neutral">😐</div><div class="av-name">Naz · neutral</div></div>
+    </div>
+  </div>
+
+  <!-- Protocol Layers -->
+  <div class="section">
+    <div class="section-label">Protokol Katmanları</div>
+    <div class="section-title">Üç Katmanlı İletişim</div>
+    <div class="section-desc">Her katman bir öncekinin üzerine inşa edilir. Sohbetten komutaya, bireyden takıma.</div>
+    <div class="cards">
+      <div class="card">
+        <div class="card-phase active">Katman 1 · v0.4.0 ✅</div>
+        <div class="card-icon">💬</div>
+        <div class="card-title">Sohbet Protokolü</div>
+        <div class="card-desc">Agent'larla doğal dilde konuş. Kişiliğe, hafızaya ve duygu durumuna göre yanıt alırsın.</div>
+        <ul class="card-list">
+          <li>Doğal Türkçe sohbet</li>
+          <li>Kişilik bazlı yanıtlar (Big Five)</li>
+          <li>Hafıza bağlamı (konum, deneyim)</li>
+          <li>Affect etkisi (üzgün → kısa yanıt)</li>
+          <li>Konuşma geçmişi korunur</li>
+        </ul>
+        <div style="margin-top:16px"><span class="card-tag tag-active">✓ Aktif</span></div>
+      </div>
+      <div class="card">
+        <div class="card-phase planned">Katman 2 · v0.5.0</div>
+        <div class="card-icon">📋</div>
+        <div class="card-title">Bilgi Alma Protokolü</div>
+        <div class="card-desc">Agent'ın gözünden dünyayı gör. Çevre raporu, sosyal harita, duygusal durum.</div>
+        <ul class="card-list">
+          <li>"Ne görüyorsun?" → çevre raporu</li>
+          <li>"Kim var yakınında?" → sosyal harita</li>
+          <li>"Nasıl hissediyorsun?" → affect analizi</li>
+          <li>"Ne hatırlıyorsun?" → episodik hafıza</li>
+          <li>"Köy nasıl?" → kolektif durum</li>
+        </ul>
+        <div style="margin-top:16px"><span class="card-tag tag-planned">Planlandı</span></div>
+      </div>
+      <div class="card">
+        <div class="card-phase vision">Katman 3 · v0.6.0</div>
+        <div class="card-icon">🎯</div>
+        <div class="card-title">Komut Protokolü</div>
+        <div class="card-desc">Agent'ları yönlendir. Görev ata, takım kur, strateji belirle.</div>
+        <ul class="card-list">
+          <li>"Şu noktaya git" → hareket komutu</li>
+          <li>"X ile konuş" → sosyal yönlendirme</li>
+          <li>"Takım kur" → grup oluşturma</li>
+          <li>"Keşfet ve raporla" → görev atama</li>
+          <li>"Lider ol" → rol atama</li>
+        </ul>
+        <div style="margin-top:16px"><span class="card-tag tag-vision">Vizyon</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat Demo -->
+  <div class="section">
+    <div class="section-label">Canlı Etkileşim</div>
+    <div class="section-title">Agent ile Sohbet</div>
+    <div class="section-desc">Protocol Bridge agent'ın gerçek durumunu bilerek zengin yanıtlar üretir.</div>
+    <div class="chat-section">
+      <div class="chat-mock">
+        <div class="chat-header">
+          <div class="ch-avatar">🔥</div>
+          <div>
+            <div class="ch-name">Emre · explorer</div>
+            <div class="ch-status">● desire · conatus: 0.85</div>
+          </div>
+        </div>
+        <div class="chat-body">
+          <div class="msg msg-user">Emre, etrafında neler oluyor?</div>
+          <div class="msg msg-agent">
+            <div class="speaker">Emre</div>
+            Buralarda ilginç şeyler keşfediyorum! Güneybatıda büyük bir orman var, henüz kimse gitmemiş. Selin'i biraz ileride gördüm ama konuşamadık — o biraz korkak görünüyor.
+          </div>
+          <div class="msg msg-user">Selin'e git ve ona yardım et</div>
+          <div class="msg msg-agent">
+            <div class="speaker">Emre</div>
+            Tamam, Selin'e doğru yürüyorum. Keşif ruhum tutuştu zaten, birlikte o ormana dalabiliriz! 🧭
+          </div>
+          <div class="msg msg-user">İkiniz bir takım kurun, ormanı keşfedin</div>
+          <div class="msg msg-agent">
+            <div class="speaker">Emre</div>
+            Harika fikir! Selin ile "Orman Kaşifleri" takımını kuruyoruz. O detaycı ben cesur — mükemmel bir combo olacak. Raporumu bekliyorsun, değil mi patron? 😄
+          </div>
+        </div>
+        <div class="chat-input">
+          <input type="text" placeholder="Emre ile konuş..." disabled>
+          <button>Gönder</button>
+        </div>
+      </div>
+      <div class="chat-explain">
+        <h3>Perde Arkası</h3>
+        <div class="explain-step">
+          <div class="explain-num n1">1</div>
+          <div class="explain-text">
+            <div class="explain-title">Intent Analizi</div>
+            <div class="explain-desc">Kullanıcı mesajı doğal dil işleme ile ayrıştırılır</div>
+            <div class="explain-code">intent: :query_environment → agent: "Emre"</div>
+          </div>
+        </div>
+        <div class="explain-step">
+          <div class="explain-num n2">2</div>
+          <div class="explain-text">
+            <div class="explain-title">Bağlam Enjeksiyonu</div>
+            <div class="explain-desc">Agent'ın gerçek durumu LLM prompt'una eklenir</div>
+            <div class="explain-code">pos:(24,18) nearby:[Selin@3tile] affect:desire conatus:0.85</div>
+          </div>
+        </div>
+        <div class="explain-step">
+          <div class="explain-num n3">3</div>
+          <div class="explain-text">
+            <div class="explain-title">Kişilik Filtresi</div>
+            <div class="explain-desc">Big Five kişiliği yanıt tonunu belirler</div>
+            <div class="explain-code">O:0.9 C:0.3 E:0.8 A:0.5 N:0.2 → cesur, heyecanlı ton</div>
+          </div>
+        </div>
+        <div class="explain-step">
+          <div class="explain-num n4">4</div>
+          <div class="explain-text">
+            <div class="explain-title">Aksiyon Tetikleme</div>
+            <div class="explain-desc">Komutlar gerçek simülasyon aksiyonlarına dönüşür</div>
+            <div class="explain-code">Agent.move_toward(selin) → Team.create("Orman Kaşifleri")</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Roadmap Timeline -->
+  <div class="section">
+    <div class="section-label">Yol Haritası</div>
+    <div class="section-title">Spinoza Evrimi</div>
+    <div class="section-desc">Her versiyon bir felsefi evrim — bireyden topluma, içgüdüden bilince.</div>
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-line"></div>
+        <div class="tl-dot done">✓</div>
+        <div class="tl-version" style="color:var(--green)">v0.1-0.3</div>
+        <div class="tl-name">Genesis → Affectus</div>
+        <div class="tl-desc">Dünya, agent'lar, conatus, affect, hafıza</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-line"></div>
+        <div class="tl-dot current">🧠</div>
+        <div class="tl-version" style="color:var(--purple)">v0.4</div>
+        <div class="tl-name">Cerebro</div>
+        <div class="tl-desc">Sosyal ağ, LLM konuşmalar, mekansal hafıza, mind view</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-line"></div>
+        <div class="tl-dot future">🌉</div>
+        <div class="tl-version" style="color:var(--amber)">v0.5</div>
+        <div class="tl-name">Libertas</div>
+        <div class="tl-desc">Protocol Bridge, zengin sohbet, agent gözünden dünya</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-line"></div>
+        <div class="tl-dot future">🎯</div>
+        <div class="tl-version" style="color:var(--muted)">v0.6</div>
+        <div class="tl-name">Imperium</div>
+        <div class="tl-desc">Komut sistemi, görev atama, yönlendirme</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot future">👥</div>
+        <div class="tl-version" style="color:var(--muted)">v0.7</div>
+        <div class="tl-name">Societas</div>
+        <div class="tl-desc">Takımlar, kolektif zeka, liderlik</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Footer -->
+<div class="container">
+  <div class="footer">
+    <div class="spinoza">"Toplum, bireylerin güç kapasitelerinin toplamından fazlasıdır. Çünkü birlikte hareket eden zihinler, tek başına hareket edenden daha büyük bir gerçekliğe sahiptir."</div>
+    <div class="source">— Baruch Spinoza, Ethics IV · MODUS Agent Communication Protocol</div>
+    <div class="tools">
+      <span class="tool-tag" style="background:#7c3aed22;color:var(--purple);border:1px solid #7c3aed44">RUNE Enhanced</span>
+      <span class="tool-tag" style="background:#06b6d422;color:var(--cyan);border:1px solid #06b6d444">Grok-4 Reasoning</span>
+      <span class="tool-tag" style="background:#f59e0b22;color:var(--amber);border:1px solid #f59e0b44">Spinoza Validated</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
