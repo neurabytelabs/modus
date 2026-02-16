@@ -6,6 +6,28 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v1.4.0 · **Potentia** — _"By reality and perfection I mean the same thing"_
+_17 Şubat 2026_
+
+### ✨ Features
+- **StoryEngine** (`simulation/story_engine.ex`) — Automatic narrative generation from simulation events
+- **Timeline View** — Left panel timeline showing notable world events with Spinoza-flavored prose
+- **Toast Notifications** — Real-time event notifications that slide in from the right
+- **Chronicle Export** — Export the world's full history as beautifully formatted markdown
+- **Population Stats Dashboard** — Bar graph visualization of population over time + summary stats
+- **Population Tracking** — Ticker records population snapshots every 10 ticks
+
+### 🧠 Architecture
+- StoryEngine subscribes to EventLog PubSub for automatic event processing
+- Notable events (birth, death, disaster, migration, conflict, trade) trigger toast notifications
+- Chronicle maintains up to 500 entries, population history up to 1000 data points
+- Story PubSub topic (`"story"`) for real-time toast delivery to LiveView
+
+### 🧪 Tests
+- 6 new tests: chronicle, timeline, population history, markdown export, narrative generation, event filtering
+
+---
+
 ## v1.1.0 · **Harmonia** — _"All things are in God, and everything happens solely through the laws of the infinite nature of God"_
 _16 Şubat 2026_
 

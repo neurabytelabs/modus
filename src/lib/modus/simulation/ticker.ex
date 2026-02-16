@@ -134,6 +134,16 @@ defmodule Modus.Simulation.Ticker do
     # Broadcast to agents (self-tick)
     Phoenix.PubSub.broadcast(@pubsub, "simulation:ticks", {:tick, new_tick})
 
+    # Record population every 10 ticks for StoryEngine graphs
+    if rem(new_tick, 10) == 0 do
+      agent_count = try do
+        Registry.count(Modus.AgentRegistry)
+      catch
+        _, _ -> 0
+      end
+      Modus.Simulation.StoryEngine.record_population(new_tick, agent_count)
+    end
+
     # Schedule next tick
     ref = schedule_tick(s.interval_ms)
     {:noreply, %{s | tick: new_tick, timer_ref: ref}}

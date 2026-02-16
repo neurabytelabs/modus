@@ -29,6 +29,7 @@ defmodule Modus.Application do
       Modus.Simulation.Environment,
       Modus.Simulation.ResourceSystem,
       Modus.Simulation.WorldSystems,
+      Modus.Simulation.StoryEngine,
       ModusWeb.Endpoint
     ]
 

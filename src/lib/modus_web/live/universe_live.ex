@@ -17,6 +17,7 @@ defmodule ModusWeb.UniverseLive do
   def mount(_params, _session, socket) do
     if connected?(socket) do
       Modus.Simulation.EventLog.subscribe()
+      Phoenix.PubSub.subscribe(Modus.PubSub, "story")
     end
 
     {:ok,
@@ -60,7 +61,15 @@ defmodule ModusWeb.UniverseLive do
        templates: @templates,
        trades_count: 0,
        births_count: 0,
-       deaths_count: 0
+       deaths_count: 0,
+       # Potentia — Story & Timeline
+       timeline_open: false,
+       timeline_entries: [],
+       toasts: [],
+       chronicle_open: false,
+       chronicle_md: "",
+       stats_open: false,
+       population_history: []
      )}
   end
 
@@ -475,6 +484,41 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, mobile_panel: new_panel)}
   end
 
+  # ── Potentia: Timeline / Chronicle / Stats ──────────────────
+
+  def handle_event("toggle_timeline", _params, socket) do
+    open = !socket.assigns.timeline_open
+    entries = if open do
+      try do Modus.Simulation.StoryEngine.get_timeline(limit: 50) catch _, _ -> [] end
+    else
+      []
+    end
+    {:noreply, assign(socket, timeline_open: open, timeline_entries: entries)}
+  end
+
+  def handle_event("open_chronicle", _params, socket) do
+    md = try do Modus.Simulation.StoryEngine.export_markdown() catch _, _ -> "No chronicle data yet." end
+    {:noreply, assign(socket, chronicle_open: true, chronicle_md: md)}
+  end
+
+  def handle_event("close_chronicle", _params, socket) do
+    {:noreply, assign(socket, chronicle_open: false)}
+  end
+
+  def handle_event("open_stats", _params, socket) do
+    history = try do Modus.Simulation.StoryEngine.population_history() catch _, _ -> [] end
+    {:noreply, assign(socket, stats_open: true, population_history: history)}
+  end
+
+  def handle_event("close_stats", _params, socket) do
+    {:noreply, assign(socket, stats_open: false)}
+  end
+
+  def handle_event("dismiss_toast", %{"id" => id}, socket) do
+    toasts = Enum.reject(socket.assigns.toasts, &(&1.id == id))
+    {:noreply, assign(socket, toasts: toasts)}
+  end
+
   # ── PubSub Events ───────────────────────────────────────────
 
   @impl true
@@ -500,6 +544,33 @@ defmodule ModusWeb.UniverseLive do
 
     feed = [%{emoji: emoji, label: label, tick: event.tick} | Enum.take(socket.assigns.event_feed, 19)]
     {:noreply, assign(socket, event_feed: feed)}
+  end
+
+  def handle_info({:toast, entry}, socket) do
+    toast = %{
+      id: System.unique_integer([:positive]) |> to_string(),
+      emoji: entry.emoji,
+      text: entry.narrative,
+      tick: entry.tick
+    }
+    toasts = Enum.take([toast | socket.assigns.toasts], 5)
+    # Auto-dismiss after 6 seconds
+    Process.send_after(self(), {:dismiss_toast, toast.id}, 6_000)
+
+    # Update timeline if open
+    socket = if socket.assigns.timeline_open do
+      entries = try do Modus.Simulation.StoryEngine.get_timeline(limit: 50) catch _, _ -> [] end
+      assign(socket, timeline_entries: entries)
+    else
+      socket
+    end
+
+    {:noreply, assign(socket, toasts: toasts)}
+  end
+
+  def handle_info({:dismiss_toast, id}, socket) do
+    toasts = Enum.reject(socket.assigns.toasts, &(&1.id == id))
+    {:noreply, assign(socket, toasts: toasts)}
   end
 
   def handle_info(:clear_settings_saved, socket) do
@@ -654,7 +725,7 @@ defmodule ModusWeb.UniverseLive do
           <span class="text-xl font-bold tracking-tighter">
             MODUS<span class="text-purple-400">_</span>
           </span>
-          <span class="text-xs text-slate-600 hidden sm:inline">v1.2.0 · Infinitas</span>
+          <span class="text-xs text-slate-600 hidden sm:inline">v1.4.0 · Potentia</span>
         </div>
 
         <div class="flex items-center gap-3 md:gap-6">
@@ -707,6 +778,21 @@ defmodule ModusWeb.UniverseLive do
             🧠
           </button>
 
+          <%!-- Timeline --%>
+          <button phx-click="toggle_timeline" class={"ctrl-btn #{if @timeline_open, do: "ctrl-btn-primary"}"} title="Timeline">
+            📜
+          </button>
+
+          <%!-- Stats --%>
+          <button phx-click="open_stats" class="ctrl-btn" title="Population Stats">
+            📊
+          </button>
+
+          <%!-- Chronicle Export --%>
+          <button phx-click="open_chronicle" class="ctrl-btn" title="Export Chronicle">
+            📖
+          </button>
+
           <%!-- Save/Load --%>
           <button phx-click="open_save_load" class="ctrl-btn" title="Save / Load World">
             💾
@@ -725,38 +811,59 @@ defmodule ModusWeb.UniverseLive do
 
       <%!-- Main Area --%>
       <div class="flex-1 flex min-h-0 relative">
-        <%!-- Event Injection Panel (left sidebar on desktop, bottom drawer on mobile) --%>
+        <%!-- Left Sidebar: Event Injection + Timeline --%>
         <div class={"shrink-0 border-r border-white/5 bg-[#0A0A0F]/90 backdrop-blur-md overflow-y-auto z-10 transition-all duration-300 " <>
-          "hidden md:block md:w-48"}>
+          "hidden md:block " <> if(@timeline_open, do: "md:w-64", else: "md:w-48")}>
           <div class="p-3">
-            <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-3">Inject Event</h3>
-            <div class="space-y-2">
-              <button phx-click="inject_event" phx-value-type="natural_disaster" class="event-btn">
-                <span class="text-lg">🌋</span>
-                <span class="text-xs">Disaster</span>
-              </button>
-              <button phx-click="inject_event" phx-value-type="migrant" class="event-btn">
-                <span class="text-lg">🚶</span>
-                <span class="text-xs">Migrant</span>
-              </button>
-              <button phx-click="inject_event" phx-value-type="resource_bonus" class="event-btn">
-                <span class="text-lg">🌾</span>
-                <span class="text-xs">Resources</span>
-              </button>
-            </div>
-
-            <%!-- Event Feed --%>
-            <%= if @event_feed != [] do %>
-              <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mt-5 mb-2">Recent Events</h3>
-              <div class="space-y-1.5">
-                <%= for event <- @event_feed do %>
-                  <div class="text-[11px] text-slate-400 flex items-center gap-1.5">
-                    <span><%= event.emoji %></span>
-                    <span class="truncate"><%= event.label %></span>
-                    <span class="text-slate-600 ml-auto text-[9px]">t:<%= event.tick %></span>
-                  </div>
-                <% end %>
+            <%= if @timeline_open do %>
+              <%!-- Timeline View --%>
+              <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-3">📜 World Timeline</h3>
+              <%= if @timeline_entries == [] do %>
+                <p class="text-xs text-slate-600 italic">No notable events yet. Let the world run...</p>
+              <% else %>
+                <div class="space-y-2">
+                  <%= for entry <- @timeline_entries do %>
+                    <div class="border-l-2 border-purple-500/30 pl-2 py-1">
+                      <div class="flex items-center gap-1.5">
+                        <span class="text-sm"><%= entry.emoji %></span>
+                        <span class="text-[9px] text-slate-600 tabular-nums">t:<%= entry.tick %></span>
+                      </div>
+                      <p class="text-[11px] text-slate-300 mt-0.5 leading-relaxed"><%= entry.narrative %></p>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            <% else %>
+              <%!-- Event Injection --%>
+              <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-3">Inject Event</h3>
+              <div class="space-y-2">
+                <button phx-click="inject_event" phx-value-type="natural_disaster" class="event-btn">
+                  <span class="text-lg">🌋</span>
+                  <span class="text-xs">Disaster</span>
+                </button>
+                <button phx-click="inject_event" phx-value-type="migrant" class="event-btn">
+                  <span class="text-lg">🚶</span>
+                  <span class="text-xs">Migrant</span>
+                </button>
+                <button phx-click="inject_event" phx-value-type="resource_bonus" class="event-btn">
+                  <span class="text-lg">🌾</span>
+                  <span class="text-xs">Resources</span>
+                </button>
               </div>
+
+              <%!-- Event Feed --%>
+              <%= if @event_feed != [] do %>
+                <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mt-5 mb-2">Recent Events</h3>
+                <div class="space-y-1.5">
+                  <%= for event <- @event_feed do %>
+                    <div class="text-[11px] text-slate-400 flex items-center gap-1.5">
+                      <span><%= event.emoji %></span>
+                      <span class="truncate"><%= event.label %></span>
+                      <span class="text-slate-600 ml-auto text-[9px]">t:<%= event.tick %></span>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
             <% end %>
           </div>
         </div>
@@ -1218,6 +1325,98 @@ defmodule ModusWeb.UniverseLive do
       <% end %>
     </div>
 
+      <%!-- Toast Notifications --%>
+      <%= if @toasts != [] do %>
+        <div class="fixed top-16 right-4 z-50 space-y-2 pointer-events-none">
+          <%= for toast <- @toasts do %>
+            <div class="pointer-events-auto flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0A0A0F]/95 border border-purple-500/30 shadow-lg shadow-purple-500/10 backdrop-blur-md animate-slide-in max-w-xs">
+              <span class="text-lg"><%= toast.emoji %></span>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs text-slate-200 truncate"><%= toast.text %></p>
+                <span class="text-[9px] text-slate-600">tick <%= toast.tick %></span>
+              </div>
+              <button phx-click="dismiss_toast" phx-value-id={toast.id} class="text-slate-600 hover:text-slate-400 text-xs ml-1">✕</button>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+
+      <%!-- Chronicle Export Modal --%>
+      <%= if @chronicle_open do %>
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div class="bg-[#0A0A0F] border border-white/10 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl" phx-click-away="close_chronicle">
+            <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
+              <span class="font-bold text-slate-100">📖 World Chronicle</span>
+              <button phx-click="close_chronicle" class="text-slate-600 hover:text-slate-400">✕</button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1">
+              <pre class="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed"><%= @chronicle_md %></pre>
+            </div>
+            <div class="px-4 py-3 border-t border-white/5 shrink-0">
+              <p class="text-[10px] text-slate-600">Copy the text above to save your world's story as markdown.</p>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <%!-- Stats Modal --%>
+      <%= if @stats_open do %>
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div class="bg-[#0A0A0F] border border-white/10 rounded-xl w-full max-w-lg max-h-[80vh] flex flex-col shadow-2xl" phx-click-away="close_stats">
+            <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
+              <span class="font-bold text-slate-100">📊 Population Stats</span>
+              <button phx-click="close_stats" class="text-slate-600 hover:text-slate-400">✕</button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1">
+              <%= if @population_history == [] do %>
+                <p class="text-xs text-slate-600 italic text-center">No data yet. Run the simulation for a while...</p>
+              <% else %>
+                <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-3">Population Over Time</h3>
+                <%!-- ASCII-style population graph --%>
+                <div class="bg-white/3 rounded-lg p-3 border border-white/5">
+                  <% max_pop = @population_history |> Enum.map(&elem(&1, 1)) |> Enum.max(fn -> 1 end) %>
+                  <% sampled = @population_history |> Enum.take_every(max(div(length(@population_history), 40), 1)) |> Enum.take(40) %>
+                  <div class="flex items-end gap-px h-32">
+                    <%= for {_tick, pop} <- sampled do %>
+                      <% height = if max_pop > 0, do: pop / max_pop * 100, else: 0 %>
+                      <div
+                        class="flex-1 bg-purple-500/60 rounded-t-sm min-w-[2px] transition-all duration-300 hover:bg-purple-400/80"
+                        style={"height: #{height}%"}
+                        title={"Pop: #{pop}"}
+                      />
+                    <% end %>
+                  </div>
+                  <div class="flex justify-between text-[9px] text-slate-600 mt-1">
+                    <span>t:<%= elem(List.first(@population_history), 0) %></span>
+                    <span>t:<%= elem(List.last(@population_history), 0) %></span>
+                  </div>
+                </div>
+
+                <%!-- Summary Stats --%>
+                <div class="grid grid-cols-2 gap-3 mt-4">
+                  <div class="bg-white/3 rounded-lg p-3 border border-white/5 text-center">
+                    <div class="text-2xl font-bold text-purple-400"><%= elem(List.last(@population_history), 1) %></div>
+                    <div class="text-[10px] text-slate-600 uppercase">Current</div>
+                  </div>
+                  <div class="bg-white/3 rounded-lg p-3 border border-white/5 text-center">
+                    <div class="text-2xl font-bold text-cyan-400"><%= @population_history |> Enum.map(&elem(&1, 1)) |> Enum.max() %></div>
+                    <div class="text-[10px] text-slate-600 uppercase">Peak</div>
+                  </div>
+                  <div class="bg-white/3 rounded-lg p-3 border border-white/5 text-center">
+                    <div class="text-2xl font-bold text-green-400"><%= @births_count %></div>
+                    <div class="text-[10px] text-slate-600 uppercase">Births</div>
+                  </div>
+                  <div class="bg-white/3 rounded-lg p-3 border border-white/5 text-center">
+                    <div class="text-2xl font-bold text-red-400"><%= @deaths_count %></div>
+                    <div class="text-[10px] text-slate-600 uppercase">Deaths</div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
     <style>
       .ctrl-btn {
         padding: 4px 12px;
@@ -1263,6 +1462,8 @@ defmodule ModusWeb.UniverseLive do
         transition: all 0.1s;
       }
       .mobile-action-btn:active { transform: scale(0.9); background: rgba(168, 85, 247, 0.2); }
+      @keyframes slide-in { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+      .animate-slide-in { animation: slide-in 0.3s ease-out; }
     </style>
     """
   end
