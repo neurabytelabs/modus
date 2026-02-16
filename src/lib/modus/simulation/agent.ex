@@ -172,6 +172,16 @@ defmodule Modus.Simulation.Agent do
     {:noreply, %{agent | position: new_pos, current_action: :moving}}
   end
 
+  def handle_cast(:kill, agent) do
+    {:noreply, %{agent | alive?: false}}
+  end
+
+  def handle_cast({:boost_need, need, amount}, agent) do
+    current = Map.get(agent.needs, need, 0.0)
+    new_needs = Map.put(agent.needs, need, min(current + amount, 100.0))
+    {:noreply, %{agent | needs: new_needs}}
+  end
+
   # --- Action Application ---
 
   defp apply_action(agent, :move_to, %{target: target}) do
@@ -265,16 +275,6 @@ defmodule Modus.Simulation.Agent do
 
   defp in_radius?({x1, y1}, {x2, y2}, radius) do
     abs(x1 - x2) <= radius and abs(y1 - y2) <= radius
-  end
-
-  def handle_cast(:kill, agent) do
-    {:noreply, %{agent | alive?: false}}
-  end
-
-  def handle_cast({:boost_need, need, amount}, agent) do
-    current = Map.get(agent.needs, need, 0.0)
-    new_needs = Map.put(agent.needs, need, min(current + amount, 100.0))
-    {:noreply, %{agent | needs: new_needs}}
   end
 
   defp clamp(val, min_val, max_val) do

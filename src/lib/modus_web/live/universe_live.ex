@@ -4,7 +4,7 @@ defmodule ModusWeb.UniverseLive do
   Includes onboarding wizard, time controls, event injection, responsive layout.
   """
   use ModusWeb, :live_view
-  alias Phoenix.LiveView.JS
+  # JS alias available if needed
 
   @templates [
     %{id: "village", name: "Village", emoji: "🏘️", desc: "Peaceful plains with forests"},
