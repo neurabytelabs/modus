@@ -40,7 +40,7 @@ defmodule Modus.Mind.ConversationMemory do
   def format_for_context(agent_id) do
     memories = get_recent(agent_id)
     case memories do
-      [] -> "Henüz kimseyle konuşmadın."
+      [] -> "You haven't talked to anyone yet."
       _ ->
         memories
         |> Enum.map(fn m ->

@@ -71,13 +71,13 @@ defmodule Modus.Persistence.AgentMemory do
 
     case memories do
       [] ->
-        "Geçmişte kayda değer bir deneyimin yok."
+        "No notable experiences in your past."
 
       mems ->
         mems
         |> Enum.map(fn m ->
-          type_label = type_to_turkish(m.memory_type)
-          "- [#{type_label}] #{m.content} (önem: #{round_importance(m.importance)})"
+          type_label = type_to_label(m.memory_type)
+          "- [#{type_label}] #{m.content} (importance: #{round_importance(m.importance)})"
         end)
         |> Enum.join("\n")
     end
@@ -87,45 +87,45 @@ defmodule Modus.Persistence.AgentMemory do
   def maybe_record_from_event(agent_id, agent_name, event_type, tick, data \\ %{}) do
     case event_type do
       :death ->
-        cause = Map.get(data, :cause, "bilinmeyen")
+        cause = Map.get(data, :cause, "unknown")
         record(agent_id, agent_name, :death,
-          "#{agent_name} öldü: #{cause} (tick #{tick})",
+          "#{agent_name} died: #{cause} (tick #{tick})",
           importance: 1.0, tick: tick, metadata: data)
 
       :conversation ->
         # Only record if affect is high
         affect = Map.get(data, :affect, :neutral)
         if affect in [:joy, :fear, :sadness, :desire] do
-          partner = Map.get(data, :partner, "biri")
+          partner = Map.get(data, :partner, "someone")
           record(agent_id, agent_name, :conversation,
-            "#{agent_name}, #{partner} ile anlamlı bir konuşma yaptı (duygu: #{affect})",
+            "#{agent_name} had a meaningful conversation with #{partner} (mood: #{affect})",
             importance: 0.7, tick: tick, metadata: data)
         else
           :skip
         end
 
       :friendship ->
-        partner = Map.get(data, :partner, "biri")
+        partner = Map.get(data, :partner, "someone")
         record(agent_id, agent_name, :friendship,
-          "#{agent_name} ile #{partner} arkadaş oldu",
+          "#{agent_name} and #{partner} became friends",
           importance: 0.8, tick: tick, metadata: data)
 
       :conflict ->
-        partner = Map.get(data, :partner, "biri")
+        partner = Map.get(data, :partner, "someone")
         record(agent_id, agent_name, :conflict,
-          "#{agent_name} ile #{partner} arasında çatışma yaşandı",
+          "#{agent_name} and #{partner} had a conflict",
           importance: 0.7, tick: tick, metadata: data)
 
       :discovery ->
-        what = Map.get(data, :what, "bir şey")
+        what = Map.get(data, :what, "something")
         record(agent_id, agent_name, :discovery,
-          "#{agent_name} keşfetti: #{what}",
+          "#{agent_name} discovered: #{what}",
           importance: 0.6, tick: tick, metadata: data)
 
       :emotional ->
         affect = Map.get(data, :affect, :neutral)
         record(agent_id, agent_name, :emotional,
-          "#{agent_name} yoğun bir #{affect} duygusu yaşadı",
+          "#{agent_name} experienced intense #{affect}",
           importance: 0.6, tick: tick, metadata: data)
 
       _ ->
@@ -177,13 +177,13 @@ defmodule Modus.Persistence.AgentMemory do
     end
   end
 
-  defp type_to_turkish("death"), do: "Ölüm"
-  defp type_to_turkish("friendship"), do: "Arkadaşlık"
-  defp type_to_turkish("discovery"), do: "Keşif"
-  defp type_to_turkish("conversation"), do: "Konuşma"
-  defp type_to_turkish("conflict"), do: "Çatışma"
-  defp type_to_turkish("emotional"), do: "Duygu"
-  defp type_to_turkish(_), do: "Olay"
+  defp type_to_label("death"), do: "Death"
+  defp type_to_label("friendship"), do: "Friendship"
+  defp type_to_label("discovery"), do: "Discovery"
+  defp type_to_label("conversation"), do: "Conversation"
+  defp type_to_label("conflict"), do: "Conflict"
+  defp type_to_label("emotional"), do: "Emotion"
+  defp type_to_label(_), do: "Event"
 
   defp round_importance(val), do: Float.round(ensure_float(val), 1)
 

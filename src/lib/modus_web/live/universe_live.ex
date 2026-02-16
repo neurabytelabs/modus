@@ -941,9 +941,9 @@ defmodule ModusWeb.UniverseLive do
                 <% end %>
               </div>
 
-              <%!-- İlişkiler (Relationships) --%>
+              <%!-- Relationships --%>
               <div class="mb-4">
-                <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">🤝 İlişkiler</h3>
+                <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">🤝 Relationships</h3>
                 <%= if @selected_agent["relationships"] && @selected_agent["relationships"] != [] do %>
                   <div class="space-y-1.5">
                     <%= for rel <- @selected_agent["relationships"] do %>
@@ -962,13 +962,13 @@ defmodule ModusWeb.UniverseLive do
                     <% end %>
                   </div>
                 <% else %>
-                  <p class="text-xs text-slate-600 italic">Henüz ilişki yok</p>
+                  <p class="text-xs text-slate-600 italic">No relationships yet</p>
                 <% end %>
               </div>
 
-              <%!-- Son Konuşmalar (Recent Conversations) --%>
+              <%!-- Recent Conversations --%>
               <div class="mb-4">
-                <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">💬 Son Konuşmalar</h3>
+                <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">💬 Recent Conversations</h3>
                 <%= if conversation_events(@selected_agent) != [] do %>
                   <div class="space-y-1.5">
                     <%= for event <- conversation_events(@selected_agent) do %>
@@ -986,16 +986,16 @@ defmodule ModusWeb.UniverseLive do
                             <% is_binary(event["data"]["dialogue"]) -> %>
                               <div class="text-slate-300 mt-0.5 truncate"><%= String.slice(event["data"]["dialogue"], 0..120) %></div>
                             <% true -> %>
-                              <span class="italic">Konuşma</span>
+                              <span class="italic">Conversation</span>
                           <% end %>
                         <% else %>
-                          <span class="italic">Konuşma</span>
+                          <span class="italic">Conversation</span>
                         <% end %>
                       </div>
                     <% end %>
                   </div>
                 <% else %>
-                  <p class="text-xs text-slate-600 italic">Henüz konuşma yok</p>
+                  <p class="text-xs text-slate-600 italic">No conversations yet</p>
                 <% end %>
               </div>
 

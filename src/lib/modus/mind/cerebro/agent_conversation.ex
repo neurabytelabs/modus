@@ -137,25 +137,25 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
 
   def build_conversation_prompt(agent1, agent2, relationship) do
     rel_desc = case relationship do
-      nil -> "İlk kez karşılaşıyorsunuz."
-      %{type: :stranger} -> "Birbirinizi pek tanımıyorsunuz."
-      %{type: :acquaintance} -> "Birbirinizi tanıyorsunuz (tanıdık)."
-      %{type: :friend} -> "Arkadaşsınız."
-      %{type: :close_friend} -> "Yakın arkadaşsınız."
+      nil -> "You're meeting for the first time."
+      %{type: :stranger} -> "You barely know each other."
+      %{type: :acquaintance} -> "You're acquaintances."
+      %{type: :friend} -> "You're friends."
+      %{type: :close_friend} -> "You're close friends."
     end
 
     memories1 = AffectMemory.memories_for_llm_context(agent1.id, 3) |> Enum.join("; ")
     _memories2 = AffectMemory.memories_for_llm_context(agent2.id, 3) |> Enum.join("; ")
 
     """
-    Sen #{agent1.name} (#{agent1.occupation}). \
-    Kişiliğin: dışadönüklük #{Float.round(ensure_float(agent1.personality.extraversion), 1)}, uyumluluk #{Float.round(ensure_float(agent1.personality.agreeableness), 1)}.
-    Şu an #{agent1.affect_state} hissediyorsun (enerji: #{Float.round(ensure_float(agent1.conatus_energy), 2)}).
-    #{agent2.name} ile karşılaştın. O bir #{agent2.occupation}.
+    You are #{agent1.name} (#{agent1.occupation}). \
+    Personality: extraversion #{Float.round(ensure_float(agent1.personality.extraversion), 1)}, agreeableness #{Float.round(ensure_float(agent1.personality.agreeableness), 1)}.
+    You're feeling #{agent1.affect_state} (energy: #{Float.round(ensure_float(agent1.conatus_energy), 2)}).
+    You run into #{agent2.name}. They're a #{agent2.occupation}.
     #{rel_desc}
-    #{if memories1 != "", do: "Hatıraların: #{memories1}", else: ""}
+    #{if memories1 != "", do: "Your memories: #{memories1}", else: ""}
 
-    Kısa ve doğal bir diyalog yaz (2-4 satır, Türkçe):
+    Write a short, natural dialogue (2-4 lines, English):
     #{agent1.name}: ...
     #{agent2.name}: ...
     """
@@ -199,17 +199,17 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
     AffectMemory.form_memory(
       agent.id, tick, agent.position,
       agent.affect_state, agent.affect_state,
-      "#{partner.name} ile konuşma", agent.conatus_energy
+      "Conversation with #{partner.name}", agent.conatus_energy
     )
     AffectMemory.form_memory(
       partner.id, tick, partner.position,
       partner.affect_state, partner.affect_state,
-      "#{agent.name} ile konuşma", partner.conatus_energy
+      "Conversation with #{agent.name}", partner.conatus_energy
     )
   end
 
   defp fallback_dialogue(name1, name2) do
-    lines = ["Merhaba!", "Nasılsın?", "Hava güzel bugün.", "Dikkat et!", "Birlikte çalışalım mı?"]
+    lines = ["Hello!", "How are you?", "Nice weather today.", "Watch out!", "Want to work together?"]
     "#{name1}: #{Enum.random(lines)}\n#{name2}: #{Enum.random(lines)}"
   end
 

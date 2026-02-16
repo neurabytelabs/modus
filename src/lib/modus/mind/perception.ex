@@ -77,7 +77,7 @@ defmodule Modus.Mind.Perception do
         state = Agent.get_state(id)
         {state.name, state.affect_state}
       catch
-        :exit, _ -> {"Bilinmeyen", :neutral}
+        :exit, _ -> {"Unknown", :neutral}
       end
 
       rel_type = case SocialNetwork.get_relationship(agent_id, id) do

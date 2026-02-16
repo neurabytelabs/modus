@@ -109,9 +109,9 @@ defmodule Modus.Simulation.Lifecycle do
     child_pos = {max(0, min(px + offset_x, 49)), max(0, min(py + offset_y, 49))}
 
     names = [
-      "Yeni", "Umut", "Bahar", "Güneş", "Toprak", "Bulut",
-      "Nehir", "Rüzgar", "Yıldız", "Çınar", "Atlas", "Nil",
-      "Masal", "Ekin", "Derin", "Asya", "Ege", "Ada"
+      "Dawn", "Hope", "Sky", "Sol", "Clay", "Cloud",
+      "Brook", "Breeze", "Star", "Oak", "Atlas", "Rae",
+      "Fable", "Reed", "Lake", "Sage", "Bay", "Haven"
     ]
 
     name = Enum.random(names)

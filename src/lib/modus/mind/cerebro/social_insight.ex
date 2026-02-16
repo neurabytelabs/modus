@@ -9,12 +9,12 @@ defmodule Modus.Mind.Cerebro.SocialInsight do
   defp ensure_float(val) when is_integer(val), do: val / 1
   defp ensure_float(_), do: 0.0
 
-  @doc "Generate a Turkish text summary of an agent's social context."
+  @doc "Generate a text summary of an agent's social context."
   def describe_relationships(agent_id) do
     friends = SocialNetwork.get_friends(agent_id, 0.1)
 
     if friends == [] do
-      "Henüz kimseyi tanımıyorsun."
+      "You don't know anyone yet."
     else
       friends
       |> Enum.take(5)
@@ -23,10 +23,10 @@ defmodule Modus.Mind.Cerebro.SocialInsight do
         strength = Float.round(ensure_float(f.strength), 2)
 
         case f.type do
-          :close_friend -> "#{name} senin yakın arkadaşın (güç: #{strength})."
-          :friend -> "#{name} arkadaşın (güç: #{strength})."
-          :acquaintance -> "#{name}'i tanıyorsun ama yakın değilsiniz (güç: #{strength})."
-          _ -> "#{name} ile yeni tanışıyorsun."
+          :close_friend -> "#{name} is your close friend (strength: #{strength})."
+          :friend -> "#{name} is your friend (strength: #{strength})."
+          :acquaintance -> "You know #{name} but aren't close (strength: #{strength})."
+          _ -> "You just met #{name}."
         end
       end)
       |> Enum.join(" ")
@@ -37,25 +37,25 @@ defmodule Modus.Mind.Cerebro.SocialInsight do
   def describe_relationship(agent_id, other_id, other_name) do
     case SocialNetwork.get_relationship(agent_id, other_id) do
       nil ->
-        "#{other_name} ile daha önce tanışmadınız."
+        "You haven't met #{other_name} before."
 
       %{type: type, strength: strength, convo_count: count} ->
         type_text = case type do
-          :close_friend -> "yakın arkadaşın"
-          :friend -> "arkadaşın"
-          :acquaintance -> "tanıdığın"
-          _ -> "yeni tanıştığın biri"
+          :close_friend -> "your close friend"
+          :friend -> "your friend"
+          :acquaintance -> "an acquaintance"
+          _ -> "someone you just met"
         end
-        "#{other_name} senin #{type_text} (güç: #{Float.round(ensure_float(strength), 2)}). #{count} kez konuştunuz."
+        "#{other_name} is #{type_text} (strength: #{Float.round(ensure_float(strength), 2)}). You've talked #{count} times."
 
       %{type: type, strength: strength} ->
         type_text = case type do
-          :close_friend -> "yakın arkadaşın"
-          :friend -> "arkadaşın"
-          :acquaintance -> "tanıdığın"
-          _ -> "yeni tanıştığın biri"
+          :close_friend -> "your close friend"
+          :friend -> "your friend"
+          :acquaintance -> "an acquaintance"
+          _ -> "someone you just met"
         end
-        "#{other_name} senin #{type_text} (güç: #{Float.round(ensure_float(strength), 2)})."
+        "#{other_name} is #{type_text} (strength: #{Float.round(ensure_float(strength), 2)})."
     end
   end
 
@@ -74,7 +74,7 @@ defmodule Modus.Mind.Cerebro.SocialInsight do
     |> Enum.take(3)
     |> Enum.map(fn {ma, _mb} ->
       {x, y} = ma.position
-      "Tick #{ma.tick}: (#{x},#{y}) yakınında birlikte — #{ma.reason}"
+      "Tick #{ma.tick}: together near (#{x},#{y}) — #{ma.reason}"
     end)
   end
 
@@ -83,7 +83,7 @@ defmodule Modus.Mind.Cerebro.SocialInsight do
       state = Agent.get_state(agent_id)
       state.name
     catch
-      :exit, _ -> "Bilinmeyen"
+      :exit, _ -> "Unknown"
     end
   end
 end

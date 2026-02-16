@@ -151,12 +151,12 @@ defmodule ModusWeb.WorldChannel do
             Logger.info("MODUS chat_reply ready for #{agent_id}: #{String.slice(reply, 0..80)}")
             send(channel_pid, {:chat_reply, agent_id, reply})
           _ ->
-            send(channel_pid, {:chat_reply, agent_id, "Şu an cevap veremiyorum..."})
+            send(channel_pid, {:chat_reply, agent_id, "I can't respond right now..."})
         end
       catch
         kind, reason ->
           Logger.warning("Chat failed for #{agent_id}: #{inspect({kind, reason})}")
-          send(channel_pid, {:chat_reply, agent_id, "Bir sorun oluştu..."})
+          send(channel_pid, {:chat_reply, agent_id, "Something went wrong..."})
       end
     end)
 

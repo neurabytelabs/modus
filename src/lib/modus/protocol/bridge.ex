@@ -32,14 +32,14 @@ defmodule Modus.Protocol.Bridge do
         {x, y} = perception.position
         terrain = ContextBuilder.terrain_name(perception.terrain)
         nearby_names = perception.nearby_agents |> Enum.map(& &1.name) |> Enum.join(", ")
-        reply = "#{terrain} bölgesindeyim, koordinatlarım (#{x}, #{y}).#{if nearby_names != "", do: " Yakınımda #{nearby_names} var.", else: " Etrafımda kimse yok."}"
+        reply = "I'm in the #{terrain} area, coordinates (#{x}, #{y}).#{if nearby_names != "", do: " #{nearby_names} are nearby.", else: " Nobody's around."}"
         {:ok, reply}
 
       {:query, :status} ->
         perception = Perception.snapshot(agent)
         energy_pct = round(ensure_float(perception.conatus_energy) * 100)
         affect = ContextBuilder.affect_name(perception.affect_state)
-        reply = "Enerjim %#{energy_pct}, #{affect} hissediyorum. Açlık: #{round(ensure_float(perception.needs.hunger))}, Dinlenme: #{round(ensure_float(perception.needs.rest))}."
+        reply = "My energy is #{energy_pct}%, feeling #{affect}. Hunger: #{round(ensure_float(perception.needs.hunger))}, Rest: #{round(ensure_float(perception.needs.rest))}."
         {:ok, reply}
 
       {:query, :relationships} ->
@@ -49,10 +49,10 @@ defmodule Modus.Protocol.Bridge do
       {:command, :move, direction} ->
         target = calculate_move_target(agent.position, direction)
         Agent.move_toward(agent_id, target)
-        {:ok, "Tamam, #{direction_name(direction)} yönüne gidiyorum!"}
+        {:ok, "Alright, heading #{direction_name(direction)}!"}
 
       {:command, :stop} ->
-        {:ok, "Durdum, dinleniyorum."}
+        {:ok, "Stopped, taking a break."}
 
       {:multi, steps} ->
         Modus.Protocol.CommandExecutor.execute_chain(agent_id, steps)
@@ -60,7 +60,7 @@ defmodule Modus.Protocol.Bridge do
           {:ok, results} ->
             summary = results |> Enum.map(fn {:ok, r} -> r; r -> inspect(r) end) |> Enum.join(" → ")
             {:ok, summary}
-          err -> {:ok, "Komut zincirinde hata oluştu: #{inspect(err)}"}
+          err -> {:ok, "Error in command chain: #{inspect(err)}"}
         end
 
       _ ->
@@ -89,12 +89,12 @@ defmodule Modus.Protocol.Bridge do
   defp calculate_move_target({x, y}, :east), do: {min(x + 10, 49), y}
   defp calculate_move_target({x, y}, :west), do: {max(x - 10, 0), y}
 
-  defp direction_name(:north), do: "kuzeye"
-  defp direction_name(:south), do: "güneye"
-  defp direction_name(:east), do: "doğuya"
-  defp direction_name(:west), do: "batıya"
+  defp direction_name(:north), do: "north"
+  defp direction_name(:south), do: "south"
+  defp direction_name(:east), do: "east"
+  defp direction_name(:west), do: "west"
 
   defp fallback_reply(agent) do
-    "Merhaba! Ben #{agent.name}. Şu an #{agent.current_action} yapıyorum."
+    "Hello! I'm #{agent.name}. Currently #{agent.current_action}."
   end
 end

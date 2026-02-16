@@ -22,14 +22,14 @@ defmodule Modus.Protocol.CommandExecutor do
     nearby = get_nearby_agents(agent)
     case nearby do
       [target | _] -> 
-        Bridge.process(agent_id, "Merhaba #{Map.get(target, :name)}!")
+        Bridge.process(agent_id, "Hello #{Map.get(target, :name)}!")
       [] -> 
-        {:ok, "Etrafımda konuşacak kimse yok."}
+        {:ok, "Nobody around to talk to."}
     end
   end
   def execute_step(agent_id, {:command, :stop}), do: Bridge.process(agent_id, "dur")
   def execute_step(agent_id, {:chat, text}), do: Bridge.process(agent_id, text)
-  def execute_step(_agent_id, _), do: {:ok, "Bu komutu anlayamadım."}
+  def execute_step(_agent_id, _), do: {:ok, "I don't understand that command."}
 
   defp get_nearby_agents(agent) do
     try do
@@ -39,8 +39,8 @@ defmodule Modus.Protocol.CommandExecutor do
     end
   end
 
-  defp direction_to_text(:north), do: "kuzeye git"
-  defp direction_to_text(:south), do: "güneye git"
-  defp direction_to_text(:east), do: "doğuya git"
-  defp direction_to_text(:west), do: "batıya git"
+  defp direction_to_text(:north), do: "go north"
+  defp direction_to_text(:south), do: "go south"
+  defp direction_to_text(:east), do: "go east"
+  defp direction_to_text(:west), do: "go west"
 end

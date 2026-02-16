@@ -66,40 +66,40 @@ defmodule Modus.Mind.ContextBuilder do
   end
 
   # Public helpers (used by Bridge)
-  def terrain_name(:forest), do: "orman"
-  def terrain_name(:water), do: "su kenarı"
-  def terrain_name(:mountain), do: "dağ"
-  def terrain_name(:desert), do: "çöl"
-  def terrain_name(_), do: "çayırlık"
+  def terrain_name(:forest), do: "forest"
+  def terrain_name(:water), do: "waterside"
+  def terrain_name(:mountain), do: "mountain"
+  def terrain_name(:desert), do: "desert"
+  def terrain_name(_), do: "grassland"
 
-  def affect_name(:joy), do: "mutlu 😊"
-  def affect_name(:sadness), do: "üzgün 😢"
-  def affect_name(:fear), do: "korkmuş 😨"
-  def affect_name(:desire), do: "istekli 🔥"
-  def affect_name(_), do: "sakin 😐"
+  def affect_name(:joy), do: "happy 😊"
+  def affect_name(:sadness), do: "sad 😢"
+  def affect_name(:fear), do: "scared 😨"
+  def affect_name(:desire), do: "eager 🔥"
+  def affect_name(_), do: "calm 😐"
 
-  def action_name(:exploring), do: "keşif yapıyorsun"
-  def action_name(:gathering), do: "yiyecek topluyorsun"
-  def action_name(:sleeping), do: "uyuyorsun"
-  def action_name(:talking), do: "biriyle konuşuyorsun"
-  def action_name(:fleeing), do: "kaçıyorsun"
-  def action_name(_), do: "boş duruyorsun"
+  def action_name(:exploring), do: "exploring"
+  def action_name(:gathering), do: "gathering food"
+  def action_name(:sleeping), do: "sleeping"
+  def action_name(:talking), do: "talking to someone"
+  def action_name(:fleeing), do: "fleeing"
+  def action_name(_), do: "idling"
 
   defp describe_personality(p) do
     traits = []
-    traits = if p.openness > 0.7, do: ["meraklı" | traits], else: traits
-    traits = if p.extraversion > 0.7, do: ["sosyal" | traits], else: if(p.extraversion < 0.3, do: ["içe dönük" | traits], else: traits)
-    traits = if p.agreeableness > 0.7, do: ["yardımsever" | traits], else: traits
-    traits = if p.neuroticism > 0.7, do: ["kaygılı" | traits], else: if(p.neuroticism < 0.3, do: ["sakin" | traits], else: traits)
-    if traits == [], do: "Kişilik: sıradan", else: "Kişilik: #{Enum.join(traits, ", ")}"
+    traits = if p.openness > 0.7, do: ["curious" | traits], else: traits
+    traits = if p.extraversion > 0.7, do: ["social" | traits], else: if(p.extraversion < 0.3, do: ["introverted" | traits], else: traits)
+    traits = if p.agreeableness > 0.7, do: ["helpful" | traits], else: traits
+    traits = if p.neuroticism > 0.7, do: ["anxious" | traits], else: if(p.neuroticism < 0.3, do: ["calm" | traits], else: traits)
+    if traits == [], do: "Personality: ordinary", else: "Personality: #{Enum.join(traits, ", ")}"
   end
 
-  defp describe_nearby([]), do: "Yakınında kimse yok."
+  defp describe_nearby([]), do: "Nobody is nearby."
   defp describe_nearby(agents) do
     agents
     |> Enum.take(3)
     |> Enum.map(fn a ->
-      "- #{a.name} (#{a.relationship_type}, duygu: #{affect_name(a.affect)}, #{a.distance} adım uzakta)"
+      "- #{a.name} (#{a.relationship_type}, mood: #{affect_name(a.affect)}, #{a.distance} steps away)"
     end)
     |> Enum.join("\n")
   end

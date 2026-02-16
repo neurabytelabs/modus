@@ -192,13 +192,13 @@ defmodule Modus.Simulation.World do
     {max_x, max_y} = state.grid_size
 
     names = [
-      "Elif", "Kerem", "Ayşe", "Burak", "Zeynep", "Emre", "Deniz",
-      "Selin", "Cem", "Naz", "Barış", "Yıldız", "Kaan", "Melis",
-      "Tolga", "İrem", "Ozan", "Defne", "Alp", "Ece", "Doruk",
-      "Lale", "Mert", "Sude", "Onur", "Nehir", "Yiğit", "Ceren",
-      "Arda", "Pınar", "Berk", "Gizem", "Koray", "Damla", "Taylan",
-      "Burcu", "Serkan", "Ebru", "Umut", "Aslı", "Rüzgar", "Tuğçe",
-      "Volkan", "Hazal", "Sinan", "Beril", "Kaya", "Duygu", "Atlas", "Nil"
+      "Alex", "Maya", "River", "Sage", "Finn", "Luna", "Kai",
+      "Nova", "Zoe", "Atlas", "Iris", "Leo", "Mira", "Jude",
+      "Aria", "Rowan", "Niko", "Ivy", "Theo", "Lila", "Orion",
+      "Jade", "Ravi", "Suki", "Omar", "Nyla", "Ezra", "Cleo",
+      "Amir", "Willow", "Bodhi", "Vera", "Kira", "Dara", "Ren",
+      "Yara", "Soren", "Mika", "Inara", "Leila", "Zephyr", "Priya",
+      "Hugo", "Amara", "Idris", "Noor", "Koda", "Lumi", "Astrid", "Nico"
     ]
 
     occupations = [:farmer, :builder, :explorer, :healer, :trader]
