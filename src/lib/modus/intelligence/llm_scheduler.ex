@@ -81,7 +81,7 @@ defmodule Modus.Intelligence.LlmScheduler do
     Task.start(fn ->
       try do
         agents = get_alive_agents()
-        pairs = find_conversation_pairs(agents)
+        pairs = _find_conversation_pairs(agents)
 
         Enum.each(Enum.take(pairs, 1), fn {a, b} ->
           case LlmProvider.conversation(a, b, %{tick: tick}) do
