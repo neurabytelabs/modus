@@ -73,6 +73,18 @@ export default class WorldSocket {
     this.channel.push("chat_agent", { agent_id: agentId, message: message })
   }
 
+  setSpeed(speed) {
+    this.channel.push("set_speed", { speed })
+  }
+
+  injectEvent(eventType) {
+    this.channel.push("inject_event", { event_type: eventType })
+  }
+
+  createWorld(template, population, danger) {
+    this.channel.push("create_world", { template, population, danger })
+  }
+
   getAgentDetail(agentId, callback) {
     this.channel
       .push("get_agent_detail", { agent_id: agentId })

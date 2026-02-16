@@ -33,6 +33,7 @@ export default class Renderer {
 
     // Agent click callback
     this.onAgentClick = null
+    this.selectedAgentId = null
 
     // Camera state
     this.dragging = false
@@ -71,6 +72,10 @@ export default class Renderer {
 
     this._setupCamera()
     this._startAnimLoop()
+
+    // Hide loading skeleton
+    const skeleton = document.getElementById("canvas-skeleton")
+    if (skeleton) skeleton.style.display = "none"
   }
 
   // ── Terrain ──────────────────────────────────────────────
@@ -172,13 +177,35 @@ export default class Renderer {
 
   // ── Animation Loop (lerp) ───────────────────────────────
 
+  selectAgent(agentId) {
+    this.selectedAgentId = agentId
+  }
+
   _startAnimLoop() {
-    this.app.ticker.add(() => {
+    let glowPhase = 0
+    this.app.ticker.add((ticker) => {
       const lerp = 0.15
-      for (const [, sprite] of this.agentSprites) {
+      glowPhase += ticker.deltaTime * 0.08
+      const glowAlpha = 0.3 + Math.sin(glowPhase) * 0.2
+
+      for (const [id, sprite] of this.agentSprites) {
         const c = sprite.container
         c.x += (sprite.targetX - c.x) * lerp
         c.y += (sprite.targetY - c.y) * lerp
+
+        // Selection glow
+        if (id === this.selectedAgentId) {
+          if (!sprite.glow) {
+            sprite.glow = new Graphics()
+            c.addChildAt(sprite.glow, 0)
+          }
+          sprite.glow.clear()
+          sprite.glow.circle(0, 0, AGENT_RADIUS + 4)
+          sprite.glow.fill({ color: 0xa855f7, alpha: glowAlpha })
+          sprite.glow.visible = true
+        } else if (sprite.glow) {
+          sprite.glow.visible = false
+        }
       }
     })
   }

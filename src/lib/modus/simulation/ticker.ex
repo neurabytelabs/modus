@@ -57,6 +57,12 @@ defmodule Modus.Simulation.Ticker do
   @spec current_tick(pid() | atom()) :: non_neg_integer()
   def current_tick(server \\ __MODULE__), do: GenServer.call(server, :current_tick)
 
+  @doc "Set tick speed multiplier (1, 5, 10)."
+  @spec set_speed(pid() | atom(), pos_integer()) :: :ok
+  def set_speed(server \\ __MODULE__, multiplier) when multiplier in [1, 5, 10] do
+    GenServer.call(server, {:set_speed, multiplier})
+  end
+
   @doc "Subscribe to tick events."
   @spec subscribe() :: :ok | {:error, term()}
   def subscribe, do: Phoenix.PubSub.subscribe(@pubsub, @topic)
@@ -97,6 +103,24 @@ defmodule Modus.Simulation.Ticker do
   @impl true
   def handle_call(:current_tick, _from, s) do
     {:reply, s.tick, s}
+  end
+
+  @impl true
+  def handle_call({:set_speed, multiplier}, _from, s) do
+    new_interval = div(@default_interval_ms, multiplier)
+    new_state = %{s | interval_ms: new_interval}
+
+    # If running, reschedule with new interval
+    new_state =
+      if s.state == :running do
+        if s.timer_ref, do: Process.cancel_timer(s.timer_ref)
+        ref = schedule_tick(new_interval)
+        %{new_state | timer_ref: ref}
+      else
+        new_state
+      end
+
+    {:reply, :ok, new_state}
   end
 
   @impl true

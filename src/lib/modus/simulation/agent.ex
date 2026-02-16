@@ -267,6 +267,16 @@ defmodule Modus.Simulation.Agent do
     abs(x1 - x2) <= radius and abs(y1 - y2) <= radius
   end
 
+  def handle_cast(:kill, agent) do
+    {:noreply, %{agent | alive?: false}}
+  end
+
+  def handle_cast({:boost_need, need, amount}, agent) do
+    current = Map.get(agent.needs, need, 0.0)
+    new_needs = Map.put(agent.needs, need, min(current + amount, 100.0))
+    {:noreply, %{agent | needs: new_needs}}
+  end
+
   defp clamp(val, min_val, max_val) do
     val |> max(min_val) |> min(max_val)
   end

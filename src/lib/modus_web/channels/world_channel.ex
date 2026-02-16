@@ -48,6 +48,84 @@ defmodule ModusWeb.WorldChannel do
     {:noreply, socket}
   end
 
+  def handle_in("set_speed", %{"speed" => speed}, socket) when speed in [1, 5, 10] do
+    Ticker.set_speed(speed)
+    broadcast!(socket, "speed_change", %{speed: speed})
+    {:noreply, socket}
+  end
+
+  def handle_in("inject_event", %{"event_type" => event_type}, socket) do
+    tick = if Process.whereis(Ticker), do: Ticker.current_tick(), else: 0
+    agents = get_agent_list()
+    alive = Enum.filter(agents, & &1.alive)
+
+    case event_type do
+      "natural_disaster" ->
+        # Kill a random agent and log
+        if alive != [] do
+          victim = Enum.random(alive)
+          try do
+            GenServer.cast(
+              {:via, Registry, {Modus.AgentRegistry, victim.id}},
+              :kill
+            )
+          catch
+            :exit, _ -> :ok
+          end
+          EventLog.log(:disaster, tick, [victim.id], %{type: :natural_disaster, victim: victim.name})
+        end
+
+      "migrant" ->
+        # Spawn a new agent
+        if Process.whereis(World) do
+          World.spawn_initial_agents(1)
+        end
+        EventLog.log(:migration, tick, [], %{type: :migrant_arrival})
+
+      "resource_bonus" ->
+        # Boost hunger for all alive agents
+        for agent <- alive do
+          try do
+            GenServer.cast(
+              {:via, Registry, {Modus.AgentRegistry, agent.id}},
+              {:boost_need, :hunger, 30.0}
+            )
+          catch
+            :exit, _ -> :ok
+          end
+        end
+        EventLog.log(:resource, tick, [], %{type: :resource_bonus})
+
+      _ -> :ok
+    end
+
+    # Send updated state
+    updated_agents = get_agent_list()
+    broadcast!(socket, "delta", %{
+      tick: tick,
+      agent_count: length(updated_agents),
+      agents: updated_agents
+    })
+
+    {:noreply, socket}
+  end
+
+  def handle_in("create_world", %{"template" => template, "population" => pop, "danger" => danger}, socket) do
+    Ticker.pause()
+    AgentSupervisor.terminate_all()
+    if Process.whereis(World), do: GenServer.stop(World)
+
+    world = World.new("Genesis", template: String.to_existing_atom(template), danger_level: String.to_existing_atom(danger))
+    {:ok, _} = World.start_link(world)
+    pop_count = max(2, min(pop, 50))
+    World.spawn_initial_agents(pop_count)
+    Ticker.run()
+    broadcast!(socket, "status_change", %{status: "running"})
+    state = build_full_state()
+    broadcast!(socket, "full_state", state)
+    {:noreply, socket}
+  end
+
   def handle_in("chat_agent", %{"agent_id" => agent_id, "message" => message}, socket) do
     channel_pid = self()
 

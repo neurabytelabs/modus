@@ -17,6 +17,7 @@ Hooks.WorldCanvas = {
     this.renderer.init().then(() => {
       // Set up agent click callback
       this.renderer.onAgentClick = (agentId) => {
+        this.renderer.selectAgent(agentId)
         if (this.worldSocket) {
           this.worldSocket.getAgentDetail(agentId, (detail) => {
             this.pushEvent("select_agent", { agent: detail })
@@ -79,6 +80,15 @@ Hooks.WorldCanvas = {
       if (this.worldSocket) {
         this.worldSocket.chatAgent(data.agent_id, data.message)
       }
+    })
+    this.handleEvent("set_speed", (data) => {
+      if (this.worldSocket) this.worldSocket.setSpeed(data.speed)
+    })
+    this.handleEvent("inject_event", (data) => {
+      if (this.worldSocket) this.worldSocket.injectEvent(data.event_type)
+    })
+    this.handleEvent("create_world", (data) => {
+      if (this.worldSocket) this.worldSocket.createWorld(data.template, data.population, data.danger)
     })
   },
 
