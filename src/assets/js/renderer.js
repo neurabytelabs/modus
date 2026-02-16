@@ -713,10 +713,13 @@ export default class Renderer {
 
     canvas.style.cursor = "grab"
 
-    // Zoom (scroll)
+    // Zoom (scroll) — trackpad-friendly with normalized delta
     canvas.addEventListener("wheel", (e) => {
       e.preventDefault()
-      const delta = e.deltaY > 0 ? 0.9 : 1.1
+      // Normalize: trackpad sends small deltaY (~1-10), mouse wheel sends large (~100)
+      const raw = Math.abs(e.deltaY)
+      const speed = raw > 50 ? 0.1 : raw * 0.002 // mouse: fixed step, trackpad: proportional
+      const delta = e.deltaY > 0 ? (1 - speed) : (1 + speed)
       const newScale = Math.max(0.3, Math.min(5, this.scale * delta))
 
       // Zoom toward mouse position
