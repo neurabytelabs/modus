@@ -252,11 +252,16 @@ defmodule Modus.Simulation.Agent do
   defp decay_needs(agent) do
     needs = agent.needs
 
+    # Auto-survival: agents with critical needs take care of themselves
+    hunger_delta = if needs.hunger > 70.0, do: 0.01, else: 0.03
+    hunger_recovery = if needs.hunger > 85.0, do: -2.0, else: 0.0
+    rest_recovery = if needs.rest < 15.0, do: 3.0, else: 0.0
+
     new_needs = %{
       needs
-      | hunger: needs.hunger + 0.03,
-        social: needs.social - 0.015,
-        rest: needs.rest - 0.02
+      | hunger: max(needs.hunger + hunger_delta + hunger_recovery, 0.0),
+        social: max(needs.social - 0.015, 0.0),
+        rest: min(max(needs.rest - 0.02 + rest_recovery, 0.0), 100.0)
     }
 
     %{agent | needs: new_needs}
