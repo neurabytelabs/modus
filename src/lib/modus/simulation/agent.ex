@@ -128,13 +128,26 @@ defmodule Modus.Simulation.Agent do
     {:noreply, agent}
   end
 
-  def handle_cast({:tick, tick_number, _context}, agent) do
+  def handle_cast({:tick, tick_number, context}, agent) do
+    # Build decision context
+    nearby = nearby_agents(agent.position)
+    decision_context = Map.merge(context, %{
+      tick: tick_number,
+      nearby_agents: nearby,
+      nearby_resources: Map.get(context, :nearby_resources, []),
+      world_size: Map.get(context, :world_size, {50, 50})
+    })
+
+    # Decide action via DecisionEngine
+    {action, params} = Modus.Simulation.DecisionEngine.decide(agent, decision_context)
+
     agent =
       agent
       |> decay_needs()
+      |> apply_action(action, params)
       |> increment_age()
       |> check_death()
-      |> record_memory(tick_number, :tick)
+      |> record_memory(tick_number, {action, params})
 
     {:noreply, agent}
   end
@@ -152,6 +165,55 @@ defmodule Modus.Simulation.Agent do
 
     new_pos = {ax + dx, ay + dy}
     {:noreply, %{agent | position: new_pos, current_action: :moving}}
+  end
+
+  # --- Action Application ---
+
+  defp apply_action(agent, :move_to, %{target: target}) do
+    {ax, ay} = agent.position
+    {tx, ty} = target
+    dx = clamp(tx - ax, -1, 1)
+    dy = clamp(ty - ay, -1, 1)
+    %{agent | position: {ax + dx, ay + dy}, current_action: :moving}
+  end
+
+  defp apply_action(agent, :explore, %{target: target}) do
+    {ax, ay} = agent.position
+    {tx, ty} = target
+    dx = clamp(tx - ax, -1, 1)
+    dy = clamp(ty - ay, -1, 1)
+    %{agent | position: {ax + dx, ay + dy}, current_action: :exploring}
+  end
+
+  defp apply_action(agent, :gather, _params) do
+    needs = %{agent.needs | hunger: max(agent.needs.hunger - 5.0, 0.0)}
+    %{agent | needs: needs, current_action: :gathering}
+  end
+
+  defp apply_action(agent, :sleep, _params) do
+    needs = %{agent.needs | rest: min(agent.needs.rest + 10.0, 100.0)}
+    %{agent | needs: needs, current_action: :sleeping}
+  end
+
+  defp apply_action(agent, :talk, _params) do
+    needs = %{agent.needs | social: min(agent.needs.social + 8.0, 100.0)}
+    %{agent | needs: needs, current_action: :talking}
+  end
+
+  defp apply_action(agent, :flee, %{target: target}) do
+    {ax, ay} = agent.position
+    {tx, ty} = target
+    dx = clamp(tx - ax, -1, 1)
+    dy = clamp(ty - ay, -1, 1)
+    %{agent | position: {ax + dx, ay + dy}, current_action: :fleeing}
+  end
+
+  defp apply_action(agent, :idle, _params) do
+    %{agent | current_action: :idle}
+  end
+
+  defp apply_action(agent, _action, _params) do
+    %{agent | current_action: :idle}
   end
 
   # --- Need Decay ---

@@ -96,8 +96,10 @@ defmodule Modus.Simulation.AgentTest do
     end
 
     test "agent dies when rest drops below 0", %{agent: agent} do
+      # Set rest very low and hunger high so decision engine picks :find_food
+      # instead of :sleep, allowing rest to decay past 0
       :sys.replace_state(via(agent.id), fn s ->
-        %{s | needs: %{s.needs | rest: 0.05}}
+        %{s | needs: %{s.needs | rest: 0.05, hunger: 90.0}}
       end)
 
       Agent.tick(agent.id, 1)
