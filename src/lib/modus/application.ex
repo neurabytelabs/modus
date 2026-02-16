@@ -21,6 +21,7 @@ defmodule Modus.Application do
       Modus.Simulation.AgentSupervisor,
       Modus.Simulation.EventLog,
       Modus.Intelligence.LlmScheduler,
+      Modus.Simulation.Ticker,
       ModusWeb.Endpoint
     ]
 

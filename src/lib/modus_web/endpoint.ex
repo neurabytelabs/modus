@@ -9,7 +9,8 @@ defmodule ModusWeb.Endpoint do
   ]
 
   socket "/socket", ModusWeb.UserSocket,
-    websocket: true
+    websocket: true,
+    longpoll: true
 
   socket "/live", Phoenix.LiveView.Socket,
     websocket: [connect_info: [session: @session_options]]
