@@ -36,7 +36,11 @@ defmodule Modus.Intelligence.AntigravityClient do
 
   def chat_with_agent(agent, user_message, config) do
     {px, py} = agent.position
-    memories = agent |> Map.get(:memory, []) |> Enum.take(-3) |> Enum.map(& "- #{&1}") |> Enum.join("\n")
+    memories = agent |> Map.get(:memory, []) |> Enum.take(-3) |> Enum.map(fn
+      {tick, {action, _params}} -> "- Tick #{tick}: #{action}"
+      {tick, action} when is_atom(action) -> "- Tick #{tick}: #{action}"
+      other -> "- #{inspect(other)}"
+    end) |> Enum.join("\n")
     personality_desc = describe_personality_detailed(agent.personality)
 
     system = """
