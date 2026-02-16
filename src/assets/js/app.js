@@ -13,58 +13,73 @@ Hooks.WorldCanvas = {
     this.renderer = new Renderer(this.el)
     this.worldSocket = null
     this.lastAgents = []
+    this.rendererReady = false
 
-    this.renderer.init().then(() => {
-      // Set up agent click callback
-      this.renderer.onAgentClick = (agentId) => {
-        this.renderer.selectAgent(agentId)
-        if (this.worldSocket) {
-          this.worldSocket.getAgentDetail(agentId, (detail) => {
-            this.pushEvent("select_agent", { agent: detail })
+    // Init renderer with timeout (Pixi.js may hang without WebGL)
+    const initWithTimeout = Promise.race([
+      this.renderer.init(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Pixi init timeout (5s)")), 5000))
+    ])
+
+    initWithTimeout.then(() => {
+      this.rendererReady = true
+      console.log("[MODUS] Renderer initialized")
+    }).catch(err => {
+      console.error("[MODUS] Renderer failed:", err)
+      const skel = document.getElementById("canvas-skeleton")
+      if (skel) skel.innerHTML = '<div style="color:#f87171;font-size:14px;text-align:center;padding:20px"><p>⚠️ ' + err.message + '</p><p style="color:#64748b;font-size:11px;margin-top:8px">Simulation running — visual renderer unavailable</p></div>'
+    })
+
+    // Set up agent click callback (safe even if renderer not ready)
+    this.renderer.onAgentClick = (agentId) => {
+      if (this.rendererReady) this.renderer.selectAgent(agentId)
+      if (this.worldSocket) {
+        this.worldSocket.getAgentDetail(agentId, (detail) => {
+          this.pushEvent("select_agent", { agent: detail })
+        })
+      }
+    }
+
+    // Connect WebSocket immediately
+    this.worldSocket = new WorldSocket({
+      onFullState: (state) => {
+        if (this.rendererReady) {
+          if (state.grid) this.renderer.renderTerrain(state.grid)
+          if (state.agents) this.renderer.updateAgents(state.agents)
+        }
+        if (state.agents) this.lastAgents = state.agents
+        this.pushEvent("world_state", {
+          tick: state.tick || 0,
+          agent_count: state.agents ? state.agents.length : 0,
+          status: state.status || "paused",
+        })
+      },
+      onDelta: (delta) => {
+        if (this.rendererReady && delta.agents) {
+          this.renderer.updateAgents(delta.agents)
+        }
+        if (delta.agents) this.lastAgents = delta.agents
+        if (delta.tick != null) {
+          this.pushEvent("tick_update", {
+            tick: delta.tick,
+            agent_count: delta.agent_count || 0,
           })
         }
-      }
-
-      this.worldSocket = new WorldSocket({
-        onFullState: (state) => {
-          if (state.grid) this.renderer.renderTerrain(state.grid)
-          if (state.agents) {
-            this.renderer.updateAgents(state.agents)
-            this.lastAgents = state.agents
-          }
-          this.pushEvent("world_state", {
-            tick: state.tick || 0,
-            agent_count: state.agents ? state.agents.length : 0,
-            status: state.status || "paused",
-          })
-        },
-        onDelta: (delta) => {
-          if (delta.agents) {
-            this.renderer.updateAgents(delta.agents)
-            this.lastAgents = delta.agents
-          }
-          if (delta.tick != null) {
-            this.pushEvent("tick_update", {
-              tick: delta.tick,
-              agent_count: delta.agent_count || 0,
-            })
-          }
-        },
-        onTick: (data) => {
-          this.pushEvent("tick_update", {
-            tick: data.tick,
-            agent_count: data.agent_count || 0,
-          })
-        },
-        onStatus: (data) => {
-          this.pushEvent("status_change", { status: data.status })
-        },
-        onChatReply: (data) => {
-          this.pushEvent("chat_response", { reply: data.reply })
-        },
-      })
-      this.worldSocket.connect()
+      },
+      onTick: (data) => {
+        this.pushEvent("tick_update", {
+          tick: data.tick,
+          agent_count: data.agent_count || 0,
+        })
+      },
+      onStatus: (data) => {
+        this.pushEvent("status_change", { status: data.status })
+      },
+      onChatReply: (data) => {
+        this.pushEvent("chat_response", { reply: data.reply })
+      },
     })
+    this.worldSocket.connect()
 
     // Listen for control events from LiveView
     this.handleEvent("start_simulation", () => {

@@ -44,6 +44,7 @@ export default class Renderer {
   }
 
   async init() {
+    console.log("[MODUS] Renderer.init() starting, container:", this.container?.clientWidth, "x", this.container?.clientHeight)
     this.app = new Application()
     await this.app.init({
       background: 0x0f172a,
@@ -52,7 +53,9 @@ export default class Renderer {
       autoDensity: true,
       resolution: window.devicePixelRatio || 1,
     })
+    console.log("[MODUS] Pixi app.init() done, canvas:", this.app.canvas?.tagName, this.app.canvas?.width, "x", this.app.canvas?.height)
     this.container.appendChild(this.app.canvas)
+    console.log("[MODUS] Canvas appended to container")
 
     // World container (camera target)
     this.worldContainer = new Container()

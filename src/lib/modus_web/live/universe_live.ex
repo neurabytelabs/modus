@@ -61,18 +61,40 @@ defmodule ModusWeb.UniverseLive do
     pop = socket.assigns.population
     danger = socket.assigns.danger
 
+    require Logger
     alias Modus.Simulation.{World, Ticker, AgentSupervisor}
 
+    Logger.info("MODUS launch_world: template=#{template} pop=#{pop} danger=#{danger}")
+
     # Clean up if already running
-    AgentSupervisor.terminate_all()
-    if Process.whereis(World), do: GenServer.stop(World)
+    try do
+      AgentSupervisor.terminate_all()
+    catch
+      kind, reason -> Logger.warning("terminate_all failed: #{inspect({kind, reason})}")
+    end
+
+    if Process.whereis(World) do
+      try do
+        GenServer.stop(World)
+      catch
+        :exit, _ -> :ok
+      end
+    end
 
     world = World.new("Genesis",
       template: String.to_atom(template),
       danger_level: String.to_atom(danger)
     )
-    {:ok, _} = World.start_link(world)
-    World.spawn_initial_agents(max(2, min(pop, 50)))
+
+    case World.start_link(world) do
+      {:ok, pid} ->
+        Logger.info("MODUS World started: #{inspect(pid)}")
+        agents = World.spawn_initial_agents(max(2, min(pop, 50)))
+        Logger.info("MODUS spawned #{length(agents)} agents")
+      {:error, reason} ->
+        Logger.error("MODUS World.start_link failed: #{inspect(reason)}")
+    end
+
     Ticker.run()
 
     {:noreply,
@@ -86,14 +108,24 @@ defmodule ModusWeb.UniverseLive do
   end
 
   def handle_event("skip_onboarding", _params, socket) do
+    require Logger
     alias Modus.Simulation.{World, Ticker, AgentSupervisor}
+    Logger.info("MODUS skip_onboarding")
 
-    AgentSupervisor.terminate_all()
-    if Process.whereis(World), do: GenServer.stop(World)
+    try do AgentSupervisor.terminate_all() catch _, _ -> :ok end
+    if Process.whereis(World) do
+      try do GenServer.stop(World) catch :exit, _ -> :ok end
+    end
 
     world = World.new("Genesis")
-    {:ok, _} = World.start_link(world)
-    World.spawn_initial_agents(10)
+    case World.start_link(world) do
+      {:ok, pid} ->
+        Logger.info("MODUS World started: #{inspect(pid)}")
+        agents = World.spawn_initial_agents(10)
+        Logger.info("MODUS spawned #{length(agents)} agents")
+      {:error, reason} ->
+        Logger.error("MODUS World failed: #{inspect(reason)}")
+    end
     Ticker.run()
 
     {:noreply, assign(socket, phase: :simulation, status: :running)}
@@ -401,7 +433,7 @@ defmodule ModusWeb.UniverseLive do
         </div>
 
         <%!-- Canvas Container --%>
-        <div id="world-canvas" phx-hook="WorldCanvas" class="flex-1 relative">
+        <div id="world-canvas" phx-hook="WorldCanvas" phx-update="ignore" class="flex-1 relative">
           <%!-- Loading Skeleton --%>
           <div id="canvas-skeleton" class="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div class="flex flex-col items-center gap-3">
