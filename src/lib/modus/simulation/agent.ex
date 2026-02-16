@@ -289,15 +289,20 @@ defmodule Modus.Simulation.Agent do
     needs = agent.needs
 
     # Auto-survival: agents with critical needs take care of themselves
-    hunger_delta = if needs.hunger > 70.0, do: 0.01, else: 0.03
-    hunger_recovery = if needs.hunger > 85.0, do: -2.0, else: 0.0
+    # Hunger recovery kicks in earlier (>70) to prevent conatus death spiral
+    hunger_delta = if needs.hunger > 60.0, do: 0.005, else: 0.02
+    hunger_recovery = cond do
+      needs.hunger > 80.0 -> -3.0   # urgent recovery
+      needs.hunger > 70.0 -> -1.5   # moderate recovery
+      true -> 0.0
+    end
     rest_recovery = if needs.rest < 15.0, do: 3.0, else: 0.0
 
     new_needs = %{
       needs
       | hunger: max(needs.hunger + hunger_delta + hunger_recovery, 0.0),
-        social: max(needs.social - 0.015, 0.0),
-        rest: min(max(needs.rest - 0.02 + rest_recovery, 0.0), 100.0)
+        social: max(needs.social - 0.01, 0.0),
+        rest: min(max(needs.rest - 0.015 + rest_recovery, 0.0), 100.0)
     }
 
     %{agent | needs: new_needs}

@@ -83,7 +83,7 @@ defmodule Modus.Mind.MindEngine do
 
   @doc "Classify an action atom into a mind event type."
   def classify_event(action, agent) do
-    hunger_critical? = agent.needs.hunger > 80
+    hunger_critical? = agent.needs.hunger > 90
 
     cond do
       hunger_critical? -> :hunger_critical

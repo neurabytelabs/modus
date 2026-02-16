@@ -16,8 +16,8 @@ defmodule Modus.Mind.Conatus do
   defp base_delta(:social_positive), do: {0.08, "positive social interaction"}
   defp base_delta(:social_negative), do: {-0.06, "negative social interaction"}
   defp base_delta(:rest), do: {0.02, "resting recovery"}
-  defp base_delta(:hunger_critical), do: {-0.04, "critical hunger drain"}
-  defp base_delta(:natural_decay), do: {-0.001, "entropy"}
+  defp base_delta(:hunger_critical), do: {-0.015, "critical hunger drain"}
+  defp base_delta(:natural_decay), do: {-0.0005, "entropy"}
   defp base_delta(_), do: {0.0, "unknown event"}
 
   defp apply_affect_multiplier(delta, _event, :neutral), do: delta

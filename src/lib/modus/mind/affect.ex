@@ -67,9 +67,9 @@ defmodule Modus.Mind.Affect do
   @doc "Conatus modifier applied per tick based on current affect."
   @spec conatus_modifier(affect()) :: float()
   def conatus_modifier(:joy), do: 0.002
-  def conatus_modifier(:sadness), do: -0.003
+  def conatus_modifier(:sadness), do: -0.001
   def conatus_modifier(:desire), do: 0.001
-  def conatus_modifier(:fear), do: -0.002
+  def conatus_modifier(:fear), do: -0.001
   def conatus_modifier(:neutral), do: 0.0
   def conatus_modifier(_), do: 0.0
 end
