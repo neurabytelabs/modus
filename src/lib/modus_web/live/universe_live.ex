@@ -32,6 +32,7 @@ defmodule ModusWeb.UniverseLive do
        tick: 0,
        agent_count: 0,
        speed: 1,
+       time_of_day: "day",
        selected_agent: nil,
        chat_open: false,
        chat_messages: [],
@@ -157,7 +158,8 @@ defmodule ModusWeb.UniverseLive do
      assign(socket,
        tick: params["tick"] || 0,
        agent_count: params["agent_count"] || 0,
-       status: String.to_existing_atom(params["status"] || "paused")
+       status: String.to_existing_atom(params["status"] || "paused"),
+       time_of_day: params["time_of_day"] || socket.assigns.time_of_day
      )}
   end
 
@@ -211,7 +213,8 @@ defmodule ModusWeb.UniverseLive do
     {:noreply,
      assign(socket,
        tick: params["tick"] || socket.assigns.tick,
-       agent_count: params["agent_count"] || socket.assigns.agent_count
+       agent_count: params["agent_count"] || socket.assigns.agent_count,
+       time_of_day: params["time_of_day"] || socket.assigns.time_of_day
      )}
   end
 
@@ -582,13 +585,14 @@ defmodule ModusWeb.UniverseLive do
           <span class="text-xl font-bold tracking-tighter">
             MODUS<span class="text-purple-400">_</span>
           </span>
-          <span class="text-xs text-slate-600 hidden sm:inline">v0.6.0 · Imperium</span>
+          <span class="text-xs text-slate-600 hidden sm:inline">v0.9.0 · Natura</span>
         </div>
 
         <div class="flex items-center gap-3 md:gap-6">
           <%!-- Stats --%>
           <div class="flex items-center gap-3 md:gap-4 text-xs text-slate-500">
             <div class="flex items-center gap-1.5">
+              <span class="text-sm"><%= if @time_of_day == "night", do: "🌙", else: "☀️" %></span>
               <span class="text-slate-600 hidden sm:inline">TICK</span>
               <span class="text-cyan-400 font-bold tabular-nums"><%= @tick %></span>
             </div>

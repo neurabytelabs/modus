@@ -74,23 +74,31 @@ Hooks.WorldCanvas = {
         if (this.rendererReady) {
           if (state.grid) this.renderer.renderTerrain(state.grid)
           if (state.agents) this.renderer.updateAgents(state.agents)
+          // Environment
+          if (state.time_of_day) this.renderer.updateEnvironment(state)
         }
         if (state.agents) this.lastAgents = state.agents
         this.pushEvent("world_state", {
           tick: state.tick || 0,
           agent_count: state.agents ? state.agents.length : 0,
           status: state.status || "paused",
+          time_of_day: state.time_of_day || "day",
         })
       },
       onDelta: (delta) => {
         if (this.rendererReady && delta.agents) {
           this.renderer.updateAgents(delta.agents)
         }
+        // Update environment visuals
+        if (this.rendererReady && delta.cycle_progress != null) {
+          this.renderer.updateEnvironment(delta)
+        }
         if (delta.agents) this.lastAgents = delta.agents
         if (delta.tick != null) {
           this.pushEvent("tick_update", {
             tick: delta.tick,
             agent_count: delta.agent_count || 0,
+            time_of_day: delta.time_of_day || "day",
           })
         }
 

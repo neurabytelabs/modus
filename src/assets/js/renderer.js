@@ -78,11 +78,16 @@ export default class Renderer {
 
     // Layers
     this.terrainLayer = new Container()
+    this.nightOverlay = null // created after terrain render
     this.relationshipLayer = new Container()
     this.agentLayer = new Container()
     this.worldContainer.addChild(this.terrainLayer)
     this.worldContainer.addChild(this.relationshipLayer)
     this.worldContainer.addChild(this.agentLayer)
+
+    // Environment state
+    this.cycleProgress = 0
+    this.timeOfDay = "day"
 
     // Single Graphics object for relationship lines (cleared each frame)
     this.relationshipGfx = new Graphics()
@@ -128,6 +133,17 @@ export default class Renderer {
     }
 
     this.terrainLayer.addChild(gfx)
+
+    // Create night overlay (dark blue tint above terrain, below agents)
+    if (!this.nightOverlay) {
+      this.nightOverlay = new Graphics()
+      // Insert between terrain and relationship layers
+      const idx = this.worldContainer.getChildIndex(this.relationshipLayer)
+      this.worldContainer.addChildAt(this.nightOverlay, idx)
+    }
+    this.nightOverlay.clear()
+    this.nightOverlay.rect(0, 0, GRID_W * TILE_SIZE, GRID_H * TILE_SIZE)
+    this.nightOverlay.fill({ color: 0x0a1030, alpha: 0 })
   }
 
   // ── Agents ───────────────────────────────────────────────
@@ -327,17 +343,19 @@ export default class Renderer {
         }
 
         // Group halo — same color for all group members
-        if (agent.group) {
+        const agentData = this.agentDataMap.get(id)
+        const group = agentData ? agentData.group : null
+        if (group) {
           if (!sprite.groupHalo) {
             sprite.groupHalo = new Graphics()
             sprite.container.addChildAt(sprite.groupHalo, 0)
           }
-          const gc = agent.group.color || 0xA855F7
+          const gc = group.color || 0xA855F7
           sprite.groupHalo.clear()
           sprite.groupHalo.circle(0, 0, AGENT_RADIUS + 6)
           sprite.groupHalo.fill({ color: gc, alpha: 0.25 })
           // Leader gets a thicker ring
-          if (agent.group.is_leader) {
+          if (group.is_leader) {
             sprite.groupHalo.circle(0, 0, AGENT_RADIUS + 7)
             sprite.groupHalo.stroke({ width: 2, color: gc, alpha: 0.6 })
           }
@@ -408,6 +426,30 @@ export default class Renderer {
         gfx.lineTo(otherSprite.container.x, otherSprite.container.y)
         gfx.stroke()
       }
+    }
+  }
+
+  // ── Environment (Day/Night) ──────────────────────────────
+
+  updateEnvironment(data) {
+    if (data.cycle_progress != null) this.cycleProgress = data.cycle_progress
+    if (data.time_of_day) this.timeOfDay = data.time_of_day
+
+    // Update night overlay alpha
+    if (this.nightOverlay) {
+      const p = this.cycleProgress
+      // 0-0.5 = day (alpha 0), 0.5-1.0 = night (ramp up to 0.5 then down)
+      let nightAlpha = 0
+      if (p >= 0.5) {
+        const nightProgress = (p - 0.5) * 2 // 0 to 1 within night
+        nightAlpha = nightProgress < 0.5
+          ? nightProgress * 2 * 0.5   // ramp up to 0.5
+          : (1 - nightProgress) * 2 * 0.5  // ramp down
+        nightAlpha = Math.max(0, Math.min(0.5, nightAlpha))
+      }
+      this.nightOverlay.clear()
+      this.nightOverlay.rect(0, 0, GRID_W * TILE_SIZE, GRID_H * TILE_SIZE)
+      this.nightOverlay.fill({ color: 0x0a1030, alpha: nightAlpha })
     }
   }
 

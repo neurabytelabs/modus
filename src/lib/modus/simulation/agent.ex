@@ -198,6 +198,12 @@ defmodule Modus.Simulation.Agent do
 
     params = Map.put(params, :tick, tick_number)
 
+    # Terrain effects
+    agent = apply_terrain_effects(agent, action)
+
+    # Night: agents with low rest should prioritize sleeping
+    {action, params} = maybe_force_sleep(agent, action, params)
+
     agent =
       agent
       |> decay_needs()
@@ -264,8 +270,19 @@ defmodule Modus.Simulation.Agent do
   end
 
   defp apply_action(agent, :gather, params) do
-    needs = %{agent.needs | hunger: max(agent.needs.hunger - 5.0, 0.0)}
-    Modus.Simulation.EventLog.log(:resource_gathered, Map.get(params, :tick, 0), [agent.id], %{name: agent.name})
+    # Actually gather from ResourceSystem
+    gathered = try do
+      case Modus.Simulation.ResourceSystem.gather(agent.position, :food, 2.0) do
+        {:ok, amount} -> amount
+        _ -> 0.0
+      end
+    catch
+      :exit, _ -> 0.0
+    end
+
+    hunger_relief = if gathered > 0, do: 5.0, else: 1.0
+    needs = %{agent.needs | hunger: max(agent.needs.hunger - hunger_relief, 0.0)}
+    Modus.Simulation.EventLog.log(:resource_gathered, Map.get(params, :tick, 0), [agent.id], %{name: agent.name, amount: gathered})
     %{agent | needs: needs, current_action: :gathering}
   end
 
@@ -294,6 +311,47 @@ defmodule Modus.Simulation.Agent do
 
   defp apply_action(agent, _action, _params) do
     %{agent | current_action: :idle}
+  end
+
+  # --- Terrain & Environment Effects ---
+
+  defp apply_terrain_effects(agent, action) when action in [:move_to, :explore] do
+    # Check terrain at current position
+    terrain = get_terrain_at(agent.position)
+    case terrain do
+      :forest ->
+        # Forest: extra energy cost when moving
+        energy = max(agent.conatus_energy - 0.005, 0.0)
+        %{agent | conatus_energy: energy}
+      _ ->
+        agent
+    end
+  end
+  defp apply_terrain_effects(agent, _action), do: agent
+
+  defp get_terrain_at({x, y}) do
+    try do
+      case Modus.Simulation.World.get_cell({x, y}) do
+        {:ok, cell} -> cell.terrain
+        _ -> :grass
+      end
+    catch
+      :exit, _ -> :grass
+    end
+  end
+
+  defp maybe_force_sleep(agent, action, params) do
+    is_night = try do
+      Modus.Simulation.Environment.is_night?()
+    catch
+      :exit, _ -> false
+    end
+
+    if is_night and agent.needs.rest < 30.0 and action not in [:sleep, :flee] do
+      {:sleep, params}
+    else
+      {action, params}
+    end
   end
 
   # --- Need Decay ---

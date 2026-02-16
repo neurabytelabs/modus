@@ -263,10 +263,18 @@ defmodule ModusWeb.WorldChannel do
     # Agents now self-tick via PubSub — we just query state
     agents = get_agent_list()
 
+    env = try do
+      Modus.Simulation.Environment.get_state()
+    catch
+      :exit, _ -> %{time_of_day: :day, cycle_progress: 0.0}
+    end
+
     delta = %{
       tick: tick_number,
       agent_count: length(Enum.filter(agents, & &1.alive)),
-      agents: agents
+      agents: agents,
+      time_of_day: to_string(env.time_of_day),
+      cycle_progress: Float.round(ensure_float(env.cycle_progress), 4)
     }
 
     push(socket, "delta", delta)
@@ -311,12 +319,20 @@ defmodule ModusWeb.WorldChannel do
         do: Ticker.status().state |> to_string(),
         else: "paused"
 
+    env = try do
+      Modus.Simulation.Environment.get_state()
+    catch
+      :exit, _ -> %{time_of_day: :day, cycle_progress: 0.0}
+    end
+
     %{
       grid: grid,
       agents: agents,
       tick: tick,
       status: status,
-      agent_count: length(agents)
+      agent_count: length(agents),
+      time_of_day: to_string(env.time_of_day),
+      cycle_progress: Float.round(ensure_float(env.cycle_progress), 4)
     }
   end
 

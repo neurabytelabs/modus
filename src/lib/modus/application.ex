@@ -23,6 +23,8 @@ defmodule Modus.Application do
       Modus.Simulation.EventLog,
       Modus.Intelligence.LlmScheduler,
       Modus.Simulation.Ticker,
+      Modus.Simulation.Environment,
+      Modus.Simulation.ResourceSystem,
       ModusWeb.Endpoint
     ]
 
