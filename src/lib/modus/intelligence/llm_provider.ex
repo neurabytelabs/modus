@@ -80,9 +80,14 @@ defmodule Modus.Intelligence.LlmProvider do
     GenServer.call(__MODULE__, {:conversation, agent_a, agent_b, context}, 120_000)
   end
 
-  @doc "Chat with a single agent."
+  @doc "Chat with a single agent. Bypasses GenServer to avoid blocking on batch_decide."
   def chat(agent, user_message) do
-    GenServer.call(__MODULE__, {:chat, agent, user_message}, 120_000)
+    config = get_config()
+    case config.provider do
+      :ollama -> OllamaClient.chat_with_agent(agent, user_message, config)
+      :antigravity -> AntigravityClient.chat_with_agent(agent, user_message, config)
+      _ -> :fallback
+    end
   end
 
   @doc "Test connection to the configured provider."
