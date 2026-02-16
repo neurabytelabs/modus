@@ -36,6 +36,13 @@ defmodule ModusWeb.UniverseLive do
        chat_open: false,
        chat_messages: [],
        chat_loading: false,
+       # Settings
+       settings_open: false,
+       settings_provider: "ollama",
+       settings_model: "llama3.2:3b-instruct-q4_K_M",
+       settings_base_url: "http://modus-llm:11434",
+       settings_api_key: "",
+       settings_test_result: nil,
        # UI
        mobile_panel: nil,
        event_feed: [],
@@ -194,6 +201,78 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, status: status)}
   end
 
+  # ── Settings ─────────────────────────────────────────────────
+
+  def handle_event("open_settings", _params, socket) do
+    config = Modus.Intelligence.LlmProvider.get_config()
+    {:noreply, assign(socket,
+      settings_open: true,
+      settings_provider: to_string(config.provider),
+      settings_model: config.model || "",
+      settings_base_url: config.base_url || "",
+      settings_api_key: config.api_key || "",
+      settings_test_result: nil
+    )}
+  end
+
+  def handle_event("close_settings", _params, socket) do
+    {:noreply, assign(socket, settings_open: false)}
+  end
+
+  def handle_event("settings_change", params, socket) do
+    provider = params["provider"] || socket.assigns.settings_provider
+    {base_url, model} = case provider do
+      "antigravity" -> {"http://host.docker.internal:8045", "gemini-3-flash"}
+      _ -> {"http://modus-llm:11434", "llama3.2:3b-instruct-q4_K_M"}
+    end
+
+    {:noreply, assign(socket,
+      settings_provider: provider,
+      settings_model: params["model"] || model,
+      settings_base_url: params["base_url"] || base_url,
+      settings_api_key: params["api_key"] || socket.assigns.settings_api_key,
+      settings_test_result: nil
+    )}
+  end
+
+  def handle_event("save_settings", _params, socket) do
+    provider = case socket.assigns.settings_provider do
+      "antigravity" -> :antigravity
+      _ -> :ollama
+    end
+
+    Modus.Intelligence.LlmProvider.set_config(%{
+      provider: provider,
+      model: socket.assigns.settings_model,
+      base_url: socket.assigns.settings_base_url,
+      api_key: socket.assigns.settings_api_key
+    })
+
+    {:noreply, assign(socket, settings_open: false)}
+  end
+
+  def handle_event("test_llm", _params, socket) do
+    # Save config first temporarily
+    provider = case socket.assigns.settings_provider do
+      "antigravity" -> :antigravity
+      _ -> :ollama
+    end
+
+    Modus.Intelligence.LlmProvider.set_config(%{
+      provider: provider,
+      model: socket.assigns.settings_model,
+      base_url: socket.assigns.settings_base_url,
+      api_key: socket.assigns.settings_api_key
+    })
+
+    result = case Modus.Intelligence.LlmProvider.test_connection() do
+      :ok -> "ok"
+      {:error, reason} -> "error: #{inspect(reason)}"
+    end
+
+    {:noreply, assign(socket, settings_test_result: result)}
+  end
+
   # ── Controls ────────────────────────────────────────────────
 
   def handle_event("start", _params, socket) do
@@ -261,7 +340,7 @@ defmodule ModusWeb.UniverseLive do
       _ -> "⚡"
     end
 
-    name = event.data[:name] || event.data["name"] || Enum.join(event.agents, ", ")
+    name = event.data[:name] || event.data["name"] || resolve_agent_names(event.agents)
     label = case event.type do
       :death -> "#{name} died (#{event.data[:cause] || "unknown"})"
       :birth -> "#{name} was born"
@@ -426,6 +505,9 @@ defmodule ModusWeb.UniverseLive do
             <% end %>
             <button phx-click="reset" class="ctrl-btn">↻</button>
           </div>
+
+          <%!-- Settings --%>
+          <button phx-click="open_settings" class="ctrl-btn" title="LLM Settings">⚙️</button>
         </div>
       </nav>
 
@@ -516,7 +598,7 @@ defmodule ModusWeb.UniverseLive do
                         <span class="text-slate-400 tabular-nums"><%= val || 0 %></span>
                       </div>
                       <div class="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                        <div class={"h-full rounded-full transition-all duration-500 #{need_color(need)}"} style={"width: #{min(val || 0, 100)}%"} />
+                        <div class={"h-full rounded-full transition-all duration-500 #{need_bar_color(need, val || 0)}"} style={"width: #{min(val || 0, 100)}%"} />
                       </div>
                     </div>
                   <% end %>
@@ -588,6 +670,70 @@ defmodule ModusWeb.UniverseLive do
           <% end %>
         </div>
       </div>
+
+      <%!-- Settings Modal --%>
+      <%= if @settings_open do %>
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div class="bg-[#0A0A0F] border border-white/10 rounded-xl w-full max-w-md flex flex-col shadow-2xl" phx-click-away="close_settings">
+            <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
+              <span class="font-bold text-slate-100">⚙️ LLM Settings</span>
+              <button phx-click="close_settings" class="text-slate-600 hover:text-slate-400">✕</button>
+            </div>
+            <div class="p-4 space-y-4">
+              <%!-- Provider --%>
+              <div>
+                <label class="text-[10px] uppercase tracking-wider text-slate-600 block mb-1">Provider</label>
+                <select phx-change="settings_change" name="provider"
+                  class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50">
+                  <option value="ollama" selected={@settings_provider == "ollama"}>🦙 Ollama (local)</option>
+                  <option value="antigravity" selected={@settings_provider == "antigravity"}>🚀 Antigravity (gateway)</option>
+                </select>
+              </div>
+
+              <%!-- Model --%>
+              <div>
+                <label class="text-[10px] uppercase tracking-wider text-slate-600 block mb-1">Model</label>
+                <input type="text" name="model" value={@settings_model} phx-change="settings_change"
+                  class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50"
+                  placeholder="Model name..." />
+              </div>
+
+              <%!-- Base URL --%>
+              <div>
+                <label class="text-[10px] uppercase tracking-wider text-slate-600 block mb-1">Base URL</label>
+                <input type="text" name="base_url" value={@settings_base_url} phx-change="settings_change"
+                  class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50" />
+              </div>
+
+              <%!-- API Key --%>
+              <%= if @settings_provider == "antigravity" do %>
+                <div>
+                  <label class="text-[10px] uppercase tracking-wider text-slate-600 block mb-1">API Key</label>
+                  <input type="password" name="api_key" value={@settings_api_key} phx-change="settings_change"
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50" />
+                </div>
+              <% end %>
+
+              <%!-- Test Result --%>
+              <%= if @settings_test_result do %>
+                <div class={"text-sm px-3 py-2 rounded-lg #{if @settings_test_result == "ok", do: "bg-green-500/10 text-green-400", else: "bg-red-500/10 text-red-400"}"}>
+                  <%= if @settings_test_result == "ok" do %>
+                    ✅ Connection successful
+                  <% else %>
+                    ❌ <%= @settings_test_result %>
+                  <% end %>
+                </div>
+              <% end %>
+
+              <%!-- Buttons --%>
+              <div class="flex gap-2">
+                <button phx-click="test_llm" class="ctrl-btn flex-1 text-center">🔌 Test</button>
+                <button phx-click="save_settings" class="ctrl-btn ctrl-btn-primary flex-1 text-center">💾 Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
 
       <%!-- Chat Modal --%>
       <%= if @chat_open && @selected_agent do %>
@@ -683,11 +829,32 @@ defmodule ModusWeb.UniverseLive do
 
   # ── Helpers ─────────────────────────────────────────────────
 
-  defp need_color("hunger"), do: "bg-orange-500"
-  defp need_color("social"), do: "bg-pink-500"
-  defp need_color("rest"), do: "bg-blue-500"
-  defp need_color("shelter"), do: "bg-emerald-500"
-  defp need_color(_), do: "bg-slate-500"
+  defp resolve_agent_names(agent_ids) when is_list(agent_ids) do
+    agent_ids
+    |> Enum.map(fn id ->
+      try do
+        state = Modus.Simulation.Agent.get_state(id)
+        state.name
+      catch
+        :exit, _ -> String.slice(id, 0..7)
+      end
+    end)
+    |> Enum.join(", ")
+  end
+  defp resolve_agent_names(_), do: "Unknown"
+
+  # Dynamic need bar colors based on value
+  defp need_bar_color("hunger", val) when val > 80, do: "bg-red-500"
+  defp need_bar_color("hunger", val) when val > 60, do: "bg-yellow-500"
+  defp need_bar_color("hunger", _val), do: "bg-green-500"
+  defp need_bar_color("rest", val) when val < 20, do: "bg-red-500"
+  defp need_bar_color("rest", val) when val < 40, do: "bg-yellow-500"
+  defp need_bar_color("rest", _val), do: "bg-green-500"
+  defp need_bar_color("social", val) when val < 20, do: "bg-red-500"
+  defp need_bar_color("social", val) when val < 40, do: "bg-yellow-500"
+  defp need_bar_color("social", _val), do: "bg-pink-500"
+  defp need_bar_color("shelter", _val), do: "bg-emerald-500"
+  defp need_bar_color(_, _val), do: "bg-slate-500"
 
   defp status_color(:ready), do: "bg-green-500/20 text-green-400"
   defp status_color(:running), do: "bg-cyan-500/20 text-cyan-400"

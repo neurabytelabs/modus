@@ -1,13 +1,6 @@
 defmodule Modus.Application do
   @moduledoc """
   MODUS Application — Universe Simulation Platform
-
-  Supervision tree:
-    Modus.Repo             → SQLite database
-    Phoenix.PubSub         → Event broadcasting
-    Modus.AgentRegistry    → Process registry for agents
-    Modus.AgentSupervisor  → DynamicSupervisor for agent processes
-    ModusWeb.Endpoint      → HTTP/WebSocket server
   """
   use Application
 
@@ -15,9 +8,11 @@ defmodule Modus.Application do
   def start(_type, _args) do
     children = [
       Modus.Repo,
+      {Finch, name: Modus.Finch, pools: %{default: [size: 5, count: 2]}},
       {Phoenix.PubSub, name: Modus.PubSub},
       {Registry, keys: :unique, name: Modus.AgentRegistry},
       Modus.Intelligence.DecisionCache,
+      Modus.Intelligence.LlmProvider,
       Modus.Simulation.AgentSupervisor,
       Modus.Simulation.EventLog,
       Modus.Intelligence.LlmScheduler,

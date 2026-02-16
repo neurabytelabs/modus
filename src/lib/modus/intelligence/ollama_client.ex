@@ -8,21 +8,18 @@ defmodule Modus.Intelligence.OllamaClient do
 
   require Logger
 
-  @base_url "http://modus-llm:11434"
-  @model "llama3.2:3b-instruct-q4_K_M"
+  @default_url "http://modus-llm:11434"
+  @default_model "llama3.2:3b-instruct-q4_K_M"
   @timeout 90_000
 
   @doc """
   Ask the LLM to decide actions for a batch of agents.
-
-  Returns a list of `{agent_id, action_atom, params_map}` tuples.
-  On any error, returns `:fallback` so the caller can use behavior tree.
+  Accepts optional config map with :base_url and :model.
   """
-  @spec batch_decide([map()], map()) :: [{String.t(), atom(), map()}] | :fallback
-  def batch_decide(agents, context) when is_list(agents) do
+  def batch_decide(agents, context, config \\ %{}) when is_list(agents) do
     prompt = build_batch_prompt(agents, context)
 
-    case call_generate(prompt) do
+    case call_generate(prompt, config) do
       {:ok, text} -> parse_decisions(text, agents)
       {:error, reason} ->
         Logger.warning("OllamaClient batch_decide failed: #{inspect(reason)}")
@@ -32,13 +29,11 @@ defmodule Modus.Intelligence.OllamaClient do
 
   @doc """
   Generate a conversation between two agents (3 turns).
-  Returns a list of `{speaker_name, dialogue_line}` tuples.
   """
-  @spec conversation(map(), map(), map()) :: [{String.t(), String.t()}] | :fallback
-  def conversation(agent_a, agent_b, context) do
+  def conversation(agent_a, agent_b, context, config \\ %{}) do
     prompt = build_conversation_prompt(agent_a, agent_b, context)
 
-    case call_generate(prompt) do
+    case call_generate(prompt, config) do
       {:ok, text} -> parse_conversation(text, agent_a.name, agent_b.name)
       {:error, reason} ->
         Logger.warning("OllamaClient conversation failed: #{inspect(reason)}")
@@ -47,42 +42,56 @@ defmodule Modus.Intelligence.OllamaClient do
   end
 
   @doc """
-  Chat with a single agent as a user. Returns the agent's reply string.
+  Chat with a single agent as a user.
   """
-  @spec chat_with_agent(map(), String.t()) :: {:ok, String.t()} | :fallback
-  def chat_with_agent(agent, user_message) do
+  def chat_with_agent(agent, user_message, config \\ %{}) do
     prompt = build_chat_prompt(agent, user_message)
 
-    case call_generate(prompt, false) do
+    case call_generate(prompt, config, false) do
       {:ok, text} ->
         case Jason.decode(text) do
           {:ok, %{"reply" => reply}} -> {:ok, reply}
           _ -> {:ok, String.trim(text)}
         end
-
       {:error, reason} ->
         Logger.warning("OllamaClient chat failed: #{inspect(reason)}")
         :fallback
     end
   end
 
-  # ── HTTP ────────────────────────────────────────────────────
+  @doc "Test connection to Ollama."
+  def test_connection(config \\ %{}) do
+    url = Map.get(config, :base_url, @default_url)
+    case Req.get("#{url}/api/tags",
+           receive_timeout: 10_000,
+           connect_options: [timeout: 5_000],
+           finch: Modus.Finch
+         ) do
+      {:ok, %{status: 200}} -> :ok
+      {:ok, %{status: s}} -> {:error, "HTTP #{s}"}
+      {:error, err} -> {:error, inspect(err)}
+    end
+  end
 
-  defp call_generate(prompt, json_format \\ true)
+  # ── HTTP ────────────────────────────────────────────────
 
-  defp call_generate(prompt, json_format) do
+  defp call_generate(prompt, config, json_format \\ true) do
+    url = Map.get(config, :base_url, @default_url)
+    model = Map.get(config, :model, @default_model)
+
     body = %{
-      model: @model,
+      model: model,
       prompt: prompt,
       stream: false,
       options: %{temperature: 0.7, num_predict: 512}
     }
     body = if json_format, do: Map.put(body, :format, "json"), else: body
 
-    case Req.post("#{@base_url}/api/generate",
+    case Req.post("#{url}/api/generate",
            json: body,
            receive_timeout: @timeout,
-           connect_options: [timeout: 5_000]
+           connect_options: [timeout: 5_000],
+           finch: Modus.Finch
          ) do
       {:ok, %{status: 200, body: %{"response" => text}}} -> {:ok, text}
       {:ok, %{status: status, body: body}} -> {:error, {:http, status, body}}
@@ -90,7 +99,7 @@ defmodule Modus.Intelligence.OllamaClient do
     end
   end
 
-  # ── Prompt Building ─────────────────────────────────────────
+  # ── Prompt Building ─────────────────────────────────────
 
   defp build_batch_prompt(agents, context) do
     agent_descriptions =
@@ -163,7 +172,7 @@ defmodule Modus.Intelligence.OllamaClient do
     "#{a.occupation}, #{Enum.join(traits, "/")}. Hunger: #{round(a.needs.hunger)}, Social: #{round(a.needs.social)}"
   end
 
-  # ── Response Parsing ────────────────────────────────────────
+  # ── Response Parsing ────────────────────────────────────
 
   @valid_actions ~w(idle explore gather find_food go_home_sleep find_friend help_nearby flee talk)
 
@@ -178,7 +187,6 @@ defmodule Modus.Intelligence.OllamaClient do
           action = normalize_action(d["action"])
           {d["id"], action, %{reason: d["reason"] || "llm"}}
         end)
-
       _ ->
         Logger.warning("OllamaClient: failed to parse decisions JSON")
         :fallback
@@ -192,19 +200,12 @@ defmodule Modus.Intelligence.OllamaClient do
         |> Enum.take(6)
         |> Enum.filter(fn d -> d["speaker"] in [name_a, name_b] end)
         |> Enum.map(fn d -> {d["speaker"], d["line"] || ""} end)
-
-      _ ->
-        :fallback
+      _ -> :fallback
     end
   end
 
   defp normalize_action(action_str) when is_binary(action_str) do
-    if action_str in @valid_actions do
-      String.to_atom(action_str)
-    else
-      :idle
-    end
+    if action_str in @valid_actions, do: String.to_atom(action_str), else: :idle
   end
-
   defp normalize_action(_), do: :idle
 end

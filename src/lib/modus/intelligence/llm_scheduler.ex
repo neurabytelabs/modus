@@ -2,17 +2,16 @@ defmodule Modus.Intelligence.LlmScheduler do
   @moduledoc """
   LlmScheduler — Subscribes to tick events and triggers LLM batch decisions.
 
-  Every 100 ticks, collects up to 10 alive agents and sends them
-  to OllamaClient for creative decision-making. Also triggers
-  agent-agent conversations when conditions are met.
+  Rate limited: max 1 concurrent LLM request, conversations every 500 ticks.
   """
   use GenServer
-
   require Logger
 
-  alias Modus.Simulation.{Agent, DecisionEngine}
-  alias Modus.Intelligence.OllamaClient
+  alias Modus.Simulation.Agent
+  alias Modus.Intelligence.{LlmProvider, DecisionCache}
 
+  @batch_interval 100
+  @conversation_interval 500
   @conversation_social_threshold 40.0
 
   def start_link(_opts) do
@@ -22,66 +21,95 @@ defmodule Modus.Intelligence.LlmScheduler do
   @impl true
   def init(_) do
     Modus.Simulation.Ticker.subscribe()
-    {:ok, %{last_conversation_tick: 0}}
+    {:ok, %{last_conversation_tick: 0, busy: false}}
   end
 
   @impl true
-  def handle_info({:tick, _tick}, state) do
-    # LLM disabled for MVP stability — Ollama timeouts crash Finch pool
-    # Re-enable once connection pooling is fixed
+  def handle_info({:tick, _tick}, %{busy: true} = state) do
+    # Skip — previous LLM request still running
     {:noreply, state}
+  end
+
+  def handle_info({:tick, tick}, state) do
+    cond do
+      rem(tick, @conversation_interval) == 0 and tick > 0 ->
+        {:noreply, %{state | busy: true} |> spawn_conversations(tick)}
+
+      rem(tick, @batch_interval) == 0 and tick > 0 ->
+        {:noreply, %{state | busy: true} |> spawn_batch(tick)}
+
+      true ->
+        {:noreply, state}
+    end
+  end
+
+  def handle_info({:llm_done}, state) do
+    {:noreply, %{state | busy: false}}
   end
 
   def handle_info(_, state), do: {:noreply, state}
 
-  defp spawn_batch(tick) do
+  defp spawn_batch(state, tick) do
+    scheduler = self()
     Task.start(fn ->
-      agents = get_alive_agents()
-
-      if agents != [] do
-        context = %{tick: tick, world_size: {50, 50}}
-        DecisionEngine.llm_batch(agents, context)
-        Logger.info("LLM batch decided for #{length(agents)} agents at tick #{tick}")
+      try do
+        agents = get_alive_agents()
+        if agents != [] do
+          context = %{tick: tick, world_size: {50, 50}}
+          case LlmProvider.decide(agents, context) do
+            :fallback -> :ok
+            decisions when is_list(decisions) ->
+              for {agent_id, action, params} <- decisions do
+                DecisionCache.put(agent_id, {action, params})
+              end
+              Logger.info("LLM batch decided for #{length(decisions)} agents at tick #{tick}")
+            _ -> :ok
+          end
+        end
+      rescue
+        e -> Logger.warning("LLM batch error: #{inspect(e)}")
+      after
+        send(scheduler, {:llm_done})
       end
     end)
+    state
   end
 
-  defp spawn_conversations(tick) do
+  defp spawn_conversations(state, tick) do
+    scheduler = self()
     Task.start(fn ->
-      agents = get_alive_agents()
+      try do
+        agents = get_alive_agents()
+        pairs = find_conversation_pairs(agents)
 
-      # Find pairs: same cell + both have low social need
-      pairs = find_conversation_pairs(agents)
+        Enum.each(Enum.take(pairs, 1), fn {a, b} ->
+          case LlmProvider.conversation(a, b, %{tick: tick}) do
+            :fallback -> :ok
+            dialogue ->
+              Logger.info("Conversation at tick #{tick}: #{a.name} <-> #{b.name}")
+              for {speaker, line} <- dialogue do
+                Logger.info("  [#{speaker}]: #{line}")
+              end
 
-      Enum.each(Enum.take(pairs, 2), fn {a, b} ->
-        context = %{tick: tick}
-
-        case OllamaClient.conversation(a, b, context) do
-          :fallback ->
-            :ok
-
-          dialogue ->
-            Logger.info("Conversation at tick #{tick}: #{a.name} <-> #{b.name}")
-
-            # Store conversation in both agents' memories
-            for {speaker, line} <- dialogue do
-              Logger.info("  [#{speaker}]: #{line}")
-            end
-
-            # Broadcast conversation event for LiveView
-            Phoenix.PubSub.broadcast(
-              Modus.PubSub,
-              "modus:events",
-              {:conversation, %{
-                tick: tick,
-                agents: {a.id, b.id},
-                names: {a.name, b.name},
-                dialogue: dialogue
-              }}
-            )
-        end
-      end)
+              Phoenix.PubSub.broadcast(
+                Modus.PubSub,
+                "modus:events",
+                {:conversation, %{
+                  tick: tick,
+                  agents: {a.id, b.id},
+                  names: {a.name, b.name},
+                  dialogue: dialogue
+                }}
+              )
+          end
+        end)
+      rescue
+        e -> Logger.warning("LLM conversation error: #{inspect(e)}")
+      after
+        send(scheduler, {:llm_done})
+      end
     end)
+    state
   end
 
   defp find_conversation_pairs(agents) do

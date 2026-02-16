@@ -9,7 +9,7 @@ defmodule ModusWeb.WorldChannel do
   use Phoenix.Channel
 
   alias Modus.Simulation.{World, Ticker, Agent, AgentSupervisor, EventLog}
-  alias Modus.Intelligence.OllamaClient
+  alias Modus.Intelligence.LlmProvider
 
   @impl true
   def join("world:lobby", _payload, socket) do
@@ -134,7 +134,7 @@ defmodule ModusWeb.WorldChannel do
         state = Agent.get_state(agent_id)
 
         reply =
-          case OllamaClient.chat_with_agent(state, message) do
+          case LlmProvider.chat(state, message) do
             {:ok, text} -> text
             :fallback -> "..."
           end
@@ -153,6 +153,40 @@ defmodule ModusWeb.WorldChannel do
     end)
 
     {:noreply, socket}
+  end
+
+  def handle_in("get_llm_config", _payload, socket) do
+    config = LlmProvider.get_config()
+    {:reply, {:ok, %{
+      provider: to_string(config.provider),
+      model: config.model,
+      base_url: config.base_url || "",
+      api_key: config.api_key || ""
+    }}, socket}
+  end
+
+  def handle_in("set_llm_config", payload, socket) do
+    provider = case payload["provider"] do
+      "antigravity" -> :antigravity
+      _ -> :ollama
+    end
+
+    config = %{
+      provider: provider,
+      model: payload["model"] || "llama3.2:3b-instruct-q4_K_M",
+      base_url: payload["base_url"],
+      api_key: payload["api_key"]
+    }
+
+    LlmProvider.set_config(config)
+    {:reply, {:ok, %{status: "saved"}}, socket}
+  end
+
+  def handle_in("test_llm_connection", _payload, socket) do
+    case LlmProvider.test_connection() do
+      :ok -> {:reply, {:ok, %{status: "ok"}}, socket}
+      {:error, reason} -> {:reply, {:ok, %{status: "error", reason: inspect(reason)}}, socket}
+    end
   end
 
   def handle_in("get_agent_detail", %{"agent_id" => agent_id}, socket) do
@@ -208,10 +242,9 @@ defmodule ModusWeb.WorldChannel do
     # Agents now self-tick via PubSub — we just query state
     agents = get_agent_list()
 
-    # Disabled: Ollama timeouts crash Finch connection pool
-    # if rem(tick_number, 10) == 0 do
-    #   trigger_agent_conversations(agents, tick_number)
-    # end
+    if rem(tick_number, 10) == 0 do
+      trigger_agent_conversations(agents, tick_number)
+    end
 
     delta = %{
       tick: tick_number,
@@ -302,14 +335,14 @@ defmodule ModusWeb.WorldChannel do
           do: {a.id, b.id}
 
     pairs
-    |> Enum.take_random(min(2, length(pairs)))
+    |> Enum.take_random(min(1, length(pairs)))
     |> Enum.each(fn {id_a, id_b} ->
       Task.start(fn ->
         try do
           state_a = Agent.get_state(id_a)
           state_b = Agent.get_state(id_b)
 
-          case OllamaClient.conversation(state_a, state_b, %{tick: tick}) do
+          case LlmProvider.conversation(state_a, state_b, %{tick: tick}) do
             dialogue when is_list(dialogue) ->
               EventLog.log(:conversation, tick, [id_a, id_b], %{
                 type: :agent_chat,

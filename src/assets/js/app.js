@@ -14,6 +14,7 @@ Hooks.WorldCanvas = {
     this.worldSocket = null
     this.lastAgents = []
     this.rendererReady = false
+    this.selectedAgentId = null
 
     // Init renderer with timeout (Pixi.js may hang without WebGL)
     const initWithTimeout = Promise.race([
@@ -48,6 +49,7 @@ Hooks.WorldCanvas = {
             // Use fresh hook reference for pushEvent
             const freshHook = document.getElementById("world-canvas").__modusHook
             if (freshHook) {
+              freshHook.selectedAgentId = detail.id
               freshHook.pushEvent("select_agent", { agent: detail })
               console.log("[MODUS] pushEvent select_agent sent via hook")
             } else {
@@ -87,6 +89,13 @@ Hooks.WorldCanvas = {
             agent_count: delta.agent_count || 0,
           })
         }
+
+        // Real-time agent detail update
+        if (this.selectedAgentId && this.worldSocket && delta.tick != null && delta.tick % 5 === 0) {
+          this.worldSocket.getAgentDetail(this.selectedAgentId, (detail) => {
+            this.pushEvent("agent_detail_update", { detail })
+          })
+        }
       },
       onTick: (data) => {
         this.pushEvent("tick_update", {
@@ -123,6 +132,10 @@ Hooks.WorldCanvas = {
     })
     this.handleEvent("inject_event", (data) => {
       if (this.worldSocket) this.worldSocket.injectEvent(data.event_type)
+    })
+    this.handleEvent("deselect_agent", () => {
+      this.selectedAgentId = null
+      if (this.rendererReady) this.renderer.selectAgent(null)
     })
     this.handleEvent("create_world", (data) => {
       if (this.worldSocket) this.worldSocket.createWorld(data.template, data.population, data.danger)
