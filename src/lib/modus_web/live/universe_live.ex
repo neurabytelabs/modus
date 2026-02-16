@@ -238,7 +238,9 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, settings_open: false)}
   end
 
-  def handle_event("settings_change", params, socket) do
+  def handle_event("settings_change", %{"_target" => _} = params, socket) do
+    require Logger
+    Logger.info("SETTINGS_CHANGE params=#{inspect(Map.drop(params, ["_target"]))}")
     provider = params["provider"] || socket.assigns.settings_provider
     # Only reset model/url when provider actually changes
     provider_changed = provider != socket.assigns.settings_provider
@@ -275,6 +277,8 @@ defmodule ModusWeb.UniverseLive do
   end
 
   def handle_event("save_settings", _params, socket) do
+    require Logger
+    Logger.info("SAVE_SETTINGS provider=#{socket.assigns.settings_provider} model=#{socket.assigns.settings_model} url=#{socket.assigns.settings_base_url}")
     provider = case socket.assigns.settings_provider do
       "antigravity" -> :antigravity
       _ -> :ollama
@@ -933,11 +937,11 @@ defmodule ModusWeb.UniverseLive do
               <span class="font-bold text-slate-100">⚙️ LLM Settings</span>
               <button phx-click="close_settings" class="text-slate-600 hover:text-slate-400">✕</button>
             </div>
-            <div class="p-4 space-y-4">
+            <form phx-change="settings_change" phx-submit="save_settings" class="p-4 space-y-4">
               <%!-- Provider --%>
               <div>
                 <label class="text-[10px] uppercase tracking-wider text-slate-600 block mb-1">Provider</label>
-                <select phx-change="settings_change" name="provider"
+                <select name="provider"
                   class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50">
                   <option value="ollama" selected={@settings_provider == "ollama"}>🦙 Ollama (local)</option>
                   <option value="antigravity" selected={@settings_provider == "antigravity"}>🚀 Antigravity (gateway)</option>
@@ -947,7 +951,7 @@ defmodule ModusWeb.UniverseLive do
               <%!-- Model --%>
               <div>
                 <label class="text-[10px] uppercase tracking-wider text-slate-600 block mb-1">Model</label>
-                <select id={"model-select-#{@settings_provider}"} phx-change="settings_change" name="model"
+                <select id={"model-select-#{@settings_provider}"} name="model"
                   class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50">
                   <%= if @settings_provider == "ollama" do %>
                     <option value="llama3.2:3b-instruct-q4_K_M" selected={@settings_model == "llama3.2:3b-instruct-q4_K_M"}>🦙 Llama 3.2 3B (Q4)</option>
@@ -961,7 +965,7 @@ defmodule ModusWeb.UniverseLive do
                   <% end %>
                 </select>
                 <%= if @settings_provider == "antigravity" and @settings_model not in ~w(gemini-3-flash gemini-3-pro-high claude-sonnet-4-5-thinking claude-opus-4-6-thinking gpt-4.1) do %>
-                  <input type="text" name="model" value={@settings_model} placeholder="Custom model name..." phx-change="settings_change"
+                  <input type="text" name="model" value={@settings_model} placeholder="Custom model name..."
                     class="w-full mt-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50" />
                 <% end %>
               </div>
@@ -969,7 +973,7 @@ defmodule ModusWeb.UniverseLive do
               <%!-- Base URL --%>
               <div>
                 <label class="text-[10px] uppercase tracking-wider text-slate-600 block mb-1">Base URL</label>
-                <input type="text" name="base_url" value={@settings_base_url} phx-change="settings_change"
+                <input type="text" name="base_url" value={@settings_base_url}
                   class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50" />
               </div>
 
@@ -977,7 +981,7 @@ defmodule ModusWeb.UniverseLive do
               <%= if @settings_provider == "antigravity" do %>
                 <div>
                   <label class="text-[10px] uppercase tracking-wider text-slate-600 block mb-1">API Key</label>
-                  <input type="password" name="api_key" value={@settings_api_key} phx-change="settings_change"
+                  <input type="password" name="api_key" value={@settings_api_key}
                     class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50" />
                 </div>
               <% end %>
@@ -1002,12 +1006,12 @@ defmodule ModusWeb.UniverseLive do
 
               <%!-- Buttons --%>
               <div class="flex gap-2">
-                <button phx-click="test_llm" class="ctrl-btn flex-1 text-center" disabled={@settings_testing}>
+                <button type="button" phx-click="test_llm" class="ctrl-btn flex-1 text-center" disabled={@settings_testing}>
                   <%= if @settings_testing, do: "⏳ Testing...", else: "🔌 Test" %>
                 </button>
-                <button phx-click="save_settings" class="ctrl-btn ctrl-btn-primary flex-1 text-center">💾 Save</button>
+                <button type="submit" class="ctrl-btn ctrl-btn-primary flex-1 text-center">💾 Save</button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       <% end %>
