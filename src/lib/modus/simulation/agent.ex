@@ -155,7 +155,7 @@ defmodule Modus.Simulation.Agent do
       agent
       |> decay_needs()
       |> apply_action(action, params)
-      |> increment_age()
+      |> increment_age(tick_number)
       |> check_death(tick_number)
       |> record_memory(tick_number, {action, params})
 
@@ -286,7 +286,14 @@ defmodule Modus.Simulation.Agent do
 
   # --- Helpers ---
 
-  defp increment_age(agent), do: %{agent | age: agent.age + 1}
+  defp increment_age(agent, tick) do
+    # Age increases by 1 every 100 ticks (~10 seconds at 1x)
+    if rem(tick, 100) == 0 do
+      %{agent | age: agent.age + 1}
+    else
+      agent
+    end
+  end
 
   defp record_memory(agent, tick, event) do
     entry = {tick, event}

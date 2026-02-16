@@ -249,7 +249,7 @@ defmodule ModusWeb.UniverseLive do
 
     {:noreply, assign(socket,
       settings_provider: provider,
-      settings_model: params["model"] || model,
+      settings_model: if(provider_changed, do: model, else: params["model"] || model),
       settings_base_url: params["base_url"] || base_url,
       settings_api_key: api_key,
       settings_test_result: nil
@@ -262,11 +262,17 @@ defmodule ModusWeb.UniverseLive do
       _ -> :ollama
     end
 
+    api_key = if provider == :antigravity and (socket.assigns.settings_api_key == nil or socket.assigns.settings_api_key == "") do
+      System.get_env("ANTIGRAVITY_API_KEY") || ""
+    else
+      socket.assigns.settings_api_key
+    end
+
     Modus.Intelligence.LlmProvider.set_config(%{
       provider: provider,
       model: socket.assigns.settings_model,
       base_url: socket.assigns.settings_base_url,
-      api_key: socket.assigns.settings_api_key
+      api_key: api_key
     })
 
     {:noreply, assign(socket, settings_open: false)}
