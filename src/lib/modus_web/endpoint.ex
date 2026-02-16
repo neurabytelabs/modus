@@ -8,6 +8,9 @@ defmodule ModusWeb.Endpoint do
     same_site: "Lax"
   ]
 
+  socket "/socket", ModusWeb.UserSocket,
+    websocket: true
+
   socket "/live", Phoenix.LiveView.Socket,
     websocket: [connect_info: [session: @session_options]]
 

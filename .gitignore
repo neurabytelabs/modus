@@ -2,6 +2,7 @@
 src/_build/
 src/deps/
 src/.elixir_ls/
+src/assets/node_modules/
 
 # Data (local only)
 data/
