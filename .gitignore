@@ -1,0 +1,16 @@
+# Dependencies & Build
+src/_build/
+src/deps/
+src/.elixir_ls/
+
+# Data (local only)
+data/
+
+# Crash dumps
+erl_crash.dump
+
+# OS
+.DS_Store
+
+# Docker
+.docker/
