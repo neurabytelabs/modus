@@ -128,8 +128,11 @@ defmodule Modus.Intelligence.AntigravityClient do
 
   defp chat_completion(messages, config, opts \\ []) do
     if circuit_open?() do
-      Logger.debug("AntigravityClient circuit breaker OPEN — returning fallback")
-      {:error, :circuit_open}
+      Logger.debug("AntigravityClient circuit breaker OPEN — trying Gemini direct fallback")
+      case Modus.Intelligence.GeminiClient.chat(messages) do
+        {:ok, text} -> {:ok, text}
+        {:error, _} -> {:error, :circuit_open}
+      end
     else
       do_chat_completion(messages, config, opts)
     end
