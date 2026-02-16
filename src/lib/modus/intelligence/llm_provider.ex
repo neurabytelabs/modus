@@ -107,6 +107,8 @@ defmodule Modus.Intelligence.LlmProvider do
   def init(config) do
     Logger.info("LlmProvider started: provider=#{config.provider} model=#{config.model} url=#{config.base_url}")
     :persistent_term.put(:llm_config, config)
+    # Reset circuit breaker on startup
+    AntigravityClient.reset_circuit_breaker()
     {:ok, config}
   end
 

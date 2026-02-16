@@ -108,11 +108,20 @@ defmodule Modus.Intelligence.AntigravityClient do
   end
 
   def test_connection(config) do
+    # Bypass circuit breaker for manual test — and reset it on success
     messages = [%{role: "user", content: "Say 'ok' in one word."}]
-    case chat_completion(messages, config) do
-      {:ok, _text} -> :ok
+    case do_chat_completion(messages, config, []) do
+      {:ok, _text} ->
+        record_success()  # Reset circuit breaker on successful test
+        :ok
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  @doc "Reset circuit breaker manually."
+  def reset_circuit_breaker do
+    record_success()
+    :ok
   end
 
   # ── HTTP ────────────────────────────────────────────────
