@@ -183,6 +183,47 @@ defmodule Modus.Simulation.World do
     {:noreply, world}
   end
 
+  @doc "Spawn initial agents at random walkable positions."
+  @spec spawn_initial_agents(pid() | atom(), pos_integer()) :: [{:ok, pid()}]
+  def spawn_initial_agents(server \\ __MODULE__, count) when count >= 1 do
+    state = get_state(server)
+    {max_x, max_y} = state.grid_size
+
+    names = [
+      "Elif", "Kerem", "Ayşe", "Burak", "Zeynep", "Emre", "Deniz",
+      "Selin", "Cem", "Naz", "Barış", "Yıldız", "Kaan", "Melis",
+      "Tolga", "İrem", "Ozan", "Defne", "Alp", "Ece", "Doruk",
+      "Lale", "Mert", "Sude", "Onur", "Nehir", "Yiğit", "Ceren",
+      "Arda", "Pınar", "Berk", "Gizem", "Koray", "Damla", "Taylan",
+      "Burcu", "Serkan", "Ebru", "Umut", "Aslı", "Rüzgar", "Tuğçe",
+      "Volkan", "Hazal", "Sinan", "Beril", "Kaya", "Duygu", "Atlas", "Nil"
+    ]
+
+    occupations = [:farmer, :builder, :explorer, :healer, :trader]
+
+    1..count
+    |> Enum.map(fn i ->
+      pos = find_walkable_position(state.grid_table, max_x, max_y)
+      name = Enum.at(names, rem(i - 1, length(names)))
+      occ = Enum.random(occupations)
+      agent = Modus.Simulation.Agent.new(name, pos, occ)
+      Modus.Simulation.AgentSupervisor.spawn_agent(agent)
+    end)
+  end
+
+  defp find_walkable_position(table, max_x, max_y) do
+    x = :rand.uniform(max_x) - 1
+    y = :rand.uniform(max_y) - 1
+
+    case :ets.lookup(table, {x, y}) do
+      [{{^x, ^y}, %{terrain: terrain}}] when terrain in [:grass, :forest] ->
+        {x, y}
+
+      _ ->
+        find_walkable_position(table, max_x, max_y)
+    end
+  end
+
   # ── Terrain Generation ──────────────────────────────────────
 
   @doc false

@@ -46,6 +46,9 @@ defmodule Modus.Simulation.Agent do
           age: integer()
         }
 
+  @perception_radius 5
+  @max_memory 20
+
   @doc "Create a new agent with randomized personality."
   @spec new(String.t(), {integer(), integer()}, atom()) :: t()
   def new(name, position, occupation \\ :explorer) do
@@ -65,6 +68,43 @@ defmodule Modus.Simulation.Agent do
     }
   end
 
+  # --- Public API ---
+
+  @doc "Get the agent's current state by id."
+  @spec get_state(String.t()) :: t()
+  def get_state(agent_id) do
+    GenServer.call(via(agent_id), :get_state)
+  end
+
+  @doc "Send a tick to an agent process by id."
+  @spec tick(String.t(), non_neg_integer(), map()) :: :ok
+  def tick(agent_id, tick_number, context \\ %{}) do
+    GenServer.cast(via(agent_id), {:tick, tick_number, context})
+  end
+
+  @doc "Command an agent to move toward a target position."
+  @spec move_toward(String.t(), {integer(), integer()}) :: :ok
+  def move_toward(agent_id, target) do
+    GenServer.cast(via(agent_id), {:move_toward, target})
+  end
+
+  @doc "Find agents within perception radius of a position."
+  @spec nearby_agents({integer(), integer()}, integer()) :: [String.t()]
+  def nearby_agents(position, radius \\ @perception_radius) do
+    {px, py} = position
+
+    Modus.AgentRegistry
+    |> Registry.select([{{:"$1", :_, :_}, [], [:"$1"]}])
+    |> Enum.filter(fn agent_id ->
+      try do
+        state = GenServer.call(via(agent_id), :get_state)
+        state.alive? && in_radius?(state.position, {px, py}, radius)
+      catch
+        :exit, _ -> false
+      end
+    end)
+  end
+
   # --- GenServer ---
 
   def start_link(agent) do
@@ -82,13 +122,80 @@ defmodule Modus.Simulation.Agent do
   end
 
   @impl true
-  def handle_cast({:tick, _tick_number, _context}, agent) do
-    # Will be implemented in Week 1
-    agent = %{agent | age: agent.age + 1}
+  def handle_cast({:tick, tick_number, _context}, %{alive?: false} = agent) do
+    # Dead agents don't tick
+    _ = tick_number
     {:noreply, agent}
   end
 
+  def handle_cast({:tick, tick_number, _context}, agent) do
+    agent =
+      agent
+      |> decay_needs()
+      |> increment_age()
+      |> check_death()
+      |> record_memory(tick_number, :tick)
+
+    {:noreply, agent}
+  end
+
+  @impl true
+  def handle_cast({:move_toward, _target}, %{alive?: false} = agent) do
+    {:noreply, agent}
+  end
+
+  def handle_cast({:move_toward, {tx, ty}}, agent) do
+    {ax, ay} = agent.position
+
+    dx = clamp(tx - ax, -1, 1)
+    dy = clamp(ty - ay, -1, 1)
+
+    new_pos = {ax + dx, ay + dy}
+    {:noreply, %{agent | position: new_pos, current_action: :moving}}
+  end
+
+  # --- Need Decay ---
+
+  defp decay_needs(agent) do
+    needs = agent.needs
+
+    new_needs = %{
+      needs
+      | hunger: needs.hunger + 0.1,
+        social: needs.social - 0.05,
+        rest: needs.rest - 0.08
+    }
+
+    %{agent | needs: new_needs}
+  end
+
+  # --- Death Check ---
+
+  defp check_death(agent) do
+    cond do
+      agent.needs.hunger > 100.0 -> %{agent | alive?: false, current_action: :dead}
+      agent.needs.rest < 0.0 -> %{agent | alive?: false, current_action: :dead}
+      true -> agent
+    end
+  end
+
   # --- Helpers ---
+
+  defp increment_age(agent), do: %{agent | age: agent.age + 1}
+
+  defp record_memory(agent, tick, event) do
+    entry = {tick, event}
+    memory = Enum.take([entry | agent.memory], @max_memory)
+    %{agent | memory: memory}
+  end
+
+  defp in_radius?({x1, y1}, {x2, y2}, radius) do
+    abs(x1 - x2) <= radius and abs(y1 - y2) <= radius
+  end
+
+  defp clamp(val, min_val, max_val) do
+    val |> max(min_val) |> min(max_val)
+  end
 
   defp via(id), do: {:via, Registry, {Modus.AgentRegistry, id}}
 

@@ -3,10 +3,11 @@ defmodule Modus.Application do
   MODUS Application — Universe Simulation Platform
 
   Supervision tree:
-    Modus.Repo          → SQLite database
-    Phoenix.PubSub      → Event broadcasting
-    ModusWeb.Endpoint    → HTTP/WebSocket server
-    (Simulation modules will be added in Week 1)
+    Modus.Repo             → SQLite database
+    Phoenix.PubSub         → Event broadcasting
+    Modus.AgentRegistry    → Process registry for agents
+    Modus.AgentSupervisor  → DynamicSupervisor for agent processes
+    ModusWeb.Endpoint      → HTTP/WebSocket server
   """
   use Application
 
@@ -15,6 +16,8 @@ defmodule Modus.Application do
     children = [
       Modus.Repo,
       {Phoenix.PubSub, name: Modus.PubSub},
+      {Registry, keys: :unique, name: Modus.AgentRegistry},
+      Modus.Simulation.AgentSupervisor,
       ModusWeb.Endpoint
     ]
 
