@@ -386,16 +386,19 @@ defmodule Modus.Simulation.Agent do
       agent.conatus_energy <= 0.0 ->
         Modus.Simulation.EventLog.log(:death, tick, [agent.id], %{cause: "loss_of_will", name: agent.name})
         Modus.Persistence.AgentMemory.maybe_record_from_event(agent.id, agent.name, :death, tick, %{cause: "loss_of_will"})
+        Modus.Simulation.Lifecycle.record_death()
         %{agent | alive?: false, current_action: :dead}
 
       agent.needs.hunger > 100.0 ->
         Modus.Simulation.EventLog.log(:death, tick, [agent.id], %{cause: "starvation", name: agent.name})
         Modus.Persistence.AgentMemory.maybe_record_from_event(agent.id, agent.name, :death, tick, %{cause: "starvation"})
+        Modus.Simulation.Lifecycle.record_death()
         %{agent | alive?: false, current_action: :dead}
 
       agent.needs.rest < 0.0 ->
         Modus.Simulation.EventLog.log(:death, tick, [agent.id], %{cause: "exhaustion", name: agent.name})
         Modus.Persistence.AgentMemory.maybe_record_from_event(agent.id, agent.name, :death, tick, %{cause: "exhaustion"})
+        Modus.Simulation.Lifecycle.record_death()
         %{agent | alive?: false, current_action: :dead}
 
       true ->

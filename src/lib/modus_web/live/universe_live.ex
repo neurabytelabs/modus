@@ -55,7 +55,10 @@ defmodule ModusWeb.UniverseLive do
        mind_view_active: false,
        mobile_panel: nil,
        event_feed: [],
-       templates: @templates
+       templates: @templates,
+       trades_count: 0,
+       births_count: 0,
+       deaths_count: 0
      )}
   end
 
@@ -210,11 +213,18 @@ defmodule ModusWeb.UniverseLive do
   end
 
   def handle_event("tick_update", params, socket) do
+    # Refresh economy/lifecycle stats every tick update
+    eco = try do Modus.Simulation.Economy.stats() catch _, _ -> %{trades: 0} end
+    life = try do Modus.Simulation.Lifecycle.stats() catch _, _ -> %{births: 0, deaths: 0} end
+
     {:noreply,
      assign(socket,
        tick: params["tick"] || socket.assigns.tick,
        agent_count: params["agent_count"] || socket.assigns.agent_count,
-       time_of_day: params["time_of_day"] || socket.assigns.time_of_day
+       time_of_day: params["time_of_day"] || socket.assigns.time_of_day,
+       trades_count: eco.trades,
+       births_count: life.births,
+       deaths_count: life.deaths
      )}
   end
 
@@ -585,7 +595,7 @@ defmodule ModusWeb.UniverseLive do
           <span class="text-xl font-bold tracking-tighter">
             MODUS<span class="text-purple-400">_</span>
           </span>
-          <span class="text-xs text-slate-600 hidden sm:inline">v0.9.0 · Natura</span>
+          <span class="text-xs text-slate-600 hidden sm:inline">v1.0.0 · Substantia</span>
         </div>
 
         <div class="flex items-center gap-3 md:gap-6">
@@ -599,6 +609,11 @@ defmodule ModusWeb.UniverseLive do
             <div class="flex items-center gap-1.5">
               <span class="text-slate-600 hidden sm:inline">POP</span>
               <span class="text-purple-400 font-bold tabular-nums"><%= @agent_count %></span>
+            </div>
+            <div class="flex items-center gap-1.5 hidden sm:flex">
+              <span class="text-green-400 tabular-nums" title="Trades">🤝<%= @trades_count %></span>
+              <span class="text-cyan-400 tabular-nums" title="Births">👶<%= @births_count %></span>
+              <span class="text-red-400 tabular-nums" title="Deaths">💀<%= @deaths_count %></span>
             </div>
             <span class={"px-2 py-0.5 rounded text-[10px] uppercase tracking-wider #{status_color(@status)}"}>
               <%= @status %>

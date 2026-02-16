@@ -11,6 +11,8 @@ defmodule Modus.Application do
     Modus.Mind.Cerebro.SocialNetwork.init()
     Modus.Mind.Cerebro.Group.init()
     Modus.Mind.Cerebro.AgentConversation.init()
+    Modus.Simulation.Economy.init()
+    Modus.Simulation.Lifecycle.init()
 
     children = [
       Modus.Repo,
@@ -25,6 +27,7 @@ defmodule Modus.Application do
       Modus.Simulation.Ticker,
       Modus.Simulation.Environment,
       Modus.Simulation.ResourceSystem,
+      Modus.Simulation.WorldSystems,
       ModusWeb.Endpoint
     ]
 

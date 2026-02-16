@@ -6,6 +6,31 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v1.0.0 · **Substantia** — _"God is the immanent, not the transitive, cause of all things"_
+_16 Şubat 2026_
+
+Economy, lifecycle, and population balance — the simulation becomes self-sustaining.
+
+### New Modules
+- **Economy** (`simulation/economy.ex`) — Proximity-based barter system: resource transfer between agents, auto-trade for hungry agents near traders/farmers
+- **Lifecycle** (`simulation/lifecycle.ex`) — Birth/death dynamics: two joyful agents (joy + conatus > 0.7) nearby spawn new agent; population balanced at 8-15
+- **WorldSystems** (`simulation/world_systems.ex`) — Tick coordinator for economy and lifecycle systems
+
+### Improvements
+- **Top bar economy indicators** — Trades 🤝, Births 👶, Deaths 💀 counters in navigation bar
+- **Death tracking** — Agent deaths now recorded in lifecycle stats via ETS
+- **Population balance** — Birth only when pop < 15, forced birth when pop < 8, natural death via conatus
+
+### Architecture
+- ETS-based stats (no GenServer blocking for reads)
+- Economy tick every 10 ticks, lifecycle check every 50 ticks
+- WorldSystems GenServer subscribes to simulation PubSub
+
+### Tests
+- 6 new tests (Economy + Lifecycle)
+
+---
+
 ## v0.5.0 · **Libertas** — _"Freedom is the recognition of necessity"_
 _16 Şubat 2026_
 

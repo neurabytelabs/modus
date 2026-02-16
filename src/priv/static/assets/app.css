@@ -1489,6 +1489,10 @@ video {
   .sm\:inline {
     display: inline;
   }
+
+  .sm\:flex {
+    display: flex;
+  }
 }
 
 @media (min-width: 768px) {
