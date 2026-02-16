@@ -10,7 +10,7 @@ defmodule Modus.Intelligence.OllamaClient do
 
   @base_url "http://modus-llm:11434"
   @model "llama3.2:3b-instruct-q4_K_M"
-  @timeout 30_000
+  @timeout 90_000
 
   @doc """
   Ask the LLM to decide actions for a batch of agents.

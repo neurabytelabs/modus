@@ -205,22 +205,17 @@ defmodule ModusWeb.WorldChannel do
 
   @impl true
   def handle_info({:tick, tick_number}, socket) do
+    # Agents now self-tick via PubSub — we just query state
     agents = get_agent_list()
 
-    for agent <- agents do
-      Agent.tick(agent.id, tick_number, %{})
-    end
-
-    updated_agents = get_agent_list()
-
     if rem(tick_number, 10) == 0 do
-      trigger_agent_conversations(updated_agents, tick_number)
+      trigger_agent_conversations(agents, tick_number)
     end
 
     delta = %{
       tick: tick_number,
-      agent_count: length(updated_agents),
-      agents: updated_agents
+      agent_count: length(Enum.filter(agents, & &1.alive)),
+      agents: agents
     }
 
     push(socket, "delta", delta)
@@ -277,7 +272,7 @@ defmodule ModusWeb.WorldChannel do
     |> Registry.select([{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}])
     |> Enum.map(fn {_id, pid} ->
       try do
-        state = GenServer.call(pid, :get_state, 500)
+        state = GenServer.call(pid, :get_state, 2_000)
         {ax, ay} = state.position
 
         %{

@@ -27,7 +27,7 @@ defmodule Modus.Simulation.DecisionEngine do
   @type decision :: {atom(), map()}
 
   @llm_interval 100
-  @llm_batch_size 10
+  @llm_batch_size 3
 
   @doc """
   Decide an agent's next action given context.

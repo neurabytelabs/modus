@@ -129,8 +129,10 @@ defmodule Modus.Simulation.Ticker do
   def handle_info(:tick, s) do
     new_tick = s.tick + 1
 
-    # Broadcast tick event
+    # Broadcast tick event to channels/scheduler
     Phoenix.PubSub.broadcast(@pubsub, @topic, {:tick, new_tick})
+    # Broadcast to agents (self-tick)
+    Phoenix.PubSub.broadcast(@pubsub, "simulation:ticks", {:tick, new_tick})
 
     # Schedule next tick
     ref = schedule_tick(s.interval_ms)

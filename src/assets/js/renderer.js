@@ -284,9 +284,11 @@ export default class Renderer {
     const wx = (mx - this.worldContainer.x) / this.scale
     const wy = (my - this.worldContainer.y) / this.scale
 
-    // Find closest agent within click radius
+    console.log("[MODUS] Click at world:", wx.toFixed(1), wy.toFixed(1), "agents:", this.agentSprites.size)
+
+    // Find closest agent within click radius (more generous)
     let closest = null
-    let closestDist = AGENT_RADIUS * 3
+    let closestDist = TILE_SIZE * 1.5
 
     for (const [id, sprite] of this.agentSprites) {
       const dx = sprite.targetX - wx

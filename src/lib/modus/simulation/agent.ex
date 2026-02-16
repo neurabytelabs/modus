@@ -93,16 +93,15 @@ defmodule Modus.Simulation.Agent do
   def nearby_agents(position, radius \\ @perception_radius) do
     {px, py} = position
 
+    # Use Registry values (stored as {position, alive?}) to avoid GenServer calls
     Modus.AgentRegistry
-    |> Registry.select([{{:"$1", :_, :_}, [], [:"$1"]}])
-    |> Enum.filter(fn agent_id ->
-      try do
-        state = GenServer.call(via(agent_id), :get_state)
-        state.alive? && in_radius?(state.position, {px, py}, radius)
-      catch
-        :exit, _ -> false
-      end
+    |> Registry.select([{{:"$1", :_, :"$3"}, [], [{{:"$1", :"$3"}}]}])
+    |> Enum.filter(fn
+      {_id, {ax, ay, true}} ->
+        in_radius?({ax, ay}, {px, py}, radius)
+      _ -> false
     end)
+    |> Enum.map(fn {id, _} -> id end)
   end
 
   # --- GenServer ---
@@ -113,6 +112,7 @@ defmodule Modus.Simulation.Agent do
 
   @impl true
   def init(agent) do
+    Phoenix.PubSub.subscribe(Modus.PubSub, "simulation:ticks")
     {:ok, agent}
   end
 
@@ -122,6 +122,14 @@ defmodule Modus.Simulation.Agent do
   end
 
   @impl true
+  def handle_info({:tick, tick_number}, agent) do
+    # Self-tick via PubSub
+    GenServer.cast(self(), {:tick, tick_number, %{}})
+    {:noreply, agent}
+  end
+
+  def handle_info(_msg, agent), do: {:noreply, agent}
+
   def handle_cast({:tick, tick_number, _context}, %{alive?: false} = agent) do
     # Dead agents don't tick
     _ = tick_number
@@ -148,6 +156,10 @@ defmodule Modus.Simulation.Agent do
       |> increment_age()
       |> check_death()
       |> record_memory(tick_number, {action, params})
+
+    # Update registry with current position+alive for fast lookups
+    {px, py} = agent.position
+    Registry.update_value(Modus.AgentRegistry, agent.id, fn _ -> {px, py, agent.alive?} end)
 
     {:noreply, agent}
   end
@@ -238,9 +250,9 @@ defmodule Modus.Simulation.Agent do
 
     new_needs = %{
       needs
-      | hunger: needs.hunger + 0.1,
-        social: needs.social - 0.05,
-        rest: needs.rest - 0.08
+      | hunger: needs.hunger + 0.03,
+        social: needs.social - 0.015,
+        rest: needs.rest - 0.02
     }
 
     %{agent | needs: new_needs}
@@ -281,7 +293,7 @@ defmodule Modus.Simulation.Agent do
     val |> max(min_val) |> min(max_val)
   end
 
-  defp via(id), do: {:via, Registry, {Modus.AgentRegistry, id}}
+  defp via(id), do: {:via, Registry, {Modus.AgentRegistry, id, {0, 0, true}}}
 
   defp generate_id, do: :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
 

@@ -15,6 +15,10 @@ defmodule ModusWeb.UniverseLive do
 
   @impl true
   def mount(_params, _session, socket) do
+    if connected?(socket) do
+      Modus.Simulation.EventLog.subscribe()
+    end
+
     {:ok,
      assign(socket,
        page_title: "MODUS",
@@ -241,6 +245,35 @@ defmodule ModusWeb.UniverseLive do
     new_panel = if current == String.to_existing_atom(panel), do: nil, else: String.to_existing_atom(panel)
     {:noreply, assign(socket, mobile_panel: new_panel)}
   end
+
+  # ── PubSub Events ───────────────────────────────────────────
+
+  @impl true
+  def handle_info({:event, event}, socket) do
+    emoji = case event.type do
+      :death -> "💀"
+      :birth -> "👶"
+      :conversation -> "💬"
+      :conflict -> "⚔️"
+      :resource_gathered -> "🌾"
+      _ -> "⚡"
+    end
+
+    name = event.data[:name] || event.data["name"] || Enum.join(event.agents, ", ")
+    label = case event.type do
+      :death -> "#{name} died (#{event.data[:cause] || "unknown"})"
+      :birth -> "#{name} was born"
+      :conversation -> "#{name} had a conversation"
+      :conflict -> "Conflict!"
+      :resource_gathered -> "#{name} gathered resources"
+      _ -> to_string(event.type)
+    end
+
+    feed = [%{emoji: emoji, label: label, tick: event.tick} | Enum.take(socket.assigns.event_feed, 19)]
+    {:noreply, assign(socket, event_feed: feed)}
+  end
+
+  def handle_info(_msg, socket), do: {:noreply, socket}
 
   # ── Render ──────────────────────────────────────────────────
 
