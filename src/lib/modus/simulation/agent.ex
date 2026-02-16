@@ -32,7 +32,8 @@ defmodule Modus.Simulation.Agent do
     conatus_energy: 0.7,
     affect_state: :neutral,
     affect_history: [],
-    conatus_history: []
+    conatus_history: [],
+    last_reasoning: nil
   ]
 
   @type t :: %__MODULE__{
@@ -51,7 +52,8 @@ defmodule Modus.Simulation.Agent do
           conatus_energy: float(),
           affect_state: atom(),
           affect_history: list(),
-          conatus_history: list()
+          conatus_history: list(),
+          last_reasoning: String.t() | nil
         }
 
   @perception_radius 5

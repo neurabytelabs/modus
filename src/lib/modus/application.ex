@@ -6,6 +6,9 @@ defmodule Modus.Application do
 
   @impl true
   def start(_type, _args) do
+    # Initialize ETS-based affect memory before agents spawn
+    Modus.Mind.AffectMemory.init()
+
     children = [
       Modus.Repo,
       {Finch, name: Modus.Finch, pools: %{default: [size: 10, count: 3]}},

@@ -349,7 +349,8 @@ defmodule ModusWeb.WorldChannel do
           alive: state.alive?,
           conatus: state.conatus_score,
           conatus_energy: state.conatus_energy,
-          affect: state.affect_state |> to_string()
+          affect: state.affect_state |> to_string(),
+          reasoning: state.last_reasoning != nil
         }
       catch
         :exit, _ -> nil
@@ -474,7 +475,24 @@ defmodule ModusWeb.WorldChannel do
         events
         |> Enum.map(fn e ->
           %{id: e.id, type: to_string(e.type), tick: e.tick, data: e.data}
-        end)
+        end),
+      memories:
+        try do
+          Modus.Mind.AffectMemory.recall(state.id, limit: 10)
+          |> Enum.map(fn m ->
+            %{
+              tick: m.tick,
+              affect_from: to_string(m.affect_from),
+              affect_to: to_string(m.affect_to),
+              reason: m.reason,
+              salience: Float.round(m.salience, 2),
+              position: %{x: elem(m.position, 0), y: elem(m.position, 1)}
+            }
+          end)
+        catch
+          _, _ -> []
+        end,
+      last_reasoning: state.last_reasoning
     }
   end
 

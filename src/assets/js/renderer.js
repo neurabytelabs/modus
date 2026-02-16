@@ -132,6 +132,7 @@ export default class Renderer {
         sprite.targetX = px
         sprite.targetY = py
         sprite.action = agent.action || "idle"
+        sprite.reasoning = agent.reasoning || false
         // Update affect color
         const affect = agent.affect || "neutral"
         const affectColor = AFFECT_COLORS[affect]
@@ -223,6 +224,7 @@ export default class Renderer {
           baseColor: color,
           currentColor: color,
           action: agent.action || "idle",
+          reasoning: agent.reasoning || false,
           targetX: px,
           targetY: py,
         })
@@ -254,6 +256,7 @@ export default class Renderer {
       go_home_sleep: "😴", sleep: "😴",
       help_nearby: "🤝", flee: "🏃",
       idle: "",
+      reasoning: "💭",
     }
     this.app.ticker.add((ticker) => {
       const lerp = 0.15
@@ -278,9 +281,9 @@ export default class Renderer {
           sprite.gfx.scale.set(1)
         }
 
-        // Action emoji
+        // Action emoji (reasoning overrides)
         if (sprite.actionEmoji) {
-          const emoji = ACTION_EMOJIS[action] || ""
+          const emoji = sprite.reasoning ? "💭" : (ACTION_EMOJIS[action] || "")
           if (sprite.actionEmoji.text !== emoji) {
             sprite.actionEmoji.text = emoji
           }

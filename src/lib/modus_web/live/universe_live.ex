@@ -746,6 +746,41 @@ defmodule ModusWeb.UniverseLive do
                 <% end %>
               </div>
 
+              <%!-- Memories --%>
+              <%= if @selected_agent["memories"] && @selected_agent["memories"] != [] do %>
+                <div class="mb-4">
+                  <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">🧠 Memories</h3>
+                  <div class="space-y-1">
+                    <%= for m <- @selected_agent["memories"] do %>
+                      <div class="text-[10px] text-slate-400 flex items-center gap-1 border-l-2 border-purple-500/20 pl-2">
+                        <span>
+                          <%= case m["affect_to"] do
+                            "joy" -> "😊"
+                            "sadness" -> "😢"
+                            "desire" -> "🔥"
+                            "fear" -> "😨"
+                            _ -> "😐"
+                          end %>
+                        </span>
+                        <span class="text-slate-600">t:<%= m["tick"] %></span>
+                        <span class="truncate"><%= m["reason"] %></span>
+                        <span class="text-slate-600 ml-auto text-[9px]">s:<%= m["salience"] %></span>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+
+              <%!-- Last Reasoning --%>
+              <%= if @selected_agent["last_reasoning"] do %>
+                <div class="mb-4">
+                  <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">💭 Last Reasoning</h3>
+                  <div class="text-xs text-slate-300 bg-purple-500/10 border border-purple-500/20 rounded-lg p-2">
+                    <%= @selected_agent["last_reasoning"] %>
+                  </div>
+                </div>
+              <% end %>
+
               <%!-- Needs Bars --%>
               <div class="mb-4">
                 <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">Needs</h3>
