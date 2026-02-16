@@ -2,6 +2,7 @@ defmodule Modus.Mind.ContextBuilder do
   @moduledoc "Builds dynamic LLM system prompts enriched with real agent state"
 
   alias Modus.Mind.{Perception, Cerebro.SocialInsight}
+  alias Modus.Persistence.AgentMemory
 
   defp ensure_float(val) when is_float(val), do: val
   defp ensure_float(val) when is_integer(val), do: val / 1
@@ -33,6 +34,9 @@ defmodule Modus.Mind.ContextBuilder do
 
     ## Son Konuşmaların
     #{Modus.Mind.ConversationMemory.format_for_context(agent.id)}
+
+    ## Uzun Vadeli Hafızan
+    #{AgentMemory.format_for_context(agent.id)}
 
     Karakterinde kal. Kısa ve samimi ol. Gerçek konumunu ve durumunu biliyorsun — uydurma.
     """

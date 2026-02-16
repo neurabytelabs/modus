@@ -187,6 +187,14 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
       end
     end
 
+    # Record to persistent long-term memory if emotionally significant
+    if agent.affect_state in [:joy, :fear, :sadness, :desire] do
+      Modus.Persistence.AgentMemory.maybe_record_from_event(
+        agent.id, agent.name, :conversation, tick,
+        %{partner: partner.name, affect: agent.affect_state}
+      )
+    end
+
     # Form memories for both agents
     AffectMemory.form_memory(
       agent.id, tick, agent.position,

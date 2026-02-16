@@ -96,8 +96,13 @@ defmodule Modus.Persistence.WorldPersistence do
           agents_data = state["agents"] || []
           restored = restore_agents(agents_data)
 
-          Logger.info("World loaded: #{saved.name} (#{length(restored)} agents, tick #{state["tick"]})")
-          {:ok, %{id: saved.id, name: saved.name, agents: length(restored), tick: state["tick"] || 0}}
+          # Load persistent memories for restored agents
+          agent_ids = Enum.map(restored, & &1.id)
+          memories = Modus.Persistence.AgentMemory.load_bulk(agent_ids)
+          memory_count = memories |> Map.values() |> List.flatten() |> length()
+
+          Logger.info("World loaded: #{saved.name} (#{length(restored)} agents, #{memory_count} memories, tick #{state["tick"]})")
+          {:ok, %{id: saved.id, name: saved.name, agents: length(restored), memories: memory_count, tick: state["tick"] || 0}}
         catch
           kind, reason ->
             Logger.error("World load failed: #{inspect({kind, reason})}")
