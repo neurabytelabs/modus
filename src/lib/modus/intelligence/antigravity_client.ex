@@ -7,6 +7,38 @@ defmodule Modus.Intelligence.AntigravityClient do
   require Logger
 
   @timeout 90_000
+  @circuit_breaker_key :antigravity_circuit_breaker
+  @max_failures 3
+  @cooldown_ms 60_000
+
+  # ── Circuit Breaker (persistent_term) ───────────────────
+
+  defp circuit_open? do
+    case :persistent_term.get(@circuit_breaker_key, nil) do
+      {failures, last_failure_at} when failures >= @max_failures ->
+        elapsed = System.monotonic_time(:millisecond) - last_failure_at
+        elapsed < @cooldown_ms
+      _ -> false
+    end
+  end
+
+  defp record_failure do
+    now = System.monotonic_time(:millisecond)
+    case :persistent_term.get(@circuit_breaker_key, nil) do
+      {failures, first_at} when now - first_at < @cooldown_ms ->
+        :persistent_term.put(@circuit_breaker_key, {failures + 1, first_at})
+      _ ->
+        :persistent_term.put(@circuit_breaker_key, {1, now})
+    end
+  end
+
+  defp record_success do
+    :persistent_term.put(@circuit_breaker_key, {0, 0})
+  end
+
+  defp ensure_float(val) when is_float(val), do: val
+  defp ensure_float(val) when is_integer(val), do: val / 1
+  defp ensure_float(_), do: 0.0
 
   # ── Public API (called from LlmProvider) ────────────────
 
@@ -79,6 +111,15 @@ defmodule Modus.Intelligence.AntigravityClient do
   # ── HTTP ────────────────────────────────────────────────
 
   defp chat_completion(messages, config, opts \\ []) do
+    if circuit_open?() do
+      Logger.debug("AntigravityClient circuit breaker OPEN — returning fallback")
+      {:error, :circuit_open}
+    else
+      do_chat_completion(messages, config, opts)
+    end
+  end
+
+  defp do_chat_completion(messages, config, opts) do
     url = "#{config.base_url}/v1/chat/completions"
 
     body = %{
@@ -106,10 +147,13 @@ defmodule Modus.Intelligence.AntigravityClient do
            finch: Modus.Finch
          ) do
       {:ok, %{status: 200, body: %{"choices" => [%{"message" => %{"content" => content}} | _]}}} ->
+        record_success()
         {:ok, content}
       {:ok, %{status: status, body: body}} ->
+        record_failure()
         {:error, {:http, status, body}}
       {:error, err} ->
+        record_failure()
         {:error, err}
     end
   end
@@ -122,13 +166,13 @@ defmodule Modus.Intelligence.AntigravityClient do
       |> Enum.map(fn a ->
         """
         - id: "#{a.id}", name: "#{a.name}", pos: #{inspect(a.position)}, \
-        occupation: #{a.occupation}, hunger: #{Float.round(a.needs.hunger, 1)}, \
-        social: #{Float.round(a.needs.social, 1)}, rest: #{Float.round(a.needs.rest, 1)}, \
-        action: #{a.current_action}, personality: O=#{Float.round(a.personality.openness, 2)} \
-        C=#{Float.round(a.personality.conscientiousness, 2)} \
-        E=#{Float.round(a.personality.extraversion, 2)} \
-        A=#{Float.round(a.personality.agreeableness, 2)} \
-        N=#{Float.round(a.personality.neuroticism, 2)}
+        occupation: #{a.occupation}, hunger: #{Float.round(ensure_float(a.needs.hunger), 1)}, \
+        social: #{Float.round(ensure_float(a.needs.social), 1)}, rest: #{Float.round(ensure_float(a.needs.rest), 1)}, \
+        action: #{a.current_action}, personality: O=#{Float.round(ensure_float(a.personality.openness), 2)} \
+        C=#{Float.round(ensure_float(a.personality.conscientiousness), 2)} \
+        E=#{Float.round(ensure_float(a.personality.extraversion), 2)} \
+        A=#{Float.round(ensure_float(a.personality.agreeableness), 2)} \
+        N=#{Float.round(ensure_float(a.personality.neuroticism), 2)}
         """
       end)
       |> Enum.join()

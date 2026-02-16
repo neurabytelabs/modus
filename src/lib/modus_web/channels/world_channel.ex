@@ -11,6 +11,10 @@ defmodule ModusWeb.WorldChannel do
   alias Modus.Simulation.{World, Ticker, Agent, AgentSupervisor, EventLog}
   alias Modus.Intelligence.LlmProvider
 
+  defp ensure_float(val) when is_float(val), do: val
+  defp ensure_float(val) when is_integer(val), do: val / 1
+  defp ensure_float(_), do: 0.0
+
   @impl true
   def join("world:lobby", _payload, socket) do
     Ticker.subscribe()
@@ -357,7 +361,7 @@ defmodule ModusWeb.WorldChannel do
           reasoning: state.last_reasoning != nil,
           friends: (try do Modus.Mind.Cerebro.SocialNetwork.get_friends(state.id) |> Enum.take(3) catch _, _ -> [] end)
                    |> Enum.take(5)
-                   |> Enum.map(fn f -> %{id: f.id, strength: Float.round(f.strength, 2)} end),
+                   |> Enum.map(fn f -> %{id: f.id, strength: Float.round(ensure_float(f.strength), 2)} end),
           conversing_with: Map.get(state, :conversing_with)
         }
       catch
@@ -367,76 +371,7 @@ defmodule ModusWeb.WorldChannel do
     |> Enum.reject(&is_nil/1)
   end
 
-  defp trigger_agent_conversations(agents, tick) do
-    alive = Enum.filter(agents, & &1.alive)
-
-    pairs =
-      for a <- alive, b <- alive, a.id < b.id,
-          abs(a.x - b.x) <= 3 and abs(a.y - b.y) <= 3,
-          do: {a.id, b.id}
-
-    pairs
-    |> Enum.take_random(min(1, length(pairs)))
-    |> Enum.each(fn {id_a, id_b} ->
-      Task.start(fn ->
-        try do
-          state_a = Agent.get_state(id_a)
-          state_b = Agent.get_state(id_b)
-
-          case LlmProvider.conversation(state_a, state_b, %{tick: tick}) do
-            dialogue when is_list(dialogue) ->
-              EventLog.log(:conversation, tick, [id_a, id_b], %{
-                type: :agent_chat,
-                dialogue:
-                  Enum.map(dialogue, fn {speaker, line} ->
-                    %{speaker: speaker, line: line}
-                  end)
-              })
-
-              update_relationship(id_a, id_b, :acquaintance, 0.1)
-              update_relationship(id_b, id_a, :acquaintance, 0.1)
-
-            :fallback ->
-              fallback_lines = ["Merhaba!", "Nasılsın?", "Hava güzel bugün.", "Dikkat et!", "Birlikte çalışalım mı?"]
-              dialogue = [
-                {state_a.name, Enum.random(fallback_lines)},
-                {state_b.name, Enum.random(fallback_lines)}
-              ]
-
-              EventLog.log(:conversation, tick, [id_a, id_b], %{
-                type: :agent_chat,
-                dialogue:
-                  Enum.map(dialogue, fn {speaker, line} ->
-                    %{speaker: speaker, line: line}
-                  end)
-              })
-
-              update_relationship(id_a, id_b, :acquaintance, 0.1)
-              update_relationship(id_b, id_a, :acquaintance, 0.1)
-          end
-        catch
-          :exit, _ -> :ok
-        end
-      end)
-    end)
-  end
-
-  defp update_relationship(agent_id, other_id, type, delta) do
-    try do
-      state = Agent.get_state(agent_id)
-      {current_type, current_strength} = Map.get(state.relationships, other_id, {type, 0.0})
-      new_strength = min(current_strength + delta, 1.0)
-      new_type = if new_strength > 0.5, do: :friend, else: current_type
-      new_rels = Map.put(state.relationships, other_id, {new_type, new_strength})
-
-      GenServer.cast(
-        {:via, Registry, {Modus.AgentRegistry, agent_id}},
-        {:update_relationships, new_rels}
-      )
-    catch
-      :exit, _ -> :ok
-    end
-  end
+  # NOTE: trigger_agent_conversations removed — Cerebro AgentConversation handles all agent conversations now.
 
   defp build_agent_detail(state, events) do
     %{
@@ -448,17 +383,17 @@ defmodule ModusWeb.WorldChannel do
       conatus: state.conatus_score,
       position: %{x: elem(state.position, 0), y: elem(state.position, 1)},
       personality: %{
-        openness: Float.round(state.personality.openness, 2),
-        conscientiousness: Float.round(state.personality.conscientiousness, 2),
-        extraversion: Float.round(state.personality.extraversion, 2),
-        agreeableness: Float.round(state.personality.agreeableness, 2),
-        neuroticism: Float.round(state.personality.neuroticism, 2)
+        openness: Float.round(ensure_float(state.personality.openness), 2),
+        conscientiousness: Float.round(ensure_float(state.personality.conscientiousness), 2),
+        extraversion: Float.round(ensure_float(state.personality.extraversion), 2),
+        agreeableness: Float.round(ensure_float(state.personality.agreeableness), 2),
+        neuroticism: Float.round(ensure_float(state.personality.neuroticism), 2)
       },
       needs: %{
-        hunger: Float.round(state.needs.hunger, 1),
-        social: Float.round(state.needs.social, 1),
-        rest: Float.round(state.needs.rest, 1),
-        shelter: Float.round(state.needs.shelter, 1)
+        hunger: Float.round(ensure_float(state.needs.hunger), 1),
+        social: Float.round(ensure_float(state.needs.social), 1),
+        rest: Float.round(ensure_float(state.needs.rest), 1),
+        shelter: Float.round(ensure_float(state.needs.shelter), 1)
       },
       relationships:
         state.relationships
@@ -493,7 +428,7 @@ defmodule ModusWeb.WorldChannel do
               affect_from: to_string(m.affect_from),
               affect_to: to_string(m.affect_to),
               reason: m.reason,
-              salience: Float.round(m.salience, 2),
+              salience: Float.round(ensure_float(m.salience), 2),
               position: %{x: elem(m.position, 0), y: elem(m.position, 1)}
             }
           end)

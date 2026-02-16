@@ -866,11 +866,18 @@ defmodule ModusWeb.UniverseLive do
                       <div class="text-[10px] text-slate-400 border-l-2 border-cyan-500/20 pl-2">
                         <span class="text-slate-600">t:<%= event["tick"] %></span>
                         <%= if event["data"] && event["data"]["dialogue"] do %>
-                          <%= for line <- Enum.take(event["data"]["dialogue"] || [], 2) do %>
-                            <div class="text-slate-300 mt-0.5">
-                              <span class="text-cyan-400"><%= line["speaker"] %>:</span>
-                              <span class="truncate"><%= line["line"] %></span>
-                            </div>
+                          <%= cond do %>
+                            <% is_list(event["data"]["dialogue"]) -> %>
+                              <%= for line <- Enum.take(event["data"]["dialogue"], 2) do %>
+                                <div class="text-slate-300 mt-0.5">
+                                  <span class="text-cyan-400"><%= line["speaker"] %>:</span>
+                                  <span class="truncate"><%= line["line"] %></span>
+                                </div>
+                              <% end %>
+                            <% is_binary(event["data"]["dialogue"]) -> %>
+                              <div class="text-slate-300 mt-0.5 truncate"><%= String.slice(event["data"]["dialogue"], 0..120) %></div>
+                            <% true -> %>
+                              <span class="italic">Konuşma</span>
                           <% end %>
                         <% else %>
                           <span class="italic">Konuşma</span>

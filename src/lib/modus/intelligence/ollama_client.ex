@@ -8,6 +8,10 @@ defmodule Modus.Intelligence.OllamaClient do
 
   require Logger
 
+  defp ensure_float(val) when is_float(val), do: val
+  defp ensure_float(val) when is_integer(val), do: val / 1
+  defp ensure_float(_), do: 0.0
+
   @default_url "http://modus-llm:11434"
   @default_model "llama3.2:3b-instruct-q4_K_M"
   @timeout 90_000
@@ -107,13 +111,13 @@ defmodule Modus.Intelligence.OllamaClient do
       |> Enum.map(fn a ->
         """
         - id: "#{a.id}", name: "#{a.name}", pos: #{inspect(a.position)}, \
-        occupation: #{a.occupation}, hunger: #{Float.round(a.needs.hunger, 1)}, \
-        social: #{Float.round(a.needs.social, 1)}, rest: #{Float.round(a.needs.rest, 1)}, \
-        action: #{a.current_action}, personality: O=#{Float.round(a.personality.openness, 2)} \
-        C=#{Float.round(a.personality.conscientiousness, 2)} \
-        E=#{Float.round(a.personality.extraversion, 2)} \
-        A=#{Float.round(a.personality.agreeableness, 2)} \
-        N=#{Float.round(a.personality.neuroticism, 2)}
+        occupation: #{a.occupation}, hunger: #{Float.round(ensure_float(a.needs.hunger), 1)}, \
+        social: #{Float.round(ensure_float(a.needs.social), 1)}, rest: #{Float.round(ensure_float(a.needs.rest), 1)}, \
+        action: #{a.current_action}, personality: O=#{Float.round(ensure_float(a.personality.openness), 2)} \
+        C=#{Float.round(ensure_float(a.personality.conscientiousness), 2)} \
+        E=#{Float.round(ensure_float(a.personality.extraversion), 2)} \
+        A=#{Float.round(ensure_float(a.personality.agreeableness), 2)} \
+        N=#{Float.round(ensure_float(a.personality.neuroticism), 2)}
         """
       end)
       |> Enum.join()

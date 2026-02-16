@@ -4,6 +4,10 @@ defmodule Modus.Mind.ReasoningEngine do
   alias Modus.Mind.AffectMemory
   require Logger
 
+  defp ensure_float(val) when is_float(val), do: val
+  defp ensure_float(val) when is_integer(val), do: val / 1
+  defp ensure_float(_), do: 0.0
+
   @persistent_ticks 50
 
   def should_reason?(agent) do
@@ -36,9 +40,9 @@ defmodule Modus.Mind.ReasoningEngine do
   end
 
   def build_reasoning_prompt(agent, memories) do
-    personality_desc = "Openness: #{Float.round(agent.personality.openness, 2)}, " <>
-      "Extraversion: #{Float.round(agent.personality.extraversion, 2)}, " <>
-      "Neuroticism: #{Float.round(agent.personality.neuroticism, 2)}"
+    personality_desc = "Openness: #{Float.round(ensure_float(agent.personality.openness), 2)}, " <>
+      "Extraversion: #{Float.round(ensure_float(agent.personality.extraversion), 2)}, " <>
+      "Neuroticism: #{Float.round(ensure_float(agent.personality.neuroticism), 2)}"
 
     memory_lines = case memories do
       [] -> "No significant memories."
@@ -48,7 +52,7 @@ defmodule Modus.Mind.ReasoningEngine do
     """
     You are #{agent.name}, a #{agent.occupation} in a simulated world.
     Personality: #{personality_desc}
-    Current state: feeling #{agent.affect_state}, conatus energy #{Float.round(agent.conatus_energy, 2)}.
+    Current state: feeling #{agent.affect_state}, conatus energy #{Float.round(ensure_float(agent.conatus_energy), 2)}.
     Position: #{inspect(agent.position)}
 
     Recent emotional memories:

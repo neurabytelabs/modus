@@ -10,6 +10,13 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
   @cooldown_table :conversation_cooldowns
   @cooldown_ticks 50
   @max_concurrent 2
+  @error_backoff_key :convo_error_backoff
+  @error_backoff_ticks 200
+  @max_consecutive_errors 3
+
+  defp ensure_float(val) when is_float(val), do: val
+  defp ensure_float(val) when is_integer(val), do: val / 1
+  defp ensure_float(_), do: 0.0
 
   def init do
     if :ets.whereis(@cooldown_table) == :undefined do
@@ -23,9 +30,13 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
     :ok
   end
 
+  @doc "Check if a pair is on cooldown (public for world_channel dedup)."
+  def on_cooldown_public?(id1, id2, tick), do: on_cooldown?(id1, id2, tick)
+
   @doc "Check if conversation should happen and trigger it async."
   def maybe_converse(agent, nearby_agent_ids, tick) do
     cond do
+      in_error_backoff?(tick) -> :skipped
       agent.conatus_energy <= 0.3 -> :skipped
       nearby_agent_ids == [] -> :skipped
       agent.current_action not in [:talking, :exploring, :idle] -> :skipped
@@ -42,6 +53,25 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
           :skipped
         end
     end
+  end
+
+  defp in_error_backoff?(tick) do
+    case :persistent_term.get(@error_backoff_key, nil) do
+      {errors, backoff_since} when errors >= @max_consecutive_errors ->
+        tick - backoff_since < @error_backoff_ticks
+      _ -> false
+    end
+  end
+
+  defp record_convo_error(tick) do
+    case :persistent_term.get(@error_backoff_key, nil) do
+      {errors, since} -> :persistent_term.put(@error_backoff_key, {errors + 1, since || tick})
+      nil -> :persistent_term.put(@error_backoff_key, {1, tick})
+    end
+  end
+
+  defp record_convo_success do
+    :persistent_term.put(@error_backoff_key, {0, 0})
   end
 
   defp on_cooldown?(id1, id2, tick) do
@@ -78,8 +108,12 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
         end
 
         dialogue = case response do
-          {:ok, text} -> text
-          _ -> fallback_dialogue(agent.name, partner.name)
+          {:ok, text} ->
+            record_convo_success()
+            text
+          _ ->
+            record_convo_error(tick)
+            fallback_dialogue(agent.name, partner.name)
         end
 
         # Apply effects
@@ -115,8 +149,8 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
 
     """
     Sen #{agent1.name} (#{agent1.occupation}). \
-    Kişiliğin: dışadönüklük #{Float.round(agent1.personality.extraversion, 1)}, uyumluluk #{Float.round(agent1.personality.agreeableness, 1)}.
-    Şu an #{agent1.affect_state} hissediyorsun (enerji: #{Float.round(agent1.conatus_energy, 2)}).
+    Kişiliğin: dışadönüklük #{Float.round(ensure_float(agent1.personality.extraversion), 1)}, uyumluluk #{Float.round(ensure_float(agent1.personality.agreeableness), 1)}.
+    Şu an #{agent1.affect_state} hissediyorsun (enerji: #{Float.round(ensure_float(agent1.conatus_energy), 2)}).
     #{agent2.name} ile karşılaştın. O bir #{agent2.occupation}.
     #{rel_desc}
     #{if memories1 != "", do: "Hatıraların: #{memories1}", else: ""}
