@@ -6,6 +6,38 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v0.5.0 · **Libertas** — _"Freedom is the recognition of necessity"_
+_16 Şubat 2026_
+
+Agent Protocol Bridge — agents now perceive, understand, and act with real context.
+
+### New Modules
+- **Perception Engine** (`mind/perception.ex`) — Real-time agent perception snapshots (position, terrain, nearby agents with relationship data, needs, affect)
+- **Social Insight** (`mind/cerebro/social_insight.ex`) — Converts ETS social network into human-readable Turkish text for LLM context
+- **Intent Parser** (`protocol/intent_parser.ex`) — Keyword-based user message classification: chat, queries (location/status/relationships), commands (move/stop)
+- **Context Builder** (`mind/context_builder.ex`) — Dynamic LLM system prompt enrichment with real agent state, perception, social context
+- **Protocol Bridge** (`protocol/bridge.ex`) — Orchestrator: routes user messages through intent parsing → context enrichment → LLM/direct response
+
+### Improvements
+- **Chat now uses Protocol Bridge** — WorldChannel routes through Bridge.process/2 instead of direct LLM calls
+- **Location queries return real data** — "Neredesin?" returns actual coordinates and terrain
+- **Status queries return real state** — "Nasılsın?" returns real conatus energy and affect
+- **Movement commands work** — "Kuzeye git" actually moves the agent
+- **Enriched LLM prompts** — Agents know their real position, nearby agents, relationships, and terrain
+
+### Tests
+- 12 new tests (IntentParser, Perception, SocialInsight)
+- 128 total tests
+
+---
+
+## v0.4.0 · **Cerebro** — _"The mind is the idea of the body"_
+_16 Şubat 2026_
+
+Social intelligence: agents form relationships, converse, and remember spatial experiences.
+
+---
+
 ## v0.3.0 · **Affectus** — _"The body's power of action is increased or diminished"_
 _16 Şubat 2026_
 
