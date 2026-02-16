@@ -132,8 +132,12 @@ Hooks.WorldCanvas = {
       if (this.worldSocket) this.worldSocket.resetSimulation()
     })
     this.handleEvent("chat_to_agent", (data) => {
+      console.log("[MODUS] chat_to_agent received from LiveView:", data.agent_id, data.message)
       if (this.worldSocket) {
         this.worldSocket.chatAgent(data.agent_id, data.message)
+        console.log("[MODUS] chatAgent pushed to channel")
+      } else {
+        console.error("[MODUS] worldSocket not available for chat!")
       }
     })
     this.handleEvent("set_speed", (data) => {

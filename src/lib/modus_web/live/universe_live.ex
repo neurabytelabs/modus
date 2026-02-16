@@ -177,12 +177,15 @@ defmodule ModusWeb.UniverseLive do
   def handle_event("close_chat", _params, socket), do: {:noreply, assign(socket, chat_open: false)}
 
   def handle_event("send_chat", %{"message" => msg}, socket) when msg != "" do
+    require Logger
+    agent_id = socket.assigns.selected_agent["id"]
+    Logger.info("MODUS send_chat: agent_id=#{inspect(agent_id)} msg=#{inspect(msg)}")
     messages = socket.assigns.chat_messages ++ [%{role: "user", text: msg}]
     {:noreply,
      socket
      |> assign(chat_messages: messages, chat_loading: true)
      |> push_event("chat_to_agent", %{
-       agent_id: socket.assigns.selected_agent["id"],
+       agent_id: agent_id,
        message: msg
      })}
   end

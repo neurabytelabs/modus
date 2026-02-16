@@ -127,6 +127,8 @@ defmodule ModusWeb.WorldChannel do
   end
 
   def handle_in("chat_agent", %{"agent_id" => agent_id, "message" => message}, socket) do
+    require Logger
+    Logger.info("MODUS chat_agent received: agent_id=#{agent_id} message=#{inspect(message)}")
     channel_pid = self()
 
     Task.start(fn ->
@@ -146,10 +148,10 @@ defmodule ModusWeb.WorldChannel do
           agent_reply: reply
         })
 
+        Logger.info("MODUS chat_reply ready for #{agent_id}: #{String.slice(reply, 0..80)}")
         send(channel_pid, {:chat_reply, agent_id, reply})
       catch
         kind, reason ->
-          require Logger
           Logger.warning("Chat failed for #{agent_id}: #{inspect({kind, reason})}")
           send(channel_pid, {:chat_reply, agent_id, "*yawns and looks around* ...I'm not sure what to say right now."})
       end
@@ -287,6 +289,8 @@ defmodule ModusWeb.WorldChannel do
   end
 
   def handle_info({:chat_reply, agent_id, reply}, socket) do
+    require Logger
+    Logger.info("MODUS pushing chat_reply to client for #{agent_id}")
     push(socket, "chat_reply", %{agent_id: agent_id, reply: reply})
     {:noreply, socket}
   end

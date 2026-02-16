@@ -33,7 +33,9 @@ defmodule Modus.Simulation.Agent do
     affect_state: :neutral,
     affect_history: [],
     conatus_history: [],
-    last_reasoning: nil
+    last_reasoning: nil,
+    explore_target: nil,
+    explore_ticks: 0
   ]
 
   @type t :: %__MODULE__{
@@ -53,7 +55,9 @@ defmodule Modus.Simulation.Agent do
           affect_state: atom(),
           affect_history: list(),
           conatus_history: list(),
-          last_reasoning: String.t() | nil
+          last_reasoning: String.t() | nil,
+          explore_target: {integer(), integer()} | nil,
+          explore_ticks: non_neg_integer()
         }
 
   @perception_radius 5
@@ -162,6 +166,23 @@ defmodule Modus.Simulation.Agent do
 
     # Decide action via DecisionEngine
     {action, params} = Modus.Simulation.DecisionEngine.decide(agent, decision_context)
+
+    # Persist explore target for smoother movement (10-20 ticks per direction)
+    {action, params, agent} = case action do
+      :explore ->
+        if agent.explore_ticks > 0 and agent.explore_target != nil do
+          # Keep current explore target
+          {action, %{params | target: agent.explore_target}, %{agent | explore_ticks: agent.explore_ticks - 1}}
+        else
+          # Pick new target and persist it
+          target = params[:target] || params.target
+          ticks = Enum.random(10..20)
+          {action, params, %{agent | explore_target: target, explore_ticks: ticks}}
+        end
+      _ ->
+        # Non-explore action clears explore state
+        {action, params, %{agent | explore_target: nil, explore_ticks: 0}}
+    end
 
     params = Map.put(params, :tick, tick_number)
 
