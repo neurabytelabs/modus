@@ -566,7 +566,7 @@ defmodule ModusWeb.UniverseLive do
           <span class="text-xl font-bold tracking-tighter">
             MODUS<span class="text-purple-400">_</span>
           </span>
-          <span class="text-xs text-slate-600 hidden sm:inline">v0.2.0</span>
+          <span class="text-xs text-slate-600 hidden sm:inline">v0.3.0 · Affectus</span>
         </div>
 
         <div class="flex items-center gap-3 md:gap-6">
