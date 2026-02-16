@@ -13,6 +13,7 @@ export default class WorldSocket {
     this.onTick = opts.onTick || (() => {})
     this.onStatus = opts.onStatus || (() => {})
     this.onChatReply = opts.onChatReply || (() => {})
+    this.onAgentDetailUpdate = opts.onAgentDetailUpdate || (() => {})
     this.channel = null
     this.socket = null
   }
@@ -43,6 +44,10 @@ export default class WorldSocket {
 
     this.channel.on("chat_reply", (payload) => {
       this.onChatReply(payload)
+    })
+
+    this.channel.on("agent_detail_update", (payload) => {
+      this.onAgentDetailUpdate(payload)
     })
 
     this.channel
@@ -93,6 +98,54 @@ export default class WorldSocket {
       })
       .receive("error", (err) => {
         console.error("[MODUS] Agent detail error:", err)
+      })
+  }
+
+  saveWorld(name, callback) {
+    this.channel
+      .push("save_world", { name: name || "" })
+      .receive("ok", (resp) => {
+        console.log("[MODUS] World saved:", resp)
+        if (callback) callback(null, resp)
+      })
+      .receive("error", (err) => {
+        console.error("[MODUS] Save failed:", err)
+        if (callback) callback(err)
+      })
+  }
+
+  loadWorld(worldId, callback) {
+    this.channel
+      .push("load_world", { world_id: worldId })
+      .receive("ok", (resp) => {
+        console.log("[MODUS] World loaded:", resp)
+        if (callback) callback(null, resp)
+      })
+      .receive("error", (err) => {
+        console.error("[MODUS] Load failed:", err)
+        if (callback) callback(err)
+      })
+  }
+
+  listWorlds(callback) {
+    this.channel
+      .push("list_worlds", {})
+      .receive("ok", (resp) => {
+        if (callback) callback(null, resp.worlds || [])
+      })
+      .receive("error", (err) => {
+        if (callback) callback(err)
+      })
+  }
+
+  deleteWorld(worldId, callback) {
+    this.channel
+      .push("delete_world", { world_id: worldId })
+      .receive("ok", (resp) => {
+        if (callback) callback(null, resp)
+      })
+      .receive("error", (err) => {
+        if (callback) callback(err)
       })
   }
 

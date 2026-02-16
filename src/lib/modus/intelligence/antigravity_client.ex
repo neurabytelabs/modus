@@ -90,7 +90,6 @@ defmodule Modus.Intelligence.AntigravityClient do
            json: body,
            headers: headers,
            receive_timeout: @timeout,
-           connect_options: [timeout: 10_000],
            finch: Modus.Finch
          ) do
       {:ok, %{status: 200, body: %{"choices" => [%{"message" => %{"content" => content}} | _]}}} ->

@@ -15,7 +15,7 @@ defmodule ModusWeb.WorldChannel do
   def join("world:lobby", _payload, socket) do
     Ticker.subscribe()
     state = build_full_state()
-    {:ok, state, socket}
+    {:ok, state, assign(socket, :selected_agent_id, nil)}
   end
 
   # ── handle_in ───────────────────────────────────────────────
@@ -136,7 +136,8 @@ defmodule ModusWeb.WorldChannel do
         reply =
           case LlmProvider.chat(state, message) do
             {:ok, text} -> text
-            :fallback -> "..."
+            :fallback -> fallback_chat_reply(state)
+            _ -> fallback_chat_reply(state)
           end
 
         EventLog.log(:conversation, 0, [agent_id], %{
@@ -147,8 +148,10 @@ defmodule ModusWeb.WorldChannel do
 
         send(channel_pid, {:chat_reply, agent_id, reply})
       catch
-        :exit, _ ->
-          send(channel_pid, {:chat_reply, agent_id, "..."})
+        kind, reason ->
+          require Logger
+          Logger.warning("Chat failed for #{agent_id}: #{inspect({kind, reason})}")
+          send(channel_pid, {:chat_reply, agent_id, "*yawns and looks around* ...I'm not sure what to say right now."})
       end
     end)
 
@@ -189,46 +192,63 @@ defmodule ModusWeb.WorldChannel do
     end
   end
 
+  def handle_in("select_agent", %{"agent_id" => agent_id}, socket) do
+    {:reply, :ok, assign(socket, :selected_agent_id, agent_id)}
+  end
+
+  def handle_in("deselect_agent", _payload, socket) do
+    {:reply, :ok, assign(socket, :selected_agent_id, nil)}
+  end
+
+  def handle_in("save_world", %{"name" => name}, socket) do
+    case Modus.Persistence.WorldPersistence.save(name) do
+      {:ok, info} ->
+        {:reply, {:ok, info}, socket}
+      {:error, reason} ->
+        {:reply, {:error, %{reason: reason}}, socket}
+    end
+  end
+
+  def handle_in("save_world", _payload, socket) do
+    case Modus.Persistence.WorldPersistence.save() do
+      {:ok, info} ->
+        {:reply, {:ok, info}, socket}
+      {:error, reason} ->
+        {:reply, {:error, %{reason: reason}}, socket}
+    end
+  end
+
+  def handle_in("load_world", %{"world_id" => world_id}, socket) do
+    case Modus.Persistence.WorldPersistence.load(world_id) do
+      {:ok, info} ->
+        # Send full state to all clients
+        state = build_full_state()
+        broadcast!(socket, "full_state", state)
+        broadcast!(socket, "status_change", %{status: "paused"})
+        {:reply, {:ok, info}, socket}
+      {:error, reason} ->
+        {:reply, {:error, %{reason: reason}}, socket}
+    end
+  end
+
+  def handle_in("list_worlds", _payload, socket) do
+    worlds = Modus.Persistence.WorldPersistence.list()
+    {:reply, {:ok, %{worlds: worlds}}, socket}
+  end
+
+  def handle_in("delete_world", %{"world_id" => world_id}, socket) do
+    case Modus.Persistence.WorldPersistence.delete(world_id) do
+      {:ok, _} -> {:reply, {:ok, %{status: "deleted"}}, socket}
+      {:error, reason} -> {:reply, {:error, %{reason: reason}}, socket}
+    end
+  end
+
   def handle_in("get_agent_detail", %{"agent_id" => agent_id}, socket) do
     try do
       state = Agent.get_state(agent_id)
       events = EventLog.recent(agent_id: agent_id, limit: 5)
-
-      detail = %{
-        id: state.id,
-        name: state.name,
-        occupation: to_string(state.occupation),
-        alive: state.alive?,
-        age: state.age,
-        conatus: state.conatus_score,
-        position: %{x: elem(state.position, 0), y: elem(state.position, 1)},
-        personality: %{
-          openness: Float.round(state.personality.openness, 2),
-          conscientiousness: Float.round(state.personality.conscientiousness, 2),
-          extraversion: Float.round(state.personality.extraversion, 2),
-          agreeableness: Float.round(state.personality.agreeableness, 2),
-          neuroticism: Float.round(state.personality.neuroticism, 2)
-        },
-        needs: %{
-          hunger: Float.round(state.needs.hunger, 1),
-          social: Float.round(state.needs.social, 1),
-          rest: Float.round(state.needs.rest, 1),
-          shelter: Float.round(state.needs.shelter, 1)
-        },
-        relationships:
-          state.relationships
-          |> Enum.map(fn {id, {type, strength}} ->
-            %{agent_id: id, type: to_string(type), strength: strength}
-          end),
-        action: to_string(state.current_action),
-        recent_events:
-          events
-          |> Enum.map(fn e ->
-            %{id: e.id, type: to_string(e.type), tick: e.tick, data: e.data}
-          end)
-      }
-
-      {:reply, {:ok, detail}, socket}
+      detail = build_agent_detail(state, events)
+      {:reply, {:ok, detail}, assign(socket, :selected_agent_id, agent_id)}
     catch
       :exit, _ ->
         {:reply, {:error, %{reason: "agent_not_found"}}, socket}
@@ -242,11 +262,6 @@ defmodule ModusWeb.WorldChannel do
     # Agents now self-tick via PubSub — we just query state
     agents = get_agent_list()
 
-    if rem(tick_number, 10) == 0 do
-      # Disabled: causes GenServer deadlock via get_state calls
-      # trigger_agent_conversations(agents, tick_number)
-    end
-
     delta = %{
       tick: tick_number,
       agent_count: length(Enum.filter(agents, & &1.alive)),
@@ -254,6 +269,20 @@ defmodule ModusWeb.WorldChannel do
     }
 
     push(socket, "delta", delta)
+
+    # Push selected agent detail every 10 ticks for live panel update
+    selected_id = socket.assigns[:selected_agent_id]
+    if selected_id && rem(tick_number, 10) == 0 do
+      try do
+        state = Agent.get_state(selected_id)
+        events = EventLog.recent(agent_id: selected_id, limit: 5)
+        detail = build_agent_detail(state, events)
+        push(socket, "agent_detail_update", %{detail: detail})
+      catch
+        :exit, _ -> :ok
+      end
+    end
+
     {:noreply, socket}
   end
 
@@ -396,6 +425,53 @@ defmodule ModusWeb.WorldChannel do
     catch
       :exit, _ -> :ok
     end
+  end
+
+  defp build_agent_detail(state, events) do
+    %{
+      id: state.id,
+      name: state.name,
+      occupation: to_string(state.occupation),
+      alive: state.alive?,
+      age: state.age,
+      conatus: state.conatus_score,
+      position: %{x: elem(state.position, 0), y: elem(state.position, 1)},
+      personality: %{
+        openness: Float.round(state.personality.openness, 2),
+        conscientiousness: Float.round(state.personality.conscientiousness, 2),
+        extraversion: Float.round(state.personality.extraversion, 2),
+        agreeableness: Float.round(state.personality.agreeableness, 2),
+        neuroticism: Float.round(state.personality.neuroticism, 2)
+      },
+      needs: %{
+        hunger: Float.round(state.needs.hunger, 1),
+        social: Float.round(state.needs.social, 1),
+        rest: Float.round(state.needs.rest, 1),
+        shelter: Float.round(state.needs.shelter, 1)
+      },
+      relationships:
+        state.relationships
+        |> Enum.map(fn {id, {type, strength}} ->
+          %{agent_id: id, type: to_string(type), strength: strength}
+        end),
+      action: to_string(state.current_action),
+      recent_events:
+        events
+        |> Enum.map(fn e ->
+          %{id: e.id, type: to_string(e.type), tick: e.tick, data: e.data}
+        end)
+    }
+  end
+
+  defp fallback_chat_reply(agent_state) do
+    responses = [
+      "Hello! I'm #{agent_state.name}, a #{agent_state.occupation}. Nice to meet you!",
+      "*waves* I'm busy #{agent_state.current_action} right now, but it's good to see you.",
+      "Ah, a visitor! I'm #{agent_state.name}. The village is quite peaceful today.",
+      "*looks up from work* Oh! I didn't see you there. What brings you to these parts?",
+      "Greetings, friend. #{agent_state.name} at your service."
+    ]
+    Enum.random(responses)
   end
 
   defp ensure_world_running do

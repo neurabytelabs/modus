@@ -51,6 +51,10 @@ Hooks.WorldCanvas = {
             if (freshHook) {
               freshHook.selectedAgentId = detail.id
               freshHook.pushEvent("select_agent", { agent: detail })
+              // Notify channel to track selected agent for live updates
+              if (freshHook.worldSocket && freshHook.worldSocket.channel) {
+                freshHook.worldSocket.channel.push("select_agent", { agent_id: detail.id })
+              }
               console.log("[MODUS] pushEvent select_agent sent via hook")
             } else {
               console.error("[MODUS] No hook reference available")
@@ -109,6 +113,11 @@ Hooks.WorldCanvas = {
       onChatReply: (data) => {
         this.pushEvent("chat_response", { reply: data.reply })
       },
+      onAgentDetailUpdate: (data) => {
+        if (data.detail && this.selectedAgentId && data.detail.id === this.selectedAgentId) {
+          this.pushEvent("agent_detail_update", { detail: data.detail })
+        }
+      },
     })
     this.worldSocket.connect()
 
@@ -136,9 +145,18 @@ Hooks.WorldCanvas = {
     this.handleEvent("deselect_agent", () => {
       this.selectedAgentId = null
       if (this.rendererReady) this.renderer.selectAgent(null)
+      if (this.worldSocket && this.worldSocket.channel) {
+        this.worldSocket.channel.push("deselect_agent", {})
+      }
     })
     this.handleEvent("create_world", (data) => {
       if (this.worldSocket) this.worldSocket.createWorld(data.template, data.population, data.danger)
+    })
+    this.handleEvent("world_loaded", (_data) => {
+      // After load, the channel will push full_state which re-renders everything
+      console.log("[MODUS] World loaded, waiting for full_state broadcast")
+      this.selectedAgentId = null
+      if (this.rendererReady) this.renderer.selectAgent(null)
     })
   },
 

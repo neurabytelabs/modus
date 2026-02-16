@@ -43,6 +43,11 @@ defmodule ModusWeb.UniverseLive do
        settings_base_url: "http://modus-llm:11434",
        settings_api_key: "",
        settings_test_result: nil,
+       # Save/Load
+       save_load_open: false,
+       saved_worlds: [],
+       save_name: "",
+       save_load_status: nil,
        # UI
        mobile_panel: nil,
        event_feed: [],
@@ -160,7 +165,10 @@ defmodule ModusWeb.UniverseLive do
   end
 
   def handle_event("deselect_agent", _params, socket) do
-    {:noreply, assign(socket, selected_agent: nil, chat_open: false, chat_messages: [], mobile_panel: nil)}
+    {:noreply,
+     socket
+     |> assign(selected_agent: nil, chat_open: false, chat_messages: [], mobile_panel: nil)
+     |> push_event("deselect_agent", %{})}
   end
 
   def handle_event("open_chat", _params, socket), do: {:noreply, assign(socket, chat_open: true)}
@@ -284,6 +292,53 @@ defmodule ModusWeb.UniverseLive do
     end
 
     {:noreply, assign(socket, settings_test_result: result)}
+  end
+
+  # ── Save / Load ───────────────────────────────────────────────
+
+  def handle_event("open_save_load", _params, socket) do
+    worlds = Modus.Persistence.WorldPersistence.list()
+    {:noreply, assign(socket, save_load_open: true, saved_worlds: worlds, save_load_status: nil, save_name: "")}
+  end
+
+  def handle_event("close_save_load", _params, socket) do
+    {:noreply, assign(socket, save_load_open: false)}
+  end
+
+  def handle_event("set_save_name", %{"name" => name}, socket) do
+    {:noreply, assign(socket, save_name: name)}
+  end
+
+  def handle_event("do_save", _params, socket) do
+    name = if socket.assigns.save_name == "", do: nil, else: socket.assigns.save_name
+    case Modus.Persistence.WorldPersistence.save(name) do
+      {:ok, info} ->
+        worlds = Modus.Persistence.WorldPersistence.list()
+        {:noreply, assign(socket, saved_worlds: worlds, save_load_status: "✅ Saved: #{info.name}", save_name: "")}
+      {:error, reason} ->
+        {:noreply, assign(socket, save_load_status: "❌ #{reason}")}
+    end
+  end
+
+  def handle_event("do_load", %{"id" => id_str}, socket) do
+    {id, _} = Integer.parse(id_str)
+    case Modus.Persistence.WorldPersistence.load(id) do
+      {:ok, info} ->
+        Modus.Simulation.Ticker.run()
+        {:noreply,
+         socket
+         |> assign(save_load_open: false, save_load_status: nil, status: :running)
+         |> push_event("world_loaded", %{agents: info.agents, tick: info.tick})}
+      {:error, reason} ->
+        {:noreply, assign(socket, save_load_status: "❌ #{reason}")}
+    end
+  end
+
+  def handle_event("do_delete_save", %{"id" => id_str}, socket) do
+    {id, _} = Integer.parse(id_str)
+    Modus.Persistence.WorldPersistence.delete(id)
+    worlds = Modus.Persistence.WorldPersistence.list()
+    {:noreply, assign(socket, saved_worlds: worlds, save_load_status: "🗑️ Deleted")}
   end
 
   # ── Controls ────────────────────────────────────────────────
@@ -518,6 +573,11 @@ defmodule ModusWeb.UniverseLive do
             <% end %>
             <button phx-click="reset" class="ctrl-btn">↻</button>
           </div>
+
+          <%!-- Save/Load --%>
+          <button phx-click="open_save_load" class="ctrl-btn" title="Save / Load World">
+            💾
+          </button>
 
           <%!-- LLM indicator + Settings --%>
           <button phx-click="open_settings" class="ctrl-btn flex items-center gap-1.5" title="LLM Settings">
@@ -763,9 +823,63 @@ defmodule ModusWeb.UniverseLive do
         </div>
       <% end %>
 
+      <%!-- Save/Load Modal --%>
+      <%= if @save_load_open do %>
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div class="bg-[#0A0A0F] border border-white/10 rounded-xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl" phx-click-away="close_save_load">
+            <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
+              <span class="font-bold text-slate-100">💾 Save / Load World</span>
+              <button phx-click="close_save_load" class="text-slate-600 hover:text-slate-400">✕</button>
+            </div>
+            <div class="p-4 space-y-4 overflow-y-auto">
+              <%!-- Save Section --%>
+              <div>
+                <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">Save Current World</h3>
+                <div class="flex gap-2">
+                  <input type="text" name="name" value={@save_name} placeholder="Save name (optional)"
+                    phx-change="set_save_name" phx-debounce="300"
+                    class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-500/50" />
+                  <button phx-click="do_save" class="ctrl-btn ctrl-btn-primary px-4">💾 Save</button>
+                </div>
+              </div>
+
+              <%!-- Status --%>
+              <%= if @save_load_status do %>
+                <div class="text-sm px-3 py-2 rounded-lg bg-white/5 text-slate-300">
+                  <%= @save_load_status %>
+                </div>
+              <% end %>
+
+              <%!-- Load Section --%>
+              <div>
+                <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">Saved Worlds</h3>
+                <%= if @saved_worlds == [] do %>
+                  <p class="text-xs text-slate-600 italic">No saved worlds yet</p>
+                <% else %>
+                  <div class="space-y-2">
+                    <%= for world <- @saved_worlds do %>
+                      <div class="flex items-center gap-3 p-3 rounded-lg bg-white/3 border border-white/5 hover:border-white/10 transition-all">
+                        <div class="flex-1 min-w-0">
+                          <div class="text-sm font-medium text-slate-200 truncate"><%= world.name %></div>
+                          <div class="text-[10px] text-slate-500">
+                            🗺️ <%= world.template %> · 👥 <%= world.agents %> agents · ⏱️ tick <%= world.tick %>
+                          </div>
+                        </div>
+                        <button phx-click="do_load" phx-value-id={world.id} class="ctrl-btn ctrl-btn-primary text-[10px] px-3">▶ Load</button>
+                        <button phx-click="do_delete_save" phx-value-id={world.id} class="ctrl-btn text-[10px] px-2 text-red-400 hover:text-red-300">🗑️</button>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
       <%!-- Chat Modal --%>
       <%= if @chat_open && @selected_agent do %>
-        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" phx-click="close_chat">
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div class="bg-[#0A0A0F] border border-white/10 rounded-xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl" phx-click-away="close_chat">
             <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
               <div>
