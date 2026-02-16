@@ -19,10 +19,13 @@ defmodule Modus.Protocol.Bridge do
     case intent do
       {:chat, text} ->
         system_prompt = ContextBuilder.build_chat_prompt(agent, text)
-        case chat_with_context(agent, text, system_prompt) do
-          {:ok, reply} -> {:ok, reply}
+        result = case chat_with_context(agent, text, system_prompt) do
+          {:ok, reply} ->
+            Modus.Mind.ConversationMemory.record(agent_id, "user", [{agent.name, reply}], 0)
+            {:ok, reply}
           _ -> {:ok, fallback_reply(agent)}
         end
+        result
 
       {:query, :location} ->
         perception = Perception.snapshot(agent)
@@ -50,6 +53,15 @@ defmodule Modus.Protocol.Bridge do
 
       {:command, :stop} ->
         {:ok, "Durdum, dinleniyorum."}
+
+      {:multi, steps} ->
+        Modus.Protocol.CommandExecutor.execute_chain(agent_id, steps)
+        |> case do
+          {:ok, results} ->
+            summary = results |> Enum.map(fn {:ok, r} -> r; r -> inspect(r) end) |> Enum.join(" → ")
+            {:ok, summary}
+          err -> {:ok, "Komut zincirinde hata oluştu: #{inspect(err)}"}
+        end
 
       _ ->
         {:ok, fallback_reply(agent)}

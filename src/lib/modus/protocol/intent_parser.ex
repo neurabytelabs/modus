@@ -15,6 +15,9 @@ defmodule Modus.Protocol.IntentParser do
       Regex.match?(~r/(tanı|arkadaş|ilişki|friend|know)/i, text_lower) ->
         {:query, :relationships}
 
+      String.contains?(text_lower, [" ve ", " and ", " sonra ", " then "]) ->
+        {:multi, parse_multi(text)}
+
       (match = Regex.run(~r/(kuzey\w*|güney\w*|doğu\w*|batı\w*|north\w*|south\w*|east\w*|west\w*)\s*(git|yürü|go|move)|(git|yürü|go|move)\s+(kuzey\w*|güney\w*|doğu\w*|batı\w*|north\w*|south\w*|east\w*|west\w*)/i, text_lower)) != nil ->
         # Direction could be in capture 1 or capture 4
         dir_raw = Enum.find([Enum.at(match, 1), Enum.at(match, 4)], &(&1 != nil and &1 != ""))
@@ -27,6 +30,16 @@ defmodule Modus.Protocol.IntentParser do
       true ->
         {:chat, text}
     end
+  end
+
+  def parse_multi(text) do
+    text
+    |> String.split(~r/\s+(ve|and|sonra|then)\s+/i)
+    |> Enum.map(&parse/1)
+    |> Enum.reject(fn
+      {:multi, _} -> true
+      _ -> false
+    end)
   end
 
   defp parse_direction(dir) do

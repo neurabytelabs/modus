@@ -31,6 +31,9 @@ defmodule Modus.Mind.ContextBuilder do
     ## İlişkilerin
     #{social}
 
+    ## Son Konuşmaların
+    #{Modus.Mind.ConversationMemory.format_for_context(agent.id)}
+
     Karakterinde kal. Kısa ve samimi ol. Gerçek konumunu ve durumunu biliyorsun — uydurma.
     """
   end
