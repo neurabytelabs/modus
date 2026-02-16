@@ -32,8 +32,9 @@ defmodule Modus.Intelligence.LlmScheduler do
 
   def handle_info({:tick, tick}, state) do
     cond do
-      rem(tick, @conversation_interval) == 0 and tick > 0 ->
-        {:noreply, %{state | busy: true} |> spawn_conversations(tick)}
+      # Conversations disabled: Agent.get_state causes GenServer deadlocks
+      # rem(tick, @conversation_interval) == 0 and tick > 0 ->
+      #   {:noreply, %{state | busy: true} |> spawn_conversations(tick)}
 
       rem(tick, @batch_interval) == 0 and tick > 0 ->
         {:noreply, %{state | busy: true} |> spawn_batch(tick)}

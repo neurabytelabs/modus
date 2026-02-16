@@ -243,7 +243,8 @@ defmodule ModusWeb.WorldChannel do
     agents = get_agent_list()
 
     if rem(tick_number, 10) == 0 do
-      trigger_agent_conversations(agents, tick_number)
+      # Disabled: causes GenServer deadlock via get_state calls
+      # trigger_agent_conversations(agents, tick_number)
     end
 
     delta = %{
