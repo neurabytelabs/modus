@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>MODUS v0.4.0 Cerebro Plan</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#050508;color:#e2e8f0;font-family:'JetBrains Mono','Fira Code',monospace;padding:28px 36px}
+.c{max-width:940px;margin:0 auto}
+
+.header{text-align:center;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.06)}
+.logo{font-size:30px;font-weight:900}
+.logo span{background:linear-gradient(135deg,#a855f7,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo .k{color:#a855f7;animation:b 1s infinite}@keyframes b{0%,100%{opacity:1}50%{opacity:0}}
+.ver{display:inline-block;margin-top:4px;padding:3px 12px;border-radius:16px;background:linear-gradient(135deg,rgba(6,182,212,0.15),rgba(168,85,247,0.15));border:1px solid rgba(6,182,212,0.3);font-size:12px;font-weight:bold}
+.ver em{color:#06b6d4;font-style:normal}
+.sub{color:#475569;font-size:9px;letter-spacing:3px;text-transform:uppercase;margin-top:4px}
+
+/* Hero Visual — CSS Mind Map */
+.hero{position:relative;height:280px;margin-bottom:20px;border-radius:12px;border:1px solid rgba(168,85,247,0.12);overflow:hidden;background:radial-gradient(ellipse at center,rgba(168,85,247,0.06) 0%,transparent 70%)}
+.hero-core{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,rgba(6,182,212,0.6),transparent 70%);box-shadow:0 0 50px rgba(6,182,212,0.3);animation:pulse 3s ease-in-out infinite;display:flex;align-items:center;justify-content:center;flex-direction:column}
+.hero-core span{font-size:8px;letter-spacing:2px;color:#06b6d4;font-weight:bold}
+.hero-core .brain{font-size:28px}
+@keyframes pulse{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.06)}}
+
+.hero-node{position:absolute;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:7px;letter-spacing:1px;font-weight:bold}
+.hero-node .em{font-size:18px;margin-bottom:2px}
+.n-joy{top:30px;left:50%;transform:translateX(-50%);background:radial-gradient(circle,rgba(251,191,36,0.4),transparent);box-shadow:0 0 25px rgba(251,191,36,0.2);color:#fbbf24}
+.n-sad{bottom:30px;left:25%;background:radial-gradient(circle,rgba(96,165,250,0.4),transparent);box-shadow:0 0 25px rgba(96,165,250,0.2);color:#60a5fa}
+.n-des{top:50%;right:60px;transform:translateY(-50%);background:radial-gradient(circle,rgba(74,222,128,0.4),transparent);box-shadow:0 0 25px rgba(74,222,128,0.2);color:#4ade80}
+.n-fear{bottom:30px;right:25%;background:radial-gradient(circle,rgba(239,68,68,0.4),transparent);box-shadow:0 0 25px rgba(239,68,68,0.2);color:#ef4444}
+.n-neut{top:50%;left:60px;transform:translateY(-50%);background:radial-gradient(circle,rgba(100,116,139,0.3),transparent);box-shadow:0 0 20px rgba(100,116,139,0.15);color:#94a3b8}
+svg.lines{position:absolute;inset:0;z-index:0}
+svg.lines line{stroke-width:1;opacity:0.2}
+
+.hero-label{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:8px;color:#334155;letter-spacing:3px}
+
+/* RUNE Validation */
+.rune{display:flex;justify-content:center;gap:16px;margin-bottom:18px;padding:10px;background:rgba(6,182,212,0.04);border:1px solid rgba(6,182,212,0.12);border-radius:10px}
+.ri{text-align:center}.ri-n{font-size:7px;letter-spacing:2px;color:#64748b;text-transform:uppercase}.ri-v{font-size:11px;font-weight:bold;margin-top:2px}
+
+.section{margin-bottom:18px}
+.st{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#64748b;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.st::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.06)}
+
+/* 3 Feature Pillars */
+.pillars{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px}
+.pillar{padding:16px;border-radius:12px;border:1px solid;position:relative;overflow:hidden}
+.pillar::before{content:'';position:absolute;top:0;right:0;width:60px;height:60px;border-radius:50%;opacity:0.05;filter:blur(20px)}
+.p-cyan{border-color:rgba(6,182,212,0.25);background:rgba(6,182,212,0.04)}.p-cyan::before{background:#06b6d4}
+.p-purple{border-color:rgba(168,85,247,0.25);background:rgba(168,85,247,0.04)}.p-purple::before{background:#a855f7}
+.p-gold{border-color:rgba(251,191,36,0.25);background:rgba(251,191,36,0.04)}.p-gold::before{background:#fbbf24}
+.p-icon{font-size:24px;margin-bottom:8px}
+.p-title{font-size:13px;font-weight:bold;margin-bottom:4px}
+.p-desc{font-size:9px;color:#94a3b8;line-height:1.5}
+.p-tasks{margin-top:8px;font-size:8px;color:#64748b}
+.p-tasks div{padding:2px 0;border-top:1px solid rgba(255,255,255,0.03)}
+.p-est{font-size:8px;color:#475569;margin-top:6px;letter-spacing:1px}
+
+/* Timeline */
+.tl{display:flex;gap:6px;align-items:center;margin-bottom:16px;padding:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:8px;overflow-x:auto}
+.tl-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}
+.tl-line{flex:1;height:2px;min-width:20px}
+.tl-done{background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.4);color:#4ade80}
+.tl-active{background:rgba(251,191,36,0.2);border:1px solid rgba(251,191,36,0.4);color:#fbbf24;box-shadow:0 0 8px rgba(251,191,36,0.3)}
+.tl-next{background:rgba(6,182,212,0.15);border:1px solid rgba(6,182,212,0.3);color:#06b6d4}
+.tl-future{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);color:#475569}
+.tl-line-done{background:linear-gradient(90deg,#4ade80,#4ade80)}
+.tl-line-active{background:linear-gradient(90deg,#4ade80,#fbbf24)}
+.tl-line-next{background:linear-gradient(90deg,#fbbf24,#06b6d4)}
+.tl-line-future{background:linear-gradient(90deg,#06b6d4,#334155)}
+.tl-label{font-size:7px;color:#64748b;text-align:center;margin-top:2px;white-space:nowrap}
+
+/* Magic Moment */
+.magic{padding:14px;border-radius:10px;background:linear-gradient(135deg,rgba(6,182,212,0.06),rgba(168,85,247,0.06));border:1px solid rgba(6,182,212,0.15);text-align:center}
+.magic-t{font-size:9px;letter-spacing:2px;color:#06b6d4;text-transform:uppercase;margin-bottom:4px}
+.magic-p{font-size:10px;color:#94a3b8;line-height:1.6}
+.magic-p em{color:#06b6d4;font-style:normal;font-weight:bold}
+
+.footer{text-align:center;margin-top:16px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.04)}
+.fq{color:#334155;font-size:9px;font-style:italic}
+.fb{color:#1e293b;font-size:8px;letter-spacing:3px;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="c">
+  <div class="header">
+    <div class="logo"><span>MODUS</span><span class="k">_</span></div>
+    <div><span class="ver">v0.4.0 · <em>Cerebro</em></span></div>
+    <div class="sub">"The more we understand individual things, the more we understand God"</div>
+  </div>
+
+  <!-- Hero: Mind Map Visual -->
+  <div class="hero">
+    <svg class="lines" viewBox="0 0 940 280">
+      <line x1="470" y1="140" x2="470" y2="55" stroke="#fbbf24"/>
+      <line x1="470" y1="140" x2="235" y2="225" stroke="#60a5fa"/>
+      <line x1="470" y1="140" x2="855" y2="140" stroke="#4ade80"/>
+      <line x1="470" y1="140" x2="705" y2="225" stroke="#ef4444"/>
+      <line x1="470" y1="140" x2="85" y2="140" stroke="#94a3b8"/>
+      <!-- Cross connections -->
+      <line x1="470" y1="55" x2="855" y2="140" stroke="#a855f7" opacity="0.1"/>
+      <line x1="85" y1="140" x2="235" y2="225" stroke="#a855f7" opacity="0.1"/>
+      <line x1="705" y1="225" x2="855" y2="140" stroke="#a855f7" opacity="0.08"/>
+    </svg>
+    <div class="hero-core"><span class="brain">🧠</span><span>CEREBRO</span></div>
+    <div class="hero-node n-joy"><span class="em">😊</span>JOY</div>
+    <div class="hero-node n-sad"><span class="em">😢</span>SADNESS</div>
+    <div class="hero-node n-des"><span class="em">🔥</span>DESIRE</div>
+    <div class="hero-node n-fear"><span class="em">😨</span>FEAR</div>
+    <div class="hero-node n-neut"><span class="em">😐</span>NEUTRAL</div>
+    <div class="hero-label">SPINOZA MIND ENGINE · CEREBRO VISUALIZATION</div>
+  </div>
+
+  <!-- RUNE Validation -->
+  <div class="rune">
+    <div class="ri"><div class="ri-n">🔥 Conatus</div><div class="ri-v" style="color:#4ade80">0.91</div></div>
+    <div class="ri"><div class="ri-n">🧠 Ratio</div><div class="ri-v" style="color:#06b6d4">0.87</div></div>
+    <div class="ri"><div class="ri-n">😊 Laetitia</div><div class="ri-v" style="color:#fbbf24">0.89</div></div>
+    <div class="ri"><div class="ri-n">🌿 Natura</div><div class="ri-v" style="color:#a855f7">0.88</div></div>
+    <div class="ri" style="border-left:1px solid rgba(255,255,255,0.08);padding-left:16px"><div class="ri-n">Overall</div><div class="ri-v" style="color:#e2e8f0">0.89 · A</div></div>
+  </div>
+
+  <!-- Version Timeline -->
+  <div class="tl">
+    <div><div class="tl-dot tl-done">✓</div><div class="tl-label">v0.1 Genesis</div></div>
+    <div class="tl-line tl-line-done"></div>
+    <div><div class="tl-dot tl-done">✓</div><div class="tl-label">v0.2 Conatus</div></div>
+    <div class="tl-line tl-line-active"></div>
+    <div><div class="tl-dot tl-done">✓</div><div class="tl-label">v0.3 Affectus</div></div>
+    <div class="tl-line tl-line-next"></div>
+    <div><div class="tl-dot tl-next">→</div><div class="tl-label">v0.4 Cerebro</div></div>
+    <div class="tl-line tl-line-future"></div>
+    <div><div class="tl-dot tl-future">○</div><div class="tl-label">v0.5 Libertas</div></div>
+  </div>
+
+  <!-- 3 Feature Pillars -->
+  <div class="section">
+    <div class="st">3 Sütun — Cerebro Release</div>
+    <div class="pillars">
+      <div class="pillar p-cyan">
+        <div class="p-icon">👁️</div>
+        <div class="p-title">Cerebro Mind View</div>
+        <div class="p-desc">Agent'ın iç dünyasını görselleştiren panel. Affect node'ları nabız atar, conatus enerji olarak akar, anılar yıldız takımı gibi solar.</div>
+        <div class="p-tasks">
+          <div>📊 Affect graph (canlı animasyonlu)</div>
+          <div>⚡ Conatus akış çizgisi</div>
+          <div>✨ Memory constellation (fade efekti)</div>
+          <div>🧠 Reasoning log panel</div>
+        </div>
+        <div class="p-est">~2.5 saat · UI/Canvas</div>
+      </div>
+      <div class="pillar p-purple">
+        <div class="p-icon">💬</div>
+        <div class="p-title">Agent Conversations</div>
+        <div class="p-desc">İki agent karşılaştığında LLM reasoning engine'leri diyaloğa girer. Konuşma her iki agent'ın affect'ini etkiler ve ortak anılar oluşturur.</div>
+        <div class="p-tasks">
+          <div>🤝 Proximity-triggered dialogue</div>
+          <div>🎭 Mutual affect influence</div>
+          <div>📝 Shared memory formation</div>
+          <div>💭 Speech bubbles on map</div>
+        </div>
+        <div class="p-est">~2 saat · LLM + Logic</div>
+      </div>
+      <div class="pillar p-gold">
+        <div class="p-icon">🗺️</div>
+        <div class="p-title">Memory Navigation</div>
+        <div class="p-desc">Agent'lar mutlu anıları olan konumlara yönelir, korku anılarından kaçınır. Zamanla bölgesel davranış ve topluluk oluşumu ortaya çıkar.</div>
+        <div class="p-tasks">
+          <div>🟡 Joy memories → attraction</div>
+          <div>🔴 Fear memories → avoidance</div>
+          <div>🏘️ Emergent territories</div>
+          <div>🗺️ Memory heatmap overlay</div>
+        </div>
+        <div class="p-est">~1.5 saat · Behavior + Render</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Magic Moment -->
+  <div class="magic">
+    <div class="magic-t">🎯 Cerebro Demo Anı</div>
+    <div class="magic-p">
+      Kullanıcı iki yabancı agent'ı izler → karşılaşırlar → <em>konuşurlar</em> →<br>
+      her ikisi de <em>neutral → joy</em>'a geçer → renkleri <em>gold</em> olur →<br>
+      ortak bir <em>mutlu anı</em> oluşur → gelecek tick'lerde <em>birbirlerini ararlar</em><br>
+      Cerebro panelinde: <em>"Anlayış, eylem gücünü artırır"</em>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="fq">"Quo magis res singulares intelligimus, eo magis Deum intelligimus"</div>
+    <div class="fb">RUNE ENHANCED · NEURABYTE LABS · 2026</div>
+  </div>
+</div>
+</body>
+</html>
