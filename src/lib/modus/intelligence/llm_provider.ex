@@ -13,12 +13,32 @@ defmodule Modus.Intelligence.LlmProvider do
 
   alias Modus.Intelligence.{OllamaClient, AntigravityClient}
 
+  # Default config reads from env — prefers Antigravity if configured
   @default_config %{
     provider: :ollama,
     model: "llama3.2:3b-instruct-q4_K_M",
     base_url: "http://modus-llm:11434",
     api_key: nil
   }
+
+  defp init_config do
+    antigravity_key = System.get_env("ANTIGRAVITY_API_KEY")
+    if antigravity_key && antigravity_key != "" do
+      %{
+        provider: :antigravity,
+        model: System.get_env("ANTIGRAVITY_MODEL") || "gemini-3-flash",
+        base_url: System.get_env("ANTIGRAVITY_URL") || "http://host.docker.internal:8045",
+        api_key: antigravity_key
+      }
+    else
+      %{
+        provider: :ollama,
+        model: System.get_env("OLLAMA_MODEL") || "llama3.2:3b-instruct-q4_K_M",
+        base_url: System.get_env("OLLAMA_URL") || "http://modus-llm:11434",
+        api_key: nil
+      }
+    end
+  end
 
   @doc "Available models for each provider (shown in UI)."
   def available_models do
@@ -39,7 +59,7 @@ defmodule Modus.Intelligence.LlmProvider do
   # ── Public API ──────────────────────────────────────────
 
   def start_link(_opts) do
-    GenServer.start_link(__MODULE__, @default_config, name: __MODULE__)
+    GenServer.start_link(__MODULE__, init_config(), name: __MODULE__)
   end
 
   @doc "Get current LLM config."
@@ -73,7 +93,10 @@ defmodule Modus.Intelligence.LlmProvider do
   # ── GenServer ───────────────────────────────────────────
 
   @impl true
-  def init(config), do: {:ok, config}
+  def init(config) do
+    Logger.info("LlmProvider started: provider=#{config.provider} model=#{config.model} url=#{config.base_url}")
+    {:ok, config}
+  end
 
   @impl true
   def handle_call(:get_config, _from, config) do
