@@ -195,7 +195,12 @@ defmodule ModusWeb.UniverseLive do
   end
 
   def handle_event("agent_detail_update", %{"detail" => detail}, socket) do
-    {:noreply, assign(socket, selected_agent: detail)}
+    # Don't update selected_agent while chat modal is open — it causes form re-render and input loss
+    if socket.assigns.chat_open do
+      {:noreply, socket}
+    else
+      {:noreply, assign(socket, selected_agent: detail)}
+    end
   end
 
   def handle_event("tick_update", params, socket) do
@@ -951,9 +956,9 @@ defmodule ModusWeb.UniverseLive do
                 </div>
               <% end %>
             </div>
-            <form phx-submit="send_chat" class="p-3 border-t border-white/5 shrink-0">
+            <form phx-submit="send_chat" id="chat-form" class="p-3 border-t border-white/5 shrink-0">
               <div class="flex gap-2">
-                <input type="text" name="message" placeholder={"Talk to #{@selected_agent["name"]}..."} autocomplete="off"
+                <input type="text" name="message" id="chat-input" placeholder={"Talk to #{@selected_agent["name"]}..."} autocomplete="off"
                   class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-500/50" />
                 <button type="submit" class="ctrl-btn ctrl-btn-primary px-4">Send</button>
               </div>
