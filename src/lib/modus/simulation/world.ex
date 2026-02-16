@@ -22,7 +22,7 @@ defmodule Modus.Simulation.World do
   use GenServer
 
   @default_size {50, 50}
-  @terrain_types [:grass, :water, :forest, :mountain]
+  # Terrain types: :grass, :water, :forest, :mountain
 
   defstruct [
     :id,
