@@ -322,7 +322,22 @@ defmodule ModusWeb.WorldChannel do
               update_relationship(id_b, id_a, :acquaintance, 0.1)
 
             :fallback ->
-              :ok
+              fallback_lines = ["Merhaba!", "Nasılsın?", "Hava güzel bugün.", "Dikkat et!", "Birlikte çalışalım mı?"]
+              dialogue = [
+                {state_a.name, Enum.random(fallback_lines)},
+                {state_b.name, Enum.random(fallback_lines)}
+              ]
+
+              EventLog.log(:conversation, tick, [id_a, id_b], %{
+                type: :agent_chat,
+                dialogue:
+                  Enum.map(dialogue, fn {speaker, line} ->
+                    %{speaker: speaker, line: line}
+                  end)
+              })
+
+              update_relationship(id_a, id_b, :acquaintance, 0.1)
+              update_relationship(id_b, id_a, :acquaintance, 0.1)
           end
         catch
           :exit, _ -> :ok

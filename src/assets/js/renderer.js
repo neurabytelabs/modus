@@ -284,16 +284,28 @@ export default class Renderer {
     const wx = (mx - this.worldContainer.x) / this.scale
     const wy = (my - this.worldContainer.y) / this.scale
 
-    console.log("[MODUS] Click at world:", wx.toFixed(1), wy.toFixed(1), "agents:", this.agentSprites.size)
+    // Debug: log all agent positions
+    const agentPositions = []
+    for (const [id, sprite] of this.agentSprites) {
+      agentPositions.push({id: id.slice(0,8), tx: sprite.targetX.toFixed(0), ty: sprite.targetY.toFixed(0), cx: sprite.container.x.toFixed(0), cy: sprite.container.y.toFixed(0)})
+    }
+    console.log("[MODUS] Click at world:", wx.toFixed(1), wy.toFixed(1), "agents:", this.agentSprites.size, "positions:", JSON.stringify(agentPositions))
 
-    // Find closest agent within click radius (more generous)
+    // Find closest agent within click radius (check both target and current lerped position)
     let closest = null
-    let closestDist = TILE_SIZE * 1.5
+    let closestDist = TILE_SIZE * 2.5
 
     for (const [id, sprite] of this.agentSprites) {
-      const dx = sprite.targetX - wx
-      const dy = sprite.targetY - wy
-      const dist = Math.sqrt(dx * dx + dy * dy)
+      // Distance to target position
+      const dx1 = sprite.targetX - wx
+      const dy1 = sprite.targetY - wy
+      const dist1 = Math.sqrt(dx1 * dx1 + dy1 * dy1)
+      // Distance to current lerped position
+      const dx2 = sprite.container.x - wx
+      const dy2 = sprite.container.y - wy
+      const dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2)
+      // Use whichever is closer
+      const dist = Math.min(dist1, dist2)
       if (dist < closestDist) {
         closestDist = dist
         closest = id

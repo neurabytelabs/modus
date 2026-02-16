@@ -149,12 +149,14 @@ defmodule Modus.Simulation.Agent do
     # Decide action via DecisionEngine
     {action, params} = Modus.Simulation.DecisionEngine.decide(agent, decision_context)
 
+    params = Map.put(params, :tick, tick_number)
+
     agent =
       agent
       |> decay_needs()
       |> apply_action(action, params)
       |> increment_age()
-      |> check_death()
+      |> check_death(tick_number)
       |> record_memory(tick_number, {action, params})
 
     # Update registry with current position+alive for fast lookups
@@ -212,8 +214,9 @@ defmodule Modus.Simulation.Agent do
     %{agent | position: {ax + dx, ay + dy}, current_action: :exploring}
   end
 
-  defp apply_action(agent, :gather, _params) do
+  defp apply_action(agent, :gather, params) do
     needs = %{agent.needs | hunger: max(agent.needs.hunger - 5.0, 0.0)}
+    Modus.Simulation.EventLog.log(:resource_gathered, Map.get(params, :tick, 0), [agent.id], %{name: agent.name})
     %{agent | needs: needs, current_action: :gathering}
   end
 
@@ -222,8 +225,9 @@ defmodule Modus.Simulation.Agent do
     %{agent | needs: needs, current_action: :sleeping}
   end
 
-  defp apply_action(agent, :talk, _params) do
+  defp apply_action(agent, :talk, params) do
     needs = %{agent.needs | social: min(agent.needs.social + 8.0, 100.0)}
+    Modus.Simulation.EventLog.log(:conversation, Map.get(params, :tick, 0), [agent.id, Map.get(params, :target_agent, "unknown")], %{type: :social_chat, name: agent.name})
     %{agent | needs: needs, current_action: :talking}
   end
 
@@ -260,14 +264,14 @@ defmodule Modus.Simulation.Agent do
 
   # --- Death Check ---
 
-  defp check_death(agent) do
+  defp check_death(agent, tick) do
     cond do
       agent.needs.hunger > 100.0 ->
-        Modus.Simulation.EventLog.log(:death, 0, [agent.id], %{cause: "starvation", name: agent.name})
+        Modus.Simulation.EventLog.log(:death, tick, [agent.id], %{cause: "starvation", name: agent.name})
         %{agent | alive?: false, current_action: :dead}
 
       agent.needs.rest < 0.0 ->
-        Modus.Simulation.EventLog.log(:death, 0, [agent.id], %{cause: "exhaustion", name: agent.name})
+        Modus.Simulation.EventLog.log(:death, tick, [agent.id], %{cause: "exhaustion", name: agent.name})
         %{agent | alive?: false, current_action: :dead}
 
       true ->
