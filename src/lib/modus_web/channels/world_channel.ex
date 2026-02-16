@@ -357,7 +357,11 @@ defmodule ModusWeb.WorldChannel do
           friends: (try do Modus.Mind.Cerebro.SocialNetwork.get_friends(state.id) |> Enum.take(3) catch _, _ -> [] end)
                    |> Enum.take(5)
                    |> Enum.map(fn f -> %{id: f.id, strength: Float.round(ensure_float(f.strength), 2)} end),
-          conversing_with: Map.get(state, :conversing_with)
+          conversing_with: Map.get(state, :conversing_with),
+          group: case Modus.Mind.Cerebro.Group.get_agent_group(state.id) do
+            nil -> nil
+            g -> %{id: g.id, name: g.name, color: g.color, is_leader: g.leader_id == state.id}
+          end
         }
       catch
         :exit, _ -> nil

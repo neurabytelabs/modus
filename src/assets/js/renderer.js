@@ -141,6 +141,7 @@ export default class Renderer {
       this.agentDataMap.set(agent.id, {
         friends: agent.friends || [],
         conversing_with: agent.conversing_with,
+        group: agent.group || null,
       })
       const px = agent.x * TILE_SIZE + TILE_SIZE / 2
       const py = agent.y * TILE_SIZE + TILE_SIZE / 2
@@ -323,6 +324,26 @@ export default class Renderer {
           if (sprite.actionEmoji.text !== emoji) {
             sprite.actionEmoji.text = emoji
           }
+        }
+
+        // Group halo — same color for all group members
+        if (agent.group) {
+          if (!sprite.groupHalo) {
+            sprite.groupHalo = new Graphics()
+            sprite.container.addChildAt(sprite.groupHalo, 0)
+          }
+          const gc = agent.group.color || 0xA855F7
+          sprite.groupHalo.clear()
+          sprite.groupHalo.circle(0, 0, AGENT_RADIUS + 6)
+          sprite.groupHalo.fill({ color: gc, alpha: 0.25 })
+          // Leader gets a thicker ring
+          if (agent.group.is_leader) {
+            sprite.groupHalo.circle(0, 0, AGENT_RADIUS + 7)
+            sprite.groupHalo.stroke({ width: 2, color: gc, alpha: 0.6 })
+          }
+          sprite.groupHalo.visible = true
+        } else if (sprite.groupHalo) {
+          sprite.groupHalo.visible = false
         }
 
         // Selection glow

@@ -55,6 +55,15 @@ defmodule Modus.Mind.MindEngine do
       Modus.Mind.Cerebro.SocialNetwork.decay_all()
     end
 
+    # 7c. Try to form groups every 200 ticks
+    if rem(tick, 200) == 0 do
+      agent_ids = Modus.AgentRegistry
+        |> Registry.select([{{:"$1", :_, :"$3"}, [], [{{:"$1", :"$3"}}]}])
+        |> Enum.filter(fn {_id, {_x, _y, alive}} -> alive end)
+        |> Enum.map(fn {id, _} -> id end)
+      Modus.Mind.Cerebro.Group.maybe_form_groups(agent_ids, tick)
+    end
+
     # 8. Build base updated agent
     updated_agent = %{agent |
       conatus_energy: new_energy,

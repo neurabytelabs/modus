@@ -36,7 +36,8 @@ defmodule Modus.Simulation.Agent do
     last_reasoning: nil,
     explore_target: nil,
     explore_ticks: 0,
-    conversing_with: nil
+    conversing_with: nil,
+    group_id: nil
   ]
 
   @type t :: %__MODULE__{
@@ -167,6 +168,14 @@ defmodule Modus.Simulation.Agent do
 
     # Decide action via DecisionEngine
     {action, params} = Modus.Simulation.DecisionEngine.decide(agent, decision_context)
+
+    # Group following: non-leader members follow their leader
+    {action, params} = case Modus.Mind.Cerebro.Group.get_group_target(agent.id) do
+      nil -> {action, params}
+      leader_pos ->
+        # Override action to follow leader
+        {:move_to, Map.put(params, :target, leader_pos)}
+    end
 
     # Persist explore target for smoother movement (10-20 ticks per direction)
     {action, params, agent} = case action do
