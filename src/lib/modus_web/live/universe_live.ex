@@ -1,7 +1,7 @@
 defmodule ModusWeb.UniverseLive do
   @moduledoc """
   Main LiveView — MODUS universe dashboard with 2D renderer.
-  Includes onboarding wizard, time controls, event injection, responsive layout.
+  v1.5.0 Deus — God Mode, Cinematic Camera, Screenshot Export, Landing Page.
   """
   use ModusWeb, :live_view
   # JS alias available if needed
@@ -56,6 +56,9 @@ defmodule ModusWeb.UniverseLive do
        save_load_status: nil,
        # UI
        mind_view_active: false,
+       # Deus — God Mode & Cinematic Camera
+       god_mode: false,
+       cinematic_mode: false,
        mobile_panel: nil,
        event_feed: [],
        templates: @templates,
@@ -484,6 +487,29 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, mobile_panel: new_panel)}
   end
 
+  # ── Deus: God Mode, Cinematic Camera, Screenshot ─────────────
+
+  def handle_event("toggle_god_mode", _params, socket) do
+    new_val = !socket.assigns.god_mode
+    {:noreply,
+     socket
+     |> assign(god_mode: new_val, mind_view_active: new_val)
+     |> push_event("toggle_god_mode", %{active: new_val})
+     |> push_event("toggle_mind_view", %{active: new_val})}
+  end
+
+  def handle_event("toggle_cinematic", _params, socket) do
+    new_val = !socket.assigns.cinematic_mode
+    {:noreply,
+     socket
+     |> assign(cinematic_mode: new_val)
+     |> push_event("toggle_cinematic", %{active: new_val})}
+  end
+
+  def handle_event("take_screenshot", _params, socket) do
+    {:noreply, push_event(socket, "take_screenshot", %{})}
+  end
+
   # ── Potentia: Timeline / Chronicle / Stats ──────────────────
 
   def handle_event("toggle_timeline", _params, socket) do
@@ -600,15 +626,35 @@ defmodule ModusWeb.UniverseLive do
 
   defp render_onboarding(assigns) do
     ~H"""
-    <div class="h-screen flex items-center justify-center bg-[#050508] text-slate-200 font-mono">
-      <div class="w-full max-w-lg mx-4">
-        <%!-- Logo --%>
-        <div class="text-center mb-8">
-          <h1 class="text-4xl font-bold tracking-tighter mb-2">
+    <div class="min-h-screen bg-[#050508] text-slate-200 font-mono overflow-y-auto">
+      <%!-- Hero Section --%>
+      <div class="relative flex flex-col items-center justify-center min-h-[60vh] px-4 pt-16 pb-8">
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+          <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl"></div>
+          <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-600/10 rounded-full blur-3xl"></div>
+        </div>
+        <div class="relative text-center mb-6">
+          <h1 class="text-6xl md:text-7xl font-bold tracking-tighter mb-3">
             MODUS<span class="text-purple-400">_</span>
           </h1>
-          <p class="text-sm text-slate-500">Create worlds. Watch them live.</p>
+          <p class="text-lg text-slate-400 mb-2">Where Spinoza Meets Silicon</p>
+          <p class="text-sm text-slate-600 max-w-md mx-auto">An AI-powered universe simulation built on Elixir/BEAM. Agents with emotions, memory, relationships, and free will — powered by Spinoza's philosophy of <em>conatus</em>.</p>
         </div>
+        <div class="relative flex flex-wrap justify-center gap-3 mb-8 text-[10px] text-slate-500">
+          <span class="px-2 py-1 bg-white/5 rounded border border-white/10">🧠 Conatus Engine</span>
+          <span class="px-2 py-1 bg-white/5 rounded border border-white/10">💬 LLM Conversations</span>
+          <span class="px-2 py-1 bg-white/5 rounded border border-white/10">🌍 Dynamic Environment</span>
+          <span class="px-2 py-1 bg-white/5 rounded border border-white/10">👶 Birth & Death Cycles</span>
+          <span class="px-2 py-1 bg-white/5 rounded border border-white/10">📚 Agent Learning</span>
+          <span class="px-2 py-1 bg-white/5 rounded border border-white/10">📜 Story Generation</span>
+          <span class="px-2 py-1 bg-white/5 rounded border border-white/10">👁️ God Mode</span>
+        </div>
+        <p class="text-xs text-slate-600 mb-6">v1.5.0 Deus · 28+ modules · Elixir/BEAM · Pixi.js</p>
+      </div>
+
+      <%!-- Create World Section --%>
+      <div class="flex justify-center px-4 pb-16">
+      <div class="w-full max-w-lg">
 
         <%!-- Step 1: Template --%>
         <div class="mb-6">
@@ -710,6 +756,7 @@ defmodule ModusWeb.UniverseLive do
           Skip — use defaults
         </button>
       </div>
+      </div>
     </div>
     """
   end
@@ -725,7 +772,7 @@ defmodule ModusWeb.UniverseLive do
           <span class="text-xl font-bold tracking-tighter">
             MODUS<span class="text-purple-400">_</span>
           </span>
-          <span class="text-xs text-slate-600 hidden sm:inline">v1.4.0 · Potentia</span>
+          <span class="text-xs text-slate-600 hidden sm:inline">v1.5.0 · Deus</span>
         </div>
 
         <div class="flex items-center gap-3 md:gap-6">
@@ -772,6 +819,21 @@ defmodule ModusWeb.UniverseLive do
             <% end %>
             <button phx-click="reset" class="ctrl-btn">↻</button>
           </div>
+
+          <%!-- God Mode --%>
+          <button phx-click="toggle_god_mode" class={"ctrl-btn #{if @god_mode, do: "ctrl-btn-active"}"} title="God Mode — See All Agent Internals">
+            👁️
+          </button>
+
+          <%!-- Cinematic Camera --%>
+          <button phx-click="toggle_cinematic" class={"ctrl-btn #{if @cinematic_mode, do: "ctrl-btn-active"}"} title="Cinematic Camera — Auto-follow Events">
+            🎬
+          </button>
+
+          <%!-- Screenshot --%>
+          <button phx-click="take_screenshot" class="ctrl-btn" title="Screenshot Export">
+            📸
+          </button>
 
           <%!-- Mind View Toggle --%>
           <button id="mind-view-btn" phx-click="toggle_mind_view" class={"ctrl-btn #{if @mind_view_active, do: "ctrl-btn-primary"}"} title="Mind View">
@@ -879,7 +941,7 @@ defmodule ModusWeb.UniverseLive do
           </div>
 
           <div class="absolute bottom-4 left-4 text-[10px] text-slate-600 pointer-events-none hidden md:block">
-            Click agent to inspect · Drag to pan · Scroll to zoom · <span class="text-slate-500">Space</span>=pause · <span class="text-slate-500">1/5/0</span>=speed · <span class="text-slate-500">M</span>=minimap · <span class="text-slate-500">B</span>=mind · <span class="text-slate-500">Esc</span>=deselect
+            Click agent to inspect · Drag to pan · Scroll to zoom · <span class="text-slate-500">Space</span>=pause · <span class="text-slate-500">1/5/0</span>=speed · <span class="text-slate-500">G</span>=god · <span class="text-slate-500">C</span>=cinematic · <span class="text-slate-500">P</span>=screenshot · <span class="text-slate-500">M</span>=minimap · <span class="text-slate-500">Esc</span>=deselect
           </div>
         </div>
 
@@ -889,6 +951,13 @@ defmodule ModusWeb.UniverseLive do
             "fixed inset-x-0 bottom-0 top-14 md:static md:w-80 " <>
             if(@mobile_panel == :agent, do: "translate-y-0", else: "translate-y-full md:translate-y-0")}>
             <div class="p-4">
+              <%!-- God Mode Banner --%>
+              <%= if @god_mode do %>
+                <div class="mb-3 px-2 py-1 rounded bg-cyan-500/10 border border-cyan-500/30 text-[10px] text-cyan-400 text-center uppercase tracking-wider">
+                  👁️ God Mode Active
+                </div>
+              <% end %>
+
               <%!-- Header --%>
               <div class="flex items-center justify-between mb-4">
                 <div>
@@ -1430,6 +1499,13 @@ defmodule ModusWeb.UniverseLive do
         transition: all 0.15s;
       }
       .ctrl-btn:hover { background: rgba(255, 255, 255, 0.1); color: #e2e8f0; }
+      .ctrl-btn-active {
+        background: rgba(6, 182, 212, 0.15);
+        border-color: rgba(6, 182, 212, 0.4);
+        color: #22d3ee;
+        box-shadow: 0 0 8px rgba(6, 182, 212, 0.15);
+      }
+      .ctrl-btn-active:hover { background: rgba(6, 182, 212, 0.25); color: #67e8f9; }
       .ctrl-btn-primary {
         background: rgba(168, 85, 247, 0.15);
         border-color: rgba(168, 85, 247, 0.3);

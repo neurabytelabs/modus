@@ -175,6 +175,22 @@ Hooks.WorldCanvas = {
         }
       }
     })
+    // Deus features
+    this.handleEvent("toggle_god_mode", (data) => {
+      if (this.rendererReady && this.renderer) {
+        this.renderer.setGodMode(data.active)
+      }
+    })
+    this.handleEvent("toggle_cinematic", (data) => {
+      if (this.rendererReady && this.renderer) {
+        this.renderer.setCinematicMode(data.active)
+      }
+    })
+    this.handleEvent("take_screenshot", () => {
+      if (this.rendererReady && this.renderer) {
+        this.renderer.takeScreenshot()
+      }
+    })
     this.handleEvent("world_loaded", (_data) => {
       // After load, the channel will push full_state which re-renders everything
       console.log("[MODUS] World loaded, waiting for full_state broadcast")
@@ -223,6 +239,18 @@ document.addEventListener("keydown", (e) => {
     case "KeyB":
       // Mind view toggle
       document.getElementById("mind-view-btn")?.click()
+      break
+    case "KeyG":
+      // God Mode toggle
+      document.querySelector("[phx-click='toggle_god_mode']")?.click()
+      break
+    case "KeyC":
+      // Cinematic camera toggle
+      document.querySelector("[phx-click='toggle_cinematic']")?.click()
+      break
+    case "KeyP":
+      // Screenshot
+      document.querySelector("[phx-click='take_screenshot']")?.click()
       break
     case "Escape":
       // Deselect agent

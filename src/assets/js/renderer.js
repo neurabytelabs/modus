@@ -382,6 +382,9 @@ export default class Renderer {
       const breathScale = 1.0 + Math.sin(glowPhase * 1.5) * 0.03
       const bounceY = Math.sin(glowPhase * 3) * 1.5
 
+      // ── Cinematic Camera ──
+      this._updateCinematic()
+
       // ── Chunk re-render on camera move ──
       if (this._chunksDirty && this._terrainMap) {
         this._chunksDirty = false
@@ -777,6 +780,93 @@ export default class Renderer {
       this.worldContainer.y = my - wy * this.scale
       this._chunksDirty = true
     }, { passive: false })
+  }
+
+  // ── God Mode ──────────────────────────────────────────────
+
+  setGodMode(active) {
+    this.godModeActive = active
+    // In God Mode: show all labels, conatus bars, action emojis with full opacity
+    for (const [_id, sprite] of this.agentSprites) {
+      if (sprite.label) sprite.label.visible = true
+      if (sprite.conatusBar) sprite.conatusBar.visible = true
+      if (sprite.actionEmoji) sprite.actionEmoji.visible = true
+      // Show affect halo in god mode
+      if (active) {
+        if (!sprite.godHalo) {
+          sprite.godHalo = new Graphics()
+          sprite.container.addChildAt(sprite.godHalo, 0)
+        }
+        sprite.godHalo.clear()
+        sprite.godHalo.circle(0, 0, AGENT_RADIUS + 10)
+        sprite.godHalo.fill({ color: sprite.currentColor || sprite.baseColor, alpha: 0.15 })
+        sprite.godHalo.visible = true
+      } else if (sprite.godHalo) {
+        sprite.godHalo.visible = false
+      }
+    }
+    // Make terrain semi-transparent in god mode
+    if (this.terrainLayer) {
+      this.terrainLayer.alpha = active ? 0.3 : 1.0
+    }
+  }
+
+  // ── Cinematic Camera ─────────────────────────────────────
+
+  setCinematicMode(active) {
+    this.cinematicActive = active
+    this._cinematicTarget = null
+    this._cinematicCooldown = 0
+  }
+
+  _updateCinematic() {
+    if (!this.cinematicActive || !this.app) return
+
+    this._cinematicCooldown = (this._cinematicCooldown || 0) - 1
+    if (this._cinematicCooldown > 0 && this._cinematicTarget) {
+      // Smoothly pan to target
+      const sprite = this.agentSprites.get(this._cinematicTarget)
+      if (sprite) {
+        const targetX = this.app.screen.width / 2 - sprite.container.x * this.scale
+        const targetY = this.app.screen.height / 2 - sprite.container.y * this.scale
+        this.worldContainer.x += (targetX - this.worldContainer.x) * 0.05
+        this.worldContainer.y += (targetY - this.worldContainer.y) * 0.05
+        this._chunksDirty = true
+      }
+      return
+    }
+
+    // Pick a new interesting target every ~180 frames
+    if (this._cinematicCooldown <= 0) {
+      this._cinematicCooldown = 180
+      // Find agent with most interesting state (conversing, high affect, etc)
+      let best = null
+      let bestScore = -1
+      for (const [id, data] of this.agentDataMap) {
+        let score = 0
+        if (data.conversing_with) score += 5
+        if (data.friends && data.friends.length > 2) score += 2
+        if (data.group) score += 3
+        // Add randomness
+        score += Math.random() * 3
+        if (score > bestScore) {
+          bestScore = score
+          best = id
+        }
+      }
+      this._cinematicTarget = best
+    }
+  }
+
+  // ── Screenshot Export ────────────────────────────────────
+
+  takeScreenshot() {
+    if (!this.app || !this.app.canvas) return
+    const canvas = this.app.canvas
+    const link = document.createElement("a")
+    link.download = `modus-screenshot-${Date.now()}.png`
+    link.href = canvas.toDataURL("image/png")
+    link.click()
   }
 
   // ── Helpers ─────────────────────────────────────────────
