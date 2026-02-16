@@ -35,6 +35,7 @@ defmodule Modus.MixProject do
       {:jason, "~> 1.4"},
       {:req, "~> 0.5"},
       {:plug_cowboy, "~> 2.7"},
+      {:bandit, "~> 1.5"},
       {:esbuild, "~> 0.8", runtime: Mix.env() == :dev},
       {:tailwind, "~> 0.2", runtime: Mix.env() == :dev},
       {:telemetry_metrics, "~> 1.0"},
