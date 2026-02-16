@@ -8,7 +8,7 @@ defmodule Modus.Application do
   def start(_type, _args) do
     children = [
       Modus.Repo,
-      {Finch, name: Modus.Finch, pools: %{default: [size: 5, count: 2]}},
+      {Finch, name: Modus.Finch, pools: %{default: [size: 10, count: 3]}},
       {Phoenix.PubSub, name: Modus.PubSub},
       {Registry, keys: :unique, name: Modus.AgentRegistry},
       Modus.Intelligence.DecisionCache,

@@ -18,4 +18,10 @@ end
 config :modus, Modus.Intelligence.OllamaClient,
   url: System.get_env("OLLAMA_URL") || "http://localhost:11434",
   model: System.get_env("OLLAMA_MODEL") || "llama3.2:3b-instruct-q4_K_M",
-  timeout: String.to_integer(System.get_env("OLLAMA_TIMEOUT") || "30000")
+  timeout: String.to_integer(System.get_env("OLLAMA_TIMEOUT") || "90000")
+
+# Antigravity Gateway config
+config :modus, Modus.Intelligence.AntigravityClient,
+  url: System.get_env("ANTIGRAVITY_URL") || "http://host.docker.internal:8045",
+  api_key: System.get_env("ANTIGRAVITY_API_KEY") || "",
+  default_model: System.get_env("ANTIGRAVITY_MODEL") || "gemini-3-flash"

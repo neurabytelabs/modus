@@ -20,6 +20,22 @@ defmodule Modus.Intelligence.LlmProvider do
     api_key: nil
   }
 
+  @doc "Available models for each provider (shown in UI)."
+  def available_models do
+    %{
+      ollama: [
+        %{id: "llama3.2:3b-instruct-q4_K_M", name: "Llama 3.2 3B (Q4)", local: true}
+      ],
+      antigravity: [
+        %{id: "gemini-3-flash", name: "Gemini 3 Flash", local: false},
+        %{id: "gemini-3-pro-high", name: "Gemini 3 Pro High", local: false},
+        %{id: "claude-sonnet-4-5-thinking", name: "Claude Sonnet 4.5", local: false},
+        %{id: "claude-opus-4-6-thinking", name: "Claude Opus 4.6", local: false},
+        %{id: "gpt-4.1", name: "GPT-4.1", local: false}
+      ]
+    }
+  end
+
   # ── Public API ──────────────────────────────────────────
 
   def start_link(_opts) do

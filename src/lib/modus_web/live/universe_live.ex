@@ -221,16 +221,29 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("settings_change", params, socket) do
     provider = params["provider"] || socket.assigns.settings_provider
-    {base_url, model} = case provider do
-      "antigravity" -> {"http://host.docker.internal:8045", "gemini-3-flash"}
-      _ -> {"http://modus-llm:11434", "llama3.2:3b-instruct-q4_K_M"}
+    # Only reset model/url when provider actually changes
+    provider_changed = provider != socket.assigns.settings_provider
+
+    {base_url, model} = if provider_changed do
+      case provider do
+        "antigravity" -> {"http://host.docker.internal:8045", "gemini-3-flash"}
+        _ -> {"http://modus-llm:11434", "llama3.2:3b-instruct-q4_K_M"}
+      end
+    else
+      {socket.assigns.settings_base_url, socket.assigns.settings_model}
+    end
+
+    api_key = if provider_changed and provider == "antigravity" do
+      System.get_env("ANTIGRAVITY_API_KEY") || socket.assigns.settings_api_key
+    else
+      params["api_key"] || socket.assigns.settings_api_key
     end
 
     {:noreply, assign(socket,
       settings_provider: provider,
       settings_model: params["model"] || model,
       settings_base_url: params["base_url"] || base_url,
-      settings_api_key: params["api_key"] || socket.assigns.settings_api_key,
+      settings_api_key: api_key,
       settings_test_result: nil
     )}
   end
@@ -506,8 +519,14 @@ defmodule ModusWeb.UniverseLive do
             <button phx-click="reset" class="ctrl-btn">↻</button>
           </div>
 
-          <%!-- Settings --%>
-          <button phx-click="open_settings" class="ctrl-btn" title="LLM Settings">⚙️</button>
+          <%!-- LLM indicator + Settings --%>
+          <button phx-click="open_settings" class="ctrl-btn flex items-center gap-1.5" title="LLM Settings">
+            <span class="text-[9px] text-slate-500 hidden sm:inline">
+              <%= if @settings_provider == "antigravity", do: "🚀", else: "🦙" %>
+              <%= String.slice(@settings_model, 0..12) %>
+            </span>
+            ⚙️
+          </button>
         </div>
       </nav>
 
@@ -693,9 +712,18 @@ defmodule ModusWeb.UniverseLive do
               <%!-- Model --%>
               <div>
                 <label class="text-[10px] uppercase tracking-wider text-slate-600 block mb-1">Model</label>
-                <input type="text" name="model" value={@settings_model} phx-change="settings_change"
-                  class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50"
-                  placeholder="Model name..." />
+                <select phx-change="settings_change" name="model"
+                  class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50">
+                  <%= if @settings_provider == "ollama" do %>
+                    <option value="llama3.2:3b-instruct-q4_K_M" selected={@settings_model == "llama3.2:3b-instruct-q4_K_M"}>🦙 Llama 3.2 3B (Q4)</option>
+                  <% else %>
+                    <option value="gemini-3-flash" selected={@settings_model == "gemini-3-flash"}>⚡ Gemini 3 Flash</option>
+                    <option value="gemini-3-pro-high" selected={@settings_model == "gemini-3-pro-high"}>🧠 Gemini 3 Pro High</option>
+                    <option value="claude-sonnet-4-5-thinking" selected={@settings_model == "claude-sonnet-4-5-thinking"}>💜 Claude Sonnet 4.5</option>
+                    <option value="claude-opus-4-6-thinking" selected={@settings_model == "claude-opus-4-6-thinking"}>👑 Claude Opus 4.6</option>
+                    <option value="gpt-4.1" selected={@settings_model == "gpt-4.1"}>🟢 GPT-4.1</option>
+                  <% end %>
+                </select>
               </div>
 
               <%!-- Base URL --%>
