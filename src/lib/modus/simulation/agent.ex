@@ -35,7 +35,8 @@ defmodule Modus.Simulation.Agent do
     conatus_history: [],
     last_reasoning: nil,
     explore_target: nil,
-    explore_ticks: 0
+    explore_ticks: 0,
+    conversing_with: nil
   ]
 
   @type t :: %__MODULE__{
@@ -176,6 +177,8 @@ defmodule Modus.Simulation.Agent do
         else
           # Pick new target and persist it
           target = params[:target] || params.target
+          # Bias explore target via spatial memory
+          target = Modus.Mind.Cerebro.SpatialMemory.bias_explore_target(agent.id, agent.position, target)
           ticks = Enum.random(10..20)
           {action, params, %{agent | explore_target: target, explore_ticks: ticks}}
         end
@@ -191,6 +194,7 @@ defmodule Modus.Simulation.Agent do
       |> decay_needs()
       |> apply_action(action, params)
       |> Modus.Mind.MindEngine.process_tick(action, params, tick_number)
+      |> tap(fn a -> Modus.Mind.Cerebro.AgentConversation.maybe_converse(a, nearby, tick_number) end)
       |> increment_age(tick_number)
       |> check_death(tick_number)
       |> record_memory(tick_number, {action, params})

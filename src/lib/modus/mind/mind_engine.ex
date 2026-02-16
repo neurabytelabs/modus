@@ -50,6 +50,11 @@ defmodule Modus.Mind.MindEngine do
       AffectMemory.decay_all(tick)
     end
 
+    # 7b. Decay social relationships every 100 ticks
+    if rem(tick, 100) == 0 do
+      Modus.Mind.Cerebro.SocialNetwork.decay_all()
+    end
+
     # 8. Build base updated agent
     updated_agent = %{agent |
       conatus_energy: new_energy,

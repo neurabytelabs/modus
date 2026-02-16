@@ -8,6 +8,8 @@ defmodule Modus.Application do
   def start(_type, _args) do
     # Initialize ETS-based affect memory before agents spawn
     Modus.Mind.AffectMemory.init()
+    Modus.Mind.Cerebro.SocialNetwork.init()
+    Modus.Mind.Cerebro.AgentConversation.init()
 
     children = [
       Modus.Repo,
