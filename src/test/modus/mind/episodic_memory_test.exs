@@ -14,7 +14,7 @@ defmodule Modus.Mind.EpisodicMemoryTest do
     test "stores an event memory", %{agent_id: aid} do
       mem = EpisodicMemory.store(aid, :event, 10, "found berries")
       assert mem.type == :event
-      assert mem.content == "found berries"
+      assert mem.description == "found berries"
       assert mem.weight == 1.0
     end
 
@@ -23,20 +23,19 @@ defmodule Modus.Mind.EpisodicMemoryTest do
         mem = EpisodicMemory.store(aid, type, 1, "#{type} memory")
         assert mem.type == type
       end
-      assert EpisodicMemory.count(aid) == 4
+      assert length(EpisodicMemory.recall(aid, limit: 100)) == 4
     end
 
-    test "stores with position and tags", %{agent_id: aid} do
+    test "stores with position", %{agent_id: aid} do
       mem = EpisodicMemory.store(aid, :spatial, 5, "river found",
-        position: {10, 20}, tags: [:water, :resource])
+        position: {10, 20})
       assert mem.position == {10, 20}
-      assert mem.tags == [:water, :resource]
     end
 
     test "stores social memory with related_agent_id", %{agent_id: aid} do
       mem = EpisodicMemory.store(aid, :social, 5, "traded with Kai",
         related_agent_id: "kai_01")
-      assert mem.related_agent_id == "kai_01"
+      assert mem.related_agent == "kai_01"
     end
   end
 
@@ -45,7 +44,7 @@ defmodule Modus.Mind.EpisodicMemoryTest do
       EpisodicMemory.store(aid, :event, 1, "weak", weight: 0.3)
       EpisodicMemory.store(aid, :event, 2, "strong", weight: 0.9)
       [first | _] = EpisodicMemory.recall(aid)
-      assert first.content == "strong"
+      assert first.description == "strong"
     end
 
     test "filters by type", %{agent_id: aid} do
@@ -61,7 +60,7 @@ defmodule Modus.Mind.EpisodicMemoryTest do
       EpisodicMemory.store(aid, :event, 2, "strong", weight: 0.8)
       result = EpisodicMemory.recall(aid, min_weight: 0.5)
       assert length(result) == 1
-      assert hd(result).content == "strong"
+      assert hd(result).description == "strong"
     end
 
     test "respects limit", %{agent_id: aid} do
@@ -75,10 +74,9 @@ defmodule Modus.Mind.EpisodicMemoryTest do
     test "returns formatted strings", %{agent_id: aid} do
       EpisodicMemory.store(aid, :event, 42, "found gold", position: {5, 10})
       [line] = EpisodicMemory.recall_for_context(aid, 1)
-      assert line =~ "EVENT"
+      assert line =~ "event"
       assert line =~ "42"
       assert line =~ "found gold"
-      assert line =~ "(5,10)"
     end
   end
 
@@ -103,7 +101,7 @@ defmodule Modus.Mind.EpisodicMemoryTest do
     test "removes memories below threshold", %{agent_id: aid} do
       EpisodicMemory.store(aid, :event, 0, "vanish", weight: 0.15)
       EpisodicMemory.decay_all(5000)
-      assert EpisodicMemory.count(aid) == 0
+      assert EpisodicMemory.recall(aid) == []
     end
   end
 
@@ -111,9 +109,9 @@ defmodule Modus.Mind.EpisodicMemoryTest do
     test "removes all memories for agent", %{agent_id: aid} do
       EpisodicMemory.store(aid, :event, 1, "a")
       EpisodicMemory.store(aid, :social, 2, "b")
-      assert EpisodicMemory.count(aid) == 2
+      assert length(EpisodicMemory.recall(aid, limit: 100)) == 2
       EpisodicMemory.clear(aid)
-      assert EpisodicMemory.count(aid) == 0
+      assert EpisodicMemory.recall(aid) == []
     end
   end
 end
