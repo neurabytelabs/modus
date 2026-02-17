@@ -96,6 +96,14 @@ defmodule ModusWeb.UniverseLive do
        history_figures: [],
        stats_open: false,
        population_history: [],
+       obs_world: %{population: 0, buildings: 0, trades: 0, births: 0, deaths: 0, avg_happiness: 0.0, avg_conatus: 0.0},
+       obs_buildings: [],
+       obs_leaderboards: %{most_social: [], wealthiest: [], oldest: [], happiest: []},
+       obs_net_nodes: [],
+       obs_net_edges: [],
+       obs_happiness: [],
+       obs_trades: [],
+       obs_tab: :overview,
        # Agent Designer
        # Rules Engine
        rules_open: false,
@@ -384,15 +392,34 @@ defmodule ModusWeb.UniverseLive do
       []
     end
 
+    tick = params["tick"] || socket.assigns.tick
+
+    # Auto-refresh observatory every 50 ticks when open
+    obs_assigns = if socket.assigns.stats_open and is_integer(tick) and rem(tick, 50) == 0 do
+      alias Modus.Simulation.Observatory
+      history = Observatory.population_history()
+      world = Observatory.world_stats()
+      [
+        population_history: history,
+        obs_world: world,
+        obs_buildings: Observatory.building_breakdown(),
+        obs_leaderboards: Observatory.leaderboards(),
+        obs_happiness: Observatory.happiness_timeline(history),
+        obs_trades: Observatory.trade_timeline(history)
+      ]
+    else
+      []
+    end
+
     {:noreply,
      assign(socket,
-       [{:tick, params["tick"] || socket.assigns.tick},
+       [{:tick, tick},
         {:agent_count, params["agent_count"] || socket.assigns.agent_count},
         {:time_of_day, params["time_of_day"] || socket.assigns.time_of_day},
         {:trades_count, eco.trades},
         {:births_count, life.births},
         {:deaths_count, life.deaths}
-        | season_assigns]
+        | season_assigns ++ obs_assigns]
      )}
   end
 
@@ -847,12 +874,56 @@ defmodule ModusWeb.UniverseLive do
   end
 
   def handle_event("open_stats", _params, socket) do
-    history = try do Modus.Simulation.StoryEngine.population_history() catch _, _ -> [] end
-    {:noreply, assign(socket, stats_open: true, population_history: history)}
+    alias Modus.Simulation.Observatory
+    history = Observatory.population_history()
+    world = Observatory.world_stats()
+    buildings = Observatory.building_breakdown()
+    leaderboards = Observatory.leaderboards()
+    {net_nodes, net_edges} = Observatory.relationship_network()
+    happiness_tl = Observatory.happiness_timeline(history)
+    trade_tl = Observatory.trade_timeline(history)
+
+    {:noreply, assign(socket,
+      stats_open: true,
+      population_history: history,
+      obs_world: world,
+      obs_buildings: buildings,
+      obs_leaderboards: leaderboards,
+      obs_net_nodes: net_nodes,
+      obs_net_edges: net_edges,
+      obs_happiness: happiness_tl,
+      obs_trades: trade_tl,
+      obs_tab: :overview
+    )}
   end
 
   def handle_event("close_stats", _params, socket) do
     {:noreply, assign(socket, stats_open: false)}
+  end
+
+  def handle_event("obs_tab", %{"tab" => tab}, socket) do
+    {:noreply, assign(socket, obs_tab: String.to_existing_atom(tab))}
+  end
+
+  def handle_event("obs_refresh", _params, socket) do
+    # Re-fetch all observatory data
+    alias Modus.Simulation.Observatory
+    history = Observatory.population_history()
+    world = Observatory.world_stats()
+    buildings = Observatory.building_breakdown()
+    leaderboards = Observatory.leaderboards()
+    {net_nodes, net_edges} = Observatory.relationship_network()
+
+    {:noreply, assign(socket,
+      population_history: history,
+      obs_world: world,
+      obs_buildings: buildings,
+      obs_leaderboards: leaderboards,
+      obs_net_nodes: net_nodes,
+      obs_net_edges: net_edges,
+      obs_happiness: Observatory.happiness_timeline(history),
+      obs_trades: Observatory.trade_timeline(history)
+    )}
   end
 
   def handle_event("world_event_toast", %{"emoji" => emoji, "type" => type, "severity" => severity}, socket) do
@@ -1342,8 +1413,8 @@ defmodule ModusWeb.UniverseLive do
             📜
           </button>
 
-          <%!-- Stats --%>
-          <button phx-click="open_stats" class="ctrl-btn" title="Population Stats">
+          <%!-- Observatory --%>
+          <button phx-click="open_stats" class={"ctrl-btn #{if @stats_open, do: "ctrl-btn-primary"}"} title="Observatory Dashboard">
             📊
           </button>
 
@@ -2480,55 +2551,254 @@ defmodule ModusWeb.UniverseLive do
       <%!-- Stats Modal --%>
       <%= if @stats_open do %>
         <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div class="bg-[#0A0A0F] border border-white/10 rounded-xl w-full max-w-lg max-h-[80vh] flex flex-col shadow-2xl" phx-click-away="close_stats">
+          <div class="bg-[#0A0A0F] border border-white/10 rounded-xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl" phx-click-away="close_stats">
+            <%!-- Header --%>
             <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
-              <span class="font-bold text-slate-100">📊 Population Stats</span>
-              <button phx-click="close_stats" class="text-slate-600 hover:text-slate-400">✕</button>
+              <div class="flex items-center gap-3">
+                <span class="font-bold text-slate-100">📊 Observatory</span>
+                <span class="text-[9px] text-slate-600">v2.2.0 Speculum</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button phx-click="obs_refresh" class="text-[10px] px-2 py-1 rounded bg-white/5 border border-white/10 text-slate-500 hover:text-slate-300 hover:border-white/20 transition-all">↻ Refresh</button>
+                <button phx-click="close_stats" class="text-slate-600 hover:text-slate-400">✕</button>
+              </div>
             </div>
+
+            <%!-- Tabs --%>
+            <div class="px-4 pt-2 flex gap-1 border-b border-white/5 shrink-0">
+              <%= for {tab, label} <- [{:overview, "Overview"}, {:leaderboard, "Leaderboard"}, {:network, "Network"}] do %>
+                <button
+                  phx-click="obs_tab"
+                  phx-value-tab={tab}
+                  class={"px-3 py-1.5 text-[10px] uppercase tracking-wider border-b-2 transition-all #{if @obs_tab == tab, do: "border-purple-500 text-purple-300", else: "border-transparent text-slate-600 hover:text-slate-400"}"}
+                >
+                  <%= label %>
+                </button>
+              <% end %>
+            </div>
+
+            <%!-- Content --%>
             <div class="p-4 overflow-y-auto flex-1">
-              <%= if @population_history == [] do %>
-                <p class="text-xs text-slate-600 italic text-center">No data yet. Run the simulation for a while...</p>
-              <% else %>
-                <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-3">Population Over Time</h3>
-                <%!-- ASCII-style population graph --%>
-                <div class="bg-white/3 rounded-lg p-3 border border-white/5">
-                  <% max_pop = @population_history |> Enum.map(&elem(&1, 1)) |> Enum.max(fn -> 1 end) %>
-                  <% sampled = @population_history |> Enum.take_every(max(div(length(@population_history), 40), 1)) |> Enum.take(40) %>
-                  <div class="flex items-end gap-px h-32">
-                    <%= for {_tick, pop} <- sampled do %>
-                      <% height = if max_pop > 0, do: pop / max_pop * 100, else: 0 %>
-                      <div
-                        class="flex-1 bg-purple-500/60 rounded-t-sm min-w-[2px] transition-all duration-300 hover:bg-purple-400/80"
-                        style={"height: #{height}%"}
-                        title={"Pop: #{pop}"}
-                      />
+              <%= case @obs_tab do %>
+                <% :overview -> %>
+                  <%!-- World Stats Summary --%>
+                  <div class="grid grid-cols-4 gap-2 mb-4">
+                    <div class="bg-white/3 rounded-lg p-2.5 border border-white/5 text-center">
+                      <div class="text-xl font-bold text-purple-400"><%= @obs_world.population %></div>
+                      <div class="text-[9px] text-slate-600 uppercase">Population</div>
+                    </div>
+                    <div class="bg-white/3 rounded-lg p-2.5 border border-white/5 text-center">
+                      <div class="text-xl font-bold text-amber-400"><%= @obs_world.buildings %></div>
+                      <div class="text-[9px] text-slate-600 uppercase">Buildings</div>
+                    </div>
+                    <div class="bg-white/3 rounded-lg p-2.5 border border-white/5 text-center">
+                      <div class="text-xl font-bold text-cyan-400"><%= Float.round(@obs_world.avg_happiness * 100, 0) %>%</div>
+                      <div class="text-[9px] text-slate-600 uppercase">Happiness</div>
+                    </div>
+                    <div class="bg-white/3 rounded-lg p-2.5 border border-white/5 text-center">
+                      <div class="text-xl font-bold text-emerald-400"><%= Float.round(@obs_world.avg_conatus * 100, 0) %>%</div>
+                      <div class="text-[9px] text-slate-600 uppercase">Conatus</div>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-3 gap-2 mb-4">
+                    <div class="bg-white/3 rounded-lg p-2 border border-white/5 text-center">
+                      <div class="text-lg font-bold text-green-400">🤝 <%= @obs_world.trades %></div>
+                      <div class="text-[9px] text-slate-600">Trades</div>
+                    </div>
+                    <div class="bg-white/3 rounded-lg p-2 border border-white/5 text-center">
+                      <div class="text-lg font-bold text-cyan-400">👶 <%= @obs_world.births %></div>
+                      <div class="text-[9px] text-slate-600">Births</div>
+                    </div>
+                    <div class="bg-white/3 rounded-lg p-2 border border-white/5 text-center">
+                      <div class="text-lg font-bold text-red-400">💀 <%= @obs_world.deaths %></div>
+                      <div class="text-[9px] text-slate-600">Deaths</div>
+                    </div>
+                  </div>
+
+                  <%!-- Population Line Chart (CSS bars) --%>
+                  <%= if @population_history != [] do %>
+                    <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">📈 Population Over Time</h3>
+                    <div class="bg-white/3 rounded-lg p-3 border border-white/5 mb-4">
+                      <% max_pop = @population_history |> Enum.map(&elem(&1, 1)) |> Enum.max(fn -> 1 end) %>
+                      <% sampled = @population_history |> Enum.take_every(max(div(length(@population_history), 50), 1)) |> Enum.take(50) %>
+                      <div class="flex items-end gap-px h-24">
+                        <%= for {_tick, pop} <- sampled do %>
+                          <% height = if max_pop > 0, do: pop / max_pop * 100, else: 0 %>
+                          <div
+                            class="flex-1 bg-purple-500/60 rounded-t-sm min-w-[2px] hover:bg-purple-400/80 transition-colors"
+                            style={"height: #{height}%"}
+                            title={"Pop: #{pop}"}
+                          />
+                        <% end %>
+                      </div>
+                      <div class="flex justify-between text-[9px] text-slate-600 mt-1">
+                        <span>t:<%= elem(List.first(@population_history), 0) %></span>
+                        <span>t:<%= elem(List.last(@population_history), 0) %></span>
+                      </div>
+                    </div>
+
+                    <%!-- Happiness Index Chart --%>
+                    <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">😊 Happiness Index</h3>
+                    <div class="bg-white/3 rounded-lg p-3 border border-white/5 mb-4">
+                      <% h_sampled = @obs_happiness |> Enum.take_every(max(div(length(@obs_happiness), 50), 1)) |> Enum.take(50) %>
+                      <div class="flex items-end gap-px h-16">
+                        <%= for {_tick, h} <- h_sampled do %>
+                          <% hcolor = cond do
+                            h >= 0.7 -> "bg-emerald-500/60 hover:bg-emerald-400/80"
+                            h >= 0.4 -> "bg-amber-500/60 hover:bg-amber-400/80"
+                            true -> "bg-red-500/60 hover:bg-red-400/80"
+                          end %>
+                          <div
+                            class={"flex-1 rounded-t-sm min-w-[2px] transition-colors #{hcolor}"}
+                            style={"height: #{h * 100}%"}
+                            title={"Happiness: #{Float.round(h * 100, 0)}%"}
+                          />
+                        <% end %>
+                      </div>
+                    </div>
+
+                    <%!-- Trade Volume Chart --%>
+                    <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">🤝 Trade Volume</h3>
+                    <div class="bg-white/3 rounded-lg p-3 border border-white/5 mb-4">
+                      <% t_sampled = @obs_trades |> Enum.take_every(max(div(length(@obs_trades), 50), 1)) |> Enum.take(50) %>
+                      <% max_trade = t_sampled |> Enum.map(&elem(&1, 1)) |> Enum.max(fn -> 1 end) %>
+                      <div class="flex items-end gap-px h-16">
+                        <%= for {_tick, t} <- t_sampled do %>
+                          <% height = if max_trade > 0, do: t / max_trade * 100, else: 0 %>
+                          <div
+                            class="flex-1 bg-cyan-500/60 rounded-t-sm min-w-[2px] hover:bg-cyan-400/80 transition-colors"
+                            style={"height: #{height}%"}
+                            title={"Trades: #{t}"}
+                          />
+                        <% end %>
+                      </div>
+                    </div>
+                  <% else %>
+                    <p class="text-xs text-slate-600 italic text-center py-8">No data yet. Run the simulation for a while...</p>
+                  <% end %>
+
+                  <%!-- Building Breakdown --%>
+                  <%= if @obs_buildings != [] do %>
+                    <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">🏗️ Buildings</h3>
+                    <div class="bg-white/3 rounded-lg p-3 border border-white/5">
+                      <% max_b = @obs_buildings |> Enum.map(&elem(&1, 1)) |> Enum.max(fn -> 1 end) %>
+                      <%= for {type, count} <- @obs_buildings do %>
+                        <div class="flex items-center gap-2 mb-1.5">
+                          <span class="text-[10px] text-slate-400 w-20 text-right"><%= type %></span>
+                          <div class="flex-1 bg-white/5 rounded h-4 overflow-hidden">
+                            <div
+                              class="h-full bg-amber-500/50 rounded transition-all"
+                              style={"width: #{count / max_b * 100}%"}
+                            />
+                          </div>
+                          <span class="text-[10px] text-amber-400 w-6 text-right font-bold"><%= count %></span>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% end %>
+
+                <% :leaderboard -> %>
+                  <%!-- Agent Leaderboards --%>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <%= for {category, entries} <- [
+                      {"🤝 Most Social", @obs_leaderboards.most_social},
+                      {"💰 Wealthiest", @obs_leaderboards.wealthiest},
+                      {"😊 Happiest", @obs_leaderboards.happiest},
+                      {"🧓 Oldest", @obs_leaderboards.oldest}
+                    ] do %>
+                      <div class="bg-white/3 rounded-lg border border-white/5 overflow-hidden">
+                        <div class="px-3 py-2 border-b border-white/5 text-[10px] uppercase tracking-wider text-slate-500 font-bold">
+                          <%= category %>
+                        </div>
+                        <div class="p-2">
+                          <%= if entries == [] do %>
+                            <p class="text-[10px] text-slate-600 italic px-2 py-3 text-center">No data yet</p>
+                          <% else %>
+                            <%= for {entry, rank} <- Enum.with_index(entries, 1) do %>
+                              <div class={"flex items-center gap-2 px-2 py-1.5 rounded #{if rank == 1, do: "bg-white/5"}"}>
+                                <span class={"text-xs font-bold w-5 text-right #{if rank == 1, do: "text-amber-400", else: "text-slate-600"}"}>#<%= rank %></span>
+                                <span class="text-xs text-slate-200 flex-1 truncate"><%= entry.name %></span>
+                                <span class="text-[10px] text-slate-500"><%= entry.label %></span>
+                              </div>
+                            <% end %>
+                          <% end %>
+                        </div>
+                      </div>
                     <% end %>
                   </div>
-                  <div class="flex justify-between text-[9px] text-slate-600 mt-1">
-                    <span>t:<%= elem(List.first(@population_history), 0) %></span>
-                    <span>t:<%= elem(List.last(@population_history), 0) %></span>
-                  </div>
-                </div>
 
-                <%!-- Summary Stats --%>
-                <div class="grid grid-cols-2 gap-3 mt-4">
-                  <div class="bg-white/3 rounded-lg p-3 border border-white/5 text-center">
-                    <div class="text-2xl font-bold text-purple-400"><%= elem(List.last(@population_history), 1) %></div>
-                    <div class="text-[10px] text-slate-600 uppercase">Current</div>
-                  </div>
-                  <div class="bg-white/3 rounded-lg p-3 border border-white/5 text-center">
-                    <div class="text-2xl font-bold text-cyan-400"><%= @population_history |> Enum.map(&elem(&1, 1)) |> Enum.max() %></div>
-                    <div class="text-[10px] text-slate-600 uppercase">Peak</div>
-                  </div>
-                  <div class="bg-white/3 rounded-lg p-3 border border-white/5 text-center">
-                    <div class="text-2xl font-bold text-green-400"><%= @births_count %></div>
-                    <div class="text-[10px] text-slate-600 uppercase">Births</div>
-                  </div>
-                  <div class="bg-white/3 rounded-lg p-3 border border-white/5 text-center">
-                    <div class="text-2xl font-bold text-red-400"><%= @deaths_count %></div>
-                    <div class="text-[10px] text-slate-600 uppercase">Deaths</div>
-                  </div>
-                </div>
+                <% :network -> %>
+                  <%!-- Relationship Network SVG --%>
+                  <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-3">🔗 Relationship Network</h3>
+                  <%= if @obs_net_nodes == [] do %>
+                    <div class="bg-white/3 rounded-lg border border-white/5 p-8 text-center">
+                      <p class="text-xs text-slate-600 italic">No relationships formed yet. Agents need to interact...</p>
+                    </div>
+                  <% else %>
+                    <div class="bg-white/3 rounded-lg border border-white/5 p-3 overflow-hidden">
+                      <svg viewBox="0 0 500 400" class="w-full" style="max-height: 400px;">
+                        <%!-- Generate node positions in a circle layout --%>
+                        <% node_count = length(@obs_net_nodes) %>
+                        <% node_positions = @obs_net_nodes |> Enum.with_index() |> Enum.map(fn {node, i} ->
+                          angle = i / max(node_count, 1) * 2 * :math.pi()
+                          cx = 250 + :math.cos(angle) * min(150, 50 + node_count * 8)
+                          cy = 200 + :math.sin(angle) * min(140, 50 + node_count * 8)
+                          {node.id, cx, cy, node.name}
+                        end) %>
+                        <% pos_map = Map.new(node_positions, fn {id, cx, cy, _} -> {id, {cx, cy}} end) %>
+
+                        <%!-- Edges --%>
+                        <%= for edge <- @obs_net_edges do %>
+                          <% {x1, y1} = Map.get(pos_map, edge.from, {250, 200}) %>
+                          <% {x2, y2} = Map.get(pos_map, edge.to, {250, 200}) %>
+                          <% opacity = max(0.15, min(0.8, edge.strength)) %>
+                          <% color = case edge.type do
+                            :friend -> "#22d3ee"
+                            :close_friend -> "#a78bfa"
+                            :best_friend -> "#c084fc"
+                            _ -> "#475569"
+                          end %>
+                          <line
+                            x1={Float.round(x1, 1)} y1={Float.round(y1, 1)}
+                            x2={Float.round(x2, 1)} y2={Float.round(y2, 1)}
+                            stroke={color}
+                            stroke-width={Float.round(max(0.5, edge.strength * 3), 1)}
+                            opacity={Float.round(opacity, 2)}
+                          />
+                        <% end %>
+
+                        <%!-- Nodes --%>
+                        <%= for {id, cx, cy, name} <- node_positions do %>
+                          <% friends_count = Enum.count(@obs_net_edges, fn e -> e.from == id or e.to == id end) %>
+                          <% radius = min(12, 4 + friends_count * 1.5) %>
+                          <circle
+                            cx={Float.round(cx, 1)} cy={Float.round(cy, 1)}
+                            r={Float.round(radius, 1)}
+                            fill="#a78bfa"
+                            fill-opacity="0.6"
+                            stroke="#c084fc"
+                            stroke-width="1"
+                          />
+                          <text
+                            x={Float.round(cx, 1)} y={Float.round(cy - radius - 4, 1)}
+                            text-anchor="middle"
+                            fill="#94a3b8"
+                            font-size="8"
+                            font-family="monospace"
+                          >
+                            <%= String.slice(name, 0..8) %>
+                          </text>
+                        <% end %>
+                      </svg>
+                    </div>
+                    <div class="flex items-center gap-4 mt-2 justify-center text-[9px] text-slate-600">
+                      <span class="flex items-center gap-1"><span class="inline-block w-3 h-0.5 bg-cyan-500 rounded"></span> Friend</span>
+                      <span class="flex items-center gap-1"><span class="inline-block w-3 h-0.5 bg-purple-400 rounded"></span> Close</span>
+                      <span class="flex items-center gap-1"><span class="inline-block w-3 h-0.5 bg-purple-300 rounded"></span> Best</span>
+                      <span>🔵 = more connections</span>
+                    </div>
+                  <% end %>
               <% end %>
             </div>
           </div>

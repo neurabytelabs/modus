@@ -6,6 +6,31 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v2.2.0 · **Speculum** — _Observatory Dashboard_
+_17 Şubat 2026_
+
+### ✨ Features
+- **Observatory Dashboard** — 📊 Full analytics panel replacing the old Population Stats modal
+  - 📈 **Population Line Chart** — CSS bar chart showing population over time (sampled, up to 50 bars)
+  - 😊 **Happiness Index Chart** — Color-coded bars (green/amber/red) tracking world happiness
+  - 🤝 **Trade Volume Chart** — Cumulative trade activity over simulation timeline
+  - 🏗️ **Building Breakdown** — Horizontal bar chart by building type (hut, house, farm, etc.)
+  - 👑 **Agent Leaderboard** — Top 5 agents across 4 categories: Most Social, Wealthiest, Happiest, Oldest
+  - 🔗 **Relationship Network** — SVG circle-layout graph showing agent relationships (color-coded by strength)
+  - 📊 **World Stats Summary** — Population, buildings, happiness %, conatus %, trades, births, deaths at a glance
+  - 🔄 **Auto-Refresh** — Observatory data updates every 50 ticks when panel is open
+  - ↻ **Manual Refresh** — Button to force-refresh all observatory data
+  - 🗂️ **Tabbed Interface** — Overview / Leaderboard / Network tabs
+
+### 🔧 Technical
+- New module: `Modus.Simulation.Observatory` (~170 LOC) — pure data aggregation, no GenServer
+- Aggregates from: AgentSupervisor, Economy, Lifecycle, Building, StoryEngine, SocialNetwork
+- Happiness score = weighted average of agent needs (70%) + conatus energy (30%)
+- Network graph: circular SVG layout, max 50 edges, node size proportional to connections
+- Auto-refresh integrated into existing `tick_update` handler (every 50 ticks when open)
+
+---
+
 ## v2.1.1 · **Lingua** — _World History_
 _17 Şubat 2026_
 
