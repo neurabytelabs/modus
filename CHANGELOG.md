@@ -6,6 +6,32 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v1.7.0 · **Nexus** — _Multi-Universe Dashboard_
+_17 Şubat 2026_
+
+### ✨ Features
+- **Universe Gallery** — 🌍 dashboard as the new landing page when saved worlds exist
+- **World Cards** — Each saved universe shows: name, 5×5 flat terrain color grid thumbnail, population count, tick age, save date
+- **Create New Universe** — Prominent ➕ card flows into existing onboarding wizard
+- **Click to Load** — ▶ Play button on any card loads the universe and enters simulation
+- **Delete with Confirmation** — 🗑️ button triggers inline confirmation overlay before deletion
+- **Sort Controls** — Sort by newest, oldest, or most populated
+- **🌍 Top Bar Button** — Return to Universe Gallery from active simulation
+- **Back to Gallery** — Onboarding wizard includes "← Back to Universe Gallery" link
+
+### 🧠 Architecture
+- New `:dashboard` phase added before `:onboarding` — shown when saved worlds exist
+- `dashboard_worlds`, `dashboard_sort`, `dashboard_delete_confirm` assigns in LiveView state
+- `sort_worlds/2` helper for client-side sorting by date or population
+- `terrain_thumb_color/2` generates deterministic 5×5 2D flat color grids per template type (village/island/desert/space)
+- Reuses existing `WorldPersistence.list/0`, `load/1`, `delete/1` — zero new persistence code
+- Seamless phase transitions: dashboard → onboarding → simulation → dashboard
+
+### 🧪 Files Modified
+- `universe_live.ex` — Dashboard phase, gallery UI, sort/delete/load handlers, terrain thumbnail helpers
+
+---
+
 ## v1.6.1 · **Creator** — _Agent Designer_
 _17 Şubat 2026_
 

@@ -1,7 +1,7 @@
 defmodule ModusWeb.UniverseLive do
   @moduledoc """
   Main LiveView — MODUS universe dashboard with 2D renderer.
-  v1.6.1 Creator — Agent Designer, World Builder, Terrain Painter, Nature Resource System.
+  v1.7.0 Nexus — Multi-Universe Dashboard, Agent Designer, World Builder, Terrain Painter, Nature Resource System.
   """
   use ModusWeb, :live_view
   # JS alias available if needed
@@ -20,11 +20,25 @@ defmodule ModusWeb.UniverseLive do
       Phoenix.PubSub.subscribe(Modus.PubSub, "story")
     end
 
+    # Load saved worlds for dashboard
+    saved_worlds = try do
+      Modus.Persistence.WorldPersistence.list()
+    catch
+      _, _ -> []
+    end
+
+    # Start at dashboard if there are saved worlds, otherwise go straight to onboarding
+    initial_phase = if saved_worlds != [], do: :dashboard, else: :onboarding
+
     {:ok,
      assign(socket,
        page_title: "MODUS",
+       # Dashboard
+       dashboard_worlds: saved_worlds,
+       dashboard_sort: "newest",
+       dashboard_delete_confirm: nil,
        # Onboarding
-       phase: :onboarding,
+       phase: initial_phase,
        template: "village",
        population: 10,
        danger: "normal",
@@ -91,6 +105,61 @@ defmodule ModusWeb.UniverseLive do
        designer_placing: false
      )}
   end
+
+  # ── Dashboard Events ─────────────────────────────────────
+
+  @impl true
+  def handle_event("dashboard_new_universe", _params, socket) do
+    {:noreply, assign(socket, phase: :onboarding)}
+  end
+
+  def handle_event("dashboard_sort", %{"sort" => sort}, socket) do
+    sorted = sort_worlds(socket.assigns.dashboard_worlds, sort)
+    {:noreply, assign(socket, dashboard_sort: sort, dashboard_worlds: sorted)}
+  end
+
+  def handle_event("dashboard_load", %{"id" => id_str}, socket) do
+    {id, _} = Integer.parse(id_str)
+    case Modus.Persistence.WorldPersistence.load(id) do
+      {:ok, info} ->
+        Modus.Simulation.Ticker.run()
+        {:noreply,
+         socket
+         |> assign(phase: :simulation, status: :running)
+         |> push_event("world_loaded", %{agents: info.agents, tick: info.tick})}
+      {:error, reason} ->
+        {:noreply, assign(socket, save_load_status: "❌ #{reason}")}
+    end
+  end
+
+  def handle_event("dashboard_delete_confirm", %{"id" => id_str}, socket) do
+    {id, _} = Integer.parse(id_str)
+    {:noreply, assign(socket, dashboard_delete_confirm: id)}
+  end
+
+  def handle_event("dashboard_delete_cancel", _params, socket) do
+    {:noreply, assign(socket, dashboard_delete_confirm: nil)}
+  end
+
+  def handle_event("dashboard_delete", %{"id" => id_str}, socket) do
+    {id, _} = Integer.parse(id_str)
+    Modus.Persistence.WorldPersistence.delete(id)
+    worlds = Modus.Persistence.WorldPersistence.list()
+    sorted = sort_worlds(worlds, socket.assigns.dashboard_sort)
+    phase = if sorted == [], do: :onboarding, else: :dashboard
+    {:noreply, assign(socket, dashboard_worlds: sorted, dashboard_delete_confirm: nil, phase: phase)}
+  end
+
+  def handle_event("dashboard_back", _params, socket) do
+    worlds = try do Modus.Persistence.WorldPersistence.list() catch _, _ -> [] end
+    sorted = sort_worlds(worlds, socket.assigns.dashboard_sort)
+    phase = if sorted == [], do: :onboarding, else: :dashboard
+    {:noreply, assign(socket, phase: phase, dashboard_worlds: sorted)}
+  end
+
+  defp sort_worlds(worlds, "oldest"), do: Enum.sort_by(worlds, & &1.saved_at, :asc)
+  defp sort_worlds(worlds, "most_populated"), do: Enum.sort_by(worlds, & &1.agents, :desc)
+  defp sort_worlds(worlds, _newest), do: Enum.sort_by(worlds, & &1.saved_at, :desc)
 
   # ── Onboarding Events ──────────────────────────────────────
 
@@ -718,11 +787,125 @@ defmodule ModusWeb.UniverseLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <%= if @phase == :onboarding do %>
-      <%= render_onboarding(assigns) %>
-    <% else %>
-      <%= render_simulation(assigns) %>
+    <%= case @phase do %>
+      <% :dashboard -> %>
+        <%= render_dashboard(assigns) %>
+      <% :onboarding -> %>
+        <%= render_onboarding(assigns) %>
+      <% _ -> %>
+        <%= render_simulation(assigns) %>
     <% end %>
+    """
+  end
+
+  # ── Multi-Universe Dashboard ─────────────────────────────
+
+  defp render_dashboard(assigns) do
+    ~H"""
+    <div class="min-h-screen bg-[#050508] text-slate-200 font-mono overflow-y-auto">
+      <%!-- Header --%>
+      <div class="relative flex flex-col items-center pt-16 pb-8 px-4">
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+          <div class="absolute top-1/4 left-1/3 w-80 h-80 bg-purple-600/8 rounded-full blur-3xl"></div>
+          <div class="absolute top-1/3 right-1/4 w-80 h-80 bg-cyan-600/8 rounded-full blur-3xl"></div>
+        </div>
+        <div class="relative text-center mb-8">
+          <h1 class="text-5xl md:text-6xl font-bold tracking-tighter mb-2">
+            MODUS<span class="text-purple-400">_</span>
+          </h1>
+          <p class="text-sm text-slate-500">v1.7.0 Nexus · You're not limited to one world — create many.</p>
+        </div>
+
+        <%!-- Sort Controls --%>
+        <div class="relative flex items-center gap-2 mb-6">
+          <span class="text-[10px] uppercase tracking-wider text-slate-600">Sort:</span>
+          <%= for {val, label} <- [{"newest", "Newest"}, {"oldest", "Oldest"}, {"most_populated", "Most Pop."}] do %>
+            <button
+              phx-click="dashboard_sort"
+              phx-value-sort={val}
+              class={"px-3 py-1 text-[10px] rounded-lg border transition-all #{if @dashboard_sort == val, do: "border-purple-500/50 bg-purple-500/10 text-purple-300", else: "border-white/10 bg-white/3 text-slate-500 hover:border-white/20"}"}
+            >
+              <%= label %>
+            </button>
+          <% end %>
+        </div>
+      </div>
+
+      <%!-- Universe Gallery --%>
+      <div class="max-w-4xl mx-auto px-4 pb-16">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <%!-- Create New Universe Card --%>
+          <button
+            phx-click="dashboard_new_universe"
+            class="group flex flex-col items-center justify-center p-8 rounded-xl border-2 border-dashed border-white/10 hover:border-purple-500/40 bg-white/[0.02] hover:bg-purple-500/5 transition-all min-h-[220px]"
+          >
+            <span class="text-4xl mb-3 group-hover:scale-110 transition-transform">➕</span>
+            <span class="text-sm font-bold text-slate-400 group-hover:text-purple-300 transition-colors">Create New Universe</span>
+            <span class="text-[10px] text-slate-600 mt-1">Start from scratch</span>
+          </button>
+
+          <%!-- Saved World Cards --%>
+          <%= for world <- @dashboard_worlds do %>
+            <div class="relative rounded-xl border border-white/10 bg-white/[0.02] hover:border-purple-500/30 hover:bg-white/[0.04] transition-all overflow-hidden group">
+              <%!-- Delete Confirmation Overlay --%>
+              <%= if @dashboard_delete_confirm == world.id do %>
+                <div class="absolute inset-0 z-10 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 p-4 rounded-xl">
+                  <span class="text-sm text-slate-300">Delete "<%= world.name %>"?</span>
+                  <div class="flex gap-2">
+                    <button phx-click="dashboard_delete" phx-value-id={world.id}
+                      class="px-4 py-1.5 text-xs rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 transition-all">
+                      🗑️ Delete
+                    </button>
+                    <button phx-click="dashboard_delete_cancel"
+                      class="px-4 py-1.5 text-xs rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10 transition-all">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              <% end %>
+
+              <%!-- Card Content --%>
+              <div class="p-4">
+                <%!-- 5x5 Terrain Thumbnail --%>
+                <div class="flex justify-center mb-3">
+                  <div class="grid grid-cols-5 gap-px w-16 h-16 rounded-lg overflow-hidden border border-white/10">
+                    <%= for i <- 0..24 do %>
+                      <% color = terrain_thumb_color(world.template, i) %>
+                      <div class={"w-full h-full #{color}"} />
+                    <% end %>
+                  </div>
+                </div>
+
+                <%!-- World Info --%>
+                <h3 class="text-sm font-bold text-slate-100 truncate text-center mb-2"><%= world.name %></h3>
+                <div class="flex items-center justify-center gap-3 text-[10px] text-slate-500 mb-3">
+                  <span>🗺️ <%= world.template %></span>
+                  <span>👥 <%= world.agents %></span>
+                  <span>⏱️ t:<%= world.tick %></span>
+                </div>
+                <div class="text-[9px] text-slate-600 text-center mb-3">
+                  <%= if world.saved_at do %>
+                    <%= Calendar.strftime(world.saved_at, "%b %d, %H:%M") %>
+                  <% end %>
+                </div>
+
+                <%!-- Actions --%>
+                <div class="flex gap-2">
+                  <button phx-click="dashboard_load" phx-value-id={world.id}
+                    class="flex-1 py-2 text-xs rounded-lg bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-bold tracking-wider hover:from-purple-500 hover:to-cyan-500 transition-all text-center">
+                    ▶ Play
+                  </button>
+                  <button phx-click="dashboard_delete_confirm" phx-value-id={world.id}
+                    class="px-3 py-2 text-xs rounded-lg bg-white/5 border border-white/10 text-slate-500 hover:text-red-400 hover:border-red-500/30 transition-all">
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
     """
   end
 
@@ -755,7 +938,7 @@ defmodule ModusWeb.UniverseLive do
           <span class="px-2 py-1 bg-white/5 rounded border border-white/10">🔨 World Builder</span>
           <span class="px-2 py-1 bg-white/5 rounded border border-white/10">🌿 Nature Resources</span>
         </div>
-        <p class="text-xs text-slate-600 mb-6">v1.6.1 Creator · 29+ modules · Elixir/BEAM · Pixi.js</p>
+        <p class="text-xs text-slate-600 mb-6">v1.7.0 Nexus · 29+ modules · Elixir/BEAM · Pixi.js</p>
       </div>
 
       <%!-- Create World Section --%>
@@ -861,6 +1044,12 @@ defmodule ModusWeb.UniverseLive do
         <button phx-click="skip_onboarding" class="w-full mt-3 py-2 text-xs text-slate-600 hover:text-slate-400 transition-colors">
           Skip — use defaults
         </button>
+
+        <%= if @dashboard_worlds != [] do %>
+          <button phx-click="dashboard_back" class="w-full mt-2 py-2 text-xs text-slate-600 hover:text-purple-400 transition-colors">
+            ← Back to Universe Gallery
+          </button>
+        <% end %>
       </div>
       </div>
     </div>
@@ -878,7 +1067,7 @@ defmodule ModusWeb.UniverseLive do
           <span class="text-xl font-bold tracking-tighter">
             MODUS<span class="text-purple-400">_</span>
           </span>
-          <span class="text-xs text-slate-600 hidden sm:inline">v1.6.1 · Creator</span>
+          <span class="text-xs text-slate-600 hidden sm:inline">v1.7.0 · Nexus</span>
         </div>
 
         <div class="flex items-center gap-3 md:gap-6">
@@ -969,6 +1158,11 @@ defmodule ModusWeb.UniverseLive do
           <%!-- Chronicle Export --%>
           <button phx-click="open_chronicle" class="ctrl-btn" title="Export Chronicle">
             📖
+          </button>
+
+          <%!-- Universe Gallery --%>
+          <button phx-click="dashboard_back" class="ctrl-btn" title="Universe Gallery">
+            🌍
           </button>
 
           <%!-- Save/Load --%>
@@ -1922,6 +2116,25 @@ defmodule ModusWeb.UniverseLive do
     |> Enum.take(3)
   end
   defp conversation_events(_), do: []
+
+  # Deterministic 5x5 terrain color grid based on template type and cell index
+  defp terrain_thumb_color("village", i) when i in [0, 1, 5, 6], do: "bg-green-800"  # forest cluster
+  defp terrain_thumb_color("village", i) when i in [12, 17], do: "bg-amber-700"       # farm
+  defp terrain_thumb_color("village", _), do: "bg-green-600"                           # grass
+
+  defp terrain_thumb_color("island", i) when i in [0, 1, 4, 5, 9, 15, 19, 20, 21, 24], do: "bg-blue-600" # water border
+  defp terrain_thumb_color("island", i) when i in [7, 12, 17], do: "bg-green-800"      # forest
+  defp terrain_thumb_color("island", _), do: "bg-green-600"                             # land
+
+  defp terrain_thumb_color("desert", i) when i in [6, 12, 18], do: "bg-gray-500"       # mountain
+  defp terrain_thumb_color("desert", i) when i in [11], do: "bg-blue-500"              # oasis
+  defp terrain_thumb_color("desert", _), do: "bg-yellow-600"                            # sand
+
+  defp terrain_thumb_color("space", i) when i in [6, 12, 18], do: "bg-purple-800"      # alien terrain
+  defp terrain_thumb_color("space", i) when i in [3, 11, 23], do: "bg-cyan-700"        # crystal
+  defp terrain_thumb_color("space", _), do: "bg-gray-800"                               # void
+
+  defp terrain_thumb_color(_, i), do: terrain_thumb_color("village", i)                 # fallback
 
   defp event_emoji("birth"), do: "👶"
   defp event_emoji("death"), do: "💀"
