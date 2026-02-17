@@ -429,6 +429,44 @@ defmodule ModusWeb.WorldChannel do
     {:reply, {:error, %{reason: "invalid_animal_type"}}, socket}
   end
 
+  # ── Export & Share ──────────────────────────────────────────
+
+  def handle_in("export_world", _payload, socket) do
+    case Modus.Persistence.WorldExport.export_json() do
+      {:ok, json} -> {:reply, {:ok, %{json: json}}, socket}
+      {:error, reason} -> {:reply, {:error, %{reason: reason}}, socket}
+    end
+  end
+
+  def handle_in("export_share", _payload, socket) do
+    case Modus.Persistence.WorldExport.export_base64() do
+      {:ok, b64} -> {:reply, {:ok, %{share_code: b64}}, socket}
+      {:error, reason} -> {:reply, {:error, %{reason: reason}}, socket}
+    end
+  end
+
+  def handle_in("import_world", %{"json" => json}, socket) do
+    case Modus.Persistence.WorldExport.import_json(json) do
+      {:ok, info} ->
+        state = build_full_state()
+        broadcast!(socket, "full_state", state)
+        {:reply, {:ok, info}, socket}
+      {:error, reason} ->
+        {:reply, {:error, %{reason: reason}}, socket}
+    end
+  end
+
+  def handle_in("import_share", %{"share_code" => code}, socket) do
+    case Modus.Persistence.WorldExport.import_base64(code) do
+      {:ok, info} ->
+        state = build_full_state()
+        broadcast!(socket, "full_state", state)
+        {:reply, {:ok, info}, socket}
+      {:error, reason} ->
+        {:reply, {:error, %{reason: reason}}, socket}
+    end
+  end
+
   # ── World Events (God Mode) ────────────────────────────────
 
   @valid_world_events ~w(storm earthquake meteor_shower plague golden_age flood fire)

@@ -94,6 +94,13 @@ defmodule ModusWeb.UniverseLive do
        history_selected_era: nil,
        history_era_events: [],
        history_figures: [],
+       # Export & Share
+       export_open: false,
+       export_tab: :export,
+       export_json: "",
+       export_base64: "",
+       export_status: nil,
+       import_status: nil,
        stats_open: false,
        population_history: [],
        obs_world: %{population: 0, buildings: 0, trades: 0, births: 0, deaths: 0, avg_happiness: 0.0, avg_conatus: 0.0},
@@ -873,6 +880,102 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, chronicle_open: false)}
   end
 
+  def handle_event("download_chronicle", _params, socket) do
+    md = socket.assigns.chronicle_md
+    {:noreply, push_event(socket, "download_file", %{
+      filename: "modus-chronicle-#{System.system_time(:second)}.md",
+      content: md,
+      mime: "text/markdown"
+    })}
+  end
+
+  # ── Export & Share ──────────────────────────────────────────
+
+  def handle_event("open_export", _params, socket) do
+    {:noreply, assign(socket, export_open: true, export_tab: :export, export_status: nil, import_status: nil)}
+  end
+
+  def handle_event("close_export", _params, socket) do
+    {:noreply, assign(socket, export_open: false)}
+  end
+
+  def handle_event("export_tab", %{"tab" => tab}, socket) do
+    {:noreply, assign(socket, export_tab: String.to_existing_atom(tab))}
+  end
+
+  def handle_event("do_export_json", _params, socket) do
+    case Modus.Persistence.WorldExport.export_json() do
+      {:ok, json} ->
+        {:noreply,
+         socket
+         |> assign(export_json: json, export_status: "✅ Export ready!")
+         |> push_event("download_file", %{
+           filename: "modus-world-#{System.system_time(:second)}.json",
+           content: json,
+           mime: "application/json"
+         })}
+      {:error, reason} ->
+        {:noreply, assign(socket, export_status: "❌ #{reason}")}
+    end
+  end
+
+  def handle_event("do_export_share", _params, socket) do
+    case Modus.Persistence.WorldExport.export_base64() do
+      {:ok, b64} ->
+        {:noreply, assign(socket, export_base64: b64, export_status: "✅ Share link ready!")}
+      {:error, reason} ->
+        {:noreply, assign(socket, export_status: "❌ #{reason}")}
+    end
+  end
+
+  def handle_event("do_import_json", %{"json" => json}, socket) do
+    case Modus.Persistence.WorldExport.import_json(json) do
+      {:ok, info} ->
+        state = build_channel_state()
+        {:noreply,
+         socket
+         |> assign(phase: :simulation, status: :running, import_status: "✅ Imported #{info.name} (#{info.agents} agents)")
+         |> push_event("world_loaded", state)}
+      {:error, reason} ->
+        {:noreply, assign(socket, import_status: "❌ #{reason}")}
+    end
+  end
+
+  def handle_event("do_import_share", %{"share_code" => code}, socket) do
+    case Modus.Persistence.WorldExport.import_base64(code) do
+      {:ok, info} ->
+        state = build_channel_state()
+        {:noreply,
+         socket
+         |> assign(phase: :simulation, status: :running, import_status: "✅ Imported #{info.name} (#{info.agents} agents)")
+         |> push_event("world_loaded", state)}
+      {:error, reason} ->
+        {:noreply, assign(socket, import_status: "❌ #{reason}")}
+    end
+  end
+
+  def handle_event("screenshot_with_overlay", _params, socket) do
+    world_name = try do
+      Modus.Simulation.World.get_state().name
+    catch
+      _, _ -> "MODUS"
+    end
+    tick = try do Modus.Simulation.Ticker.current_tick() catch _, _ -> 0 end
+    {:noreply, push_event(socket, "screenshot_with_overlay", %{world_name: world_name, tick: tick})}
+  end
+
+  defp build_channel_state do
+    agents = try do
+      Modus.AgentRegistry
+      |> Registry.select([{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}])
+      |> length()
+    catch
+      _, _ -> 0
+    end
+    tick = try do Modus.Simulation.Ticker.current_tick() catch _, _ -> 0 end
+    %{agents: agents, tick: tick}
+  end
+
   def handle_event("open_stats", _params, socket) do
     alias Modus.Simulation.Observatory
     history = Observatory.population_history()
@@ -1398,8 +1501,8 @@ defmodule ModusWeb.UniverseLive do
             🎬
           </button>
 
-          <%!-- Screenshot --%>
-          <button phx-click="take_screenshot" class="ctrl-btn" title="Screenshot Export">
+          <%!-- Screenshot with World Name Overlay --%>
+          <button phx-click="screenshot_with_overlay" class="ctrl-btn" title="Screenshot with World Name Overlay">
             📸
           </button>
 
@@ -1431,6 +1534,11 @@ defmodule ModusWeb.UniverseLive do
           <%!-- Save/Load --%>
           <button phx-click="open_save_load" class="ctrl-btn" title="Save / Load World">
             💾
+          </button>
+
+          <%!-- Export & Share --%>
+          <button phx-click="open_export" class={"ctrl-btn #{if @export_open, do: "ctrl-btn-active"}"} title="Export / Import / Share World">
+            📤
           </button>
 
           <%!-- Rules Engine --%>
@@ -2541,8 +2649,95 @@ defmodule ModusWeb.UniverseLive do
             <div class="p-4 overflow-y-auto flex-1">
               <pre class="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed"><%= @chronicle_md %></pre>
             </div>
-            <div class="px-4 py-3 border-t border-white/5 shrink-0">
-              <p class="text-[10px] text-slate-600">Copy the text above to save your world's story as markdown.</p>
+            <div class="px-4 py-3 border-t border-white/5 shrink-0 flex gap-2">
+              <button phx-click="download_chronicle" class="text-[10px] px-3 py-1.5 bg-purple-500/20 text-purple-300 rounded hover:bg-purple-500/30 border border-purple-500/20">⬇ Download .md</button>
+              <p class="text-[10px] text-slate-600 self-center">Or copy the text above.</p>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <%!-- Export & Share Modal --%>
+      <%= if @export_open do %>
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div class="bg-[#0A0A0F] border border-white/10 rounded-xl w-full max-w-lg max-h-[80vh] flex flex-col shadow-2xl" phx-click-away="close_export">
+            <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-slate-100">📤 Export & Share</span>
+                <span class="text-[9px] text-slate-600">v2.2.1 Speculum</span>
+              </div>
+              <button phx-click="close_export" class="text-slate-600 hover:text-slate-400">✕</button>
+            </div>
+
+            <%!-- Tabs --%>
+            <div class="px-4 pt-2 flex gap-1 border-b border-white/5 shrink-0">
+              <%= for {tab, label, icon} <- [{:export, "Export", "⬇"}, {:import, "Import", "⬆"}, {:share, "Share", "🔗"}] do %>
+                <button
+                  phx-click="export_tab"
+                  phx-value-tab={tab}
+                  class={"px-3 py-1.5 text-[10px] uppercase tracking-wider border-b-2 transition-all #{if @export_tab == tab, do: "border-purple-500 text-purple-300", else: "border-transparent text-slate-600 hover:text-slate-400"}"}
+                >
+                  <%= icon %> <%= label %>
+                </button>
+              <% end %>
+            </div>
+
+            <div class="p-4 overflow-y-auto flex-1">
+              <%= case @export_tab do %>
+                <% :export -> %>
+                  <p class="text-xs text-slate-400 mb-4">Export your world as a portable JSON file. Includes terrain, agents, buildings, rules, and history.</p>
+                  <button phx-click="do_export_json" class="w-full py-3 bg-purple-500/20 text-purple-300 rounded-lg hover:bg-purple-500/30 border border-purple-500/20 text-sm font-bold transition-all">
+                    ⬇ Download World JSON
+                  </button>
+                  <%= if @export_status do %>
+                    <p class="text-xs text-center mt-3 text-slate-400"><%= @export_status %></p>
+                  <% end %>
+
+                <% :import -> %>
+                  <p class="text-xs text-slate-400 mb-4">Import a world from a JSON file or share code.</p>
+
+                  <%!-- File upload via JS --%>
+                  <div class="mb-4">
+                    <label class="block text-[10px] text-slate-600 uppercase tracking-wider mb-2">From JSON File</label>
+                    <div id="import-dropzone" phx-hook="ImportFile" class="border-2 border-dashed border-white/10 rounded-lg p-6 text-center hover:border-purple-500/30 transition-colors cursor-pointer">
+                      <p class="text-xs text-slate-500">Click or drag & drop a .json file</p>
+                      <input type="file" accept=".json" class="hidden" id="import-file-input" />
+                    </div>
+                  </div>
+
+                  <%!-- Share code import --%>
+                  <div class="mb-4">
+                    <label class="block text-[10px] text-slate-600 uppercase tracking-wider mb-2">From Share Code</label>
+                    <form phx-submit="do_import_share">
+                      <textarea name="share_code" rows="3" placeholder="Paste share code here..." class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-slate-300 font-mono resize-none focus:border-purple-500/30 focus:outline-none"></textarea>
+                      <button type="submit" class="mt-2 w-full py-2 bg-cyan-500/20 text-cyan-300 rounded-lg hover:bg-cyan-500/30 border border-cyan-500/20 text-xs font-bold transition-all">
+                        ⬆ Import from Share Code
+                      </button>
+                    </form>
+                  </div>
+
+                  <%= if @import_status do %>
+                    <p class="text-xs text-center mt-2 text-slate-400"><%= @import_status %></p>
+                  <% end %>
+
+                <% :share -> %>
+                  <p class="text-xs text-slate-400 mb-4">Generate a share code that anyone can use to import your world. No file needed!</p>
+                  <button phx-click="do_export_share" class="w-full py-3 bg-cyan-500/20 text-cyan-300 rounded-lg hover:bg-cyan-500/30 border border-cyan-500/20 text-sm font-bold transition-all">
+                    🔗 Generate Share Code
+                  </button>
+                  <%= if @export_base64 != "" do %>
+                    <div class="mt-4">
+                      <label class="block text-[10px] text-slate-600 uppercase tracking-wider mb-2">Share Code</label>
+                      <textarea id="share-code-output" readonly rows="4" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-[10px] text-slate-300 font-mono resize-none select-all"><%= @export_base64 %></textarea>
+                      <button id="copy-share-code" phx-hook="CopyToClipboard" data-target="share-code-output" class="mt-2 w-full py-2 bg-emerald-500/20 text-emerald-300 rounded-lg hover:bg-emerald-500/30 border border-emerald-500/20 text-xs font-bold transition-all">
+                        📋 Copy to Clipboard
+                      </button>
+                    </div>
+                  <% end %>
+                  <%= if @export_status do %>
+                    <p class="text-xs text-center mt-3 text-slate-400"><%= @export_status %></p>
+                  <% end %>
+              <% end %>
             </div>
           </div>
         </div>

@@ -8,6 +8,61 @@ import WorldSocket from "./world_socket"
 
 const Hooks = {}
 
+// ── Export & Share Hooks ────────────────────────────────────
+
+Hooks.ImportFile = {
+  mounted() {
+    const dropzone = this.el
+    const input = dropzone.querySelector("input[type=file]")
+    const hook = this
+
+    dropzone.addEventListener("click", () => input.click())
+
+    input.addEventListener("change", (e) => {
+      const file = e.target.files[0]
+      if (!file) return
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        hook.pushEvent("do_import_json", { json: ev.target.result })
+      }
+      reader.readAsText(file)
+    })
+
+    dropzone.addEventListener("dragover", (e) => {
+      e.preventDefault()
+      dropzone.classList.add("border-purple-500/50")
+    })
+    dropzone.addEventListener("dragleave", () => {
+      dropzone.classList.remove("border-purple-500/50")
+    })
+    dropzone.addEventListener("drop", (e) => {
+      e.preventDefault()
+      dropzone.classList.remove("border-purple-500/50")
+      const file = e.dataTransfer.files[0]
+      if (!file) return
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        hook.pushEvent("do_import_json", { json: ev.target.result })
+      }
+      reader.readAsText(file)
+    })
+  }
+}
+
+Hooks.CopyToClipboard = {
+  mounted() {
+    this.el.addEventListener("click", () => {
+      const targetId = this.el.dataset.target
+      const target = document.getElementById(targetId)
+      if (target) {
+        navigator.clipboard.writeText(target.value || target.textContent)
+        this.el.textContent = "✅ Copied!"
+        setTimeout(() => { this.el.textContent = "📋 Copy to Clipboard" }, 2000)
+      }
+    })
+  }
+}
+
 Hooks.WorldCanvas = {
   mounted() {
     this.renderer = new Renderer(this.el)
@@ -214,6 +269,46 @@ Hooks.WorldCanvas = {
         this.renderer.takeScreenshot()
       }
     })
+    this.handleEvent("screenshot_with_overlay", (data) => {
+      if (this.rendererReady && this.renderer && this.renderer.app && this.renderer.app.canvas) {
+        const canvas = this.renderer.app.canvas
+        // Create overlay canvas
+        const overlay = document.createElement("canvas")
+        overlay.width = canvas.width
+        overlay.height = canvas.height
+        const ctx = overlay.getContext("2d")
+        ctx.drawImage(canvas, 0, 0)
+        // Draw world name overlay
+        const name = data.world_name || "MODUS"
+        const tick = data.tick || 0
+        // Background bar
+        ctx.fillStyle = "rgba(0,0,0,0.6)"
+        ctx.fillRect(0, overlay.height - 48, overlay.width, 48)
+        // World name
+        ctx.font = "bold 20px 'Inter', sans-serif"
+        ctx.fillStyle = "#e2e8f0"
+        ctx.fillText(name, 16, overlay.height - 18)
+        // Tick + MODUS branding
+        ctx.font = "12px 'JetBrains Mono', monospace"
+        ctx.fillStyle = "#94a3b8"
+        ctx.textAlign = "right"
+        ctx.fillText(`t:${tick} · MODUS`, overlay.width - 16, overlay.height - 18)
+        // Download
+        const link = document.createElement("a")
+        link.download = `modus-${name.replace(/\s+/g, "-").toLowerCase()}-t${tick}.png`
+        link.href = overlay.toDataURL("image/png")
+        link.click()
+      }
+    })
+    this.handleEvent("download_file", (data) => {
+      const blob = new Blob([data.content], { type: data.mime || "text/plain" })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.download = data.filename || "download.txt"
+      link.href = url
+      link.click()
+      URL.revokeObjectURL(url)
+    })
     this.handleEvent("world_loaded", (_data) => {
       // After load, the channel will push full_state which re-renders everything
       console.log("[MODUS] World loaded, waiting for full_state broadcast")
@@ -402,8 +497,8 @@ document.addEventListener("keydown", (e) => {
       document.querySelector("[phx-click='toggle_cinematic']")?.click()
       break
     case "KeyP":
-      // Screenshot
-      document.querySelector("[phx-click='take_screenshot']")?.click()
+      // Screenshot with overlay
+      document.querySelector("[phx-click='screenshot_with_overlay']")?.click()
       break
     case "Escape":
       // Deselect agent

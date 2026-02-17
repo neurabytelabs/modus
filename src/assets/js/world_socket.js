@@ -233,6 +233,36 @@ export default class WorldSocket {
       })
   }
 
+  // ── Export & Share ──────────────────────────────────────────
+
+  exportWorld(callback) {
+    this.channel
+      .push("export_world", {})
+      .receive("ok", (resp) => { if (callback) callback(null, resp) })
+      .receive("error", (err) => { if (callback) callback(err) })
+  }
+
+  exportShare(callback) {
+    this.channel
+      .push("export_share", {})
+      .receive("ok", (resp) => { if (callback) callback(null, resp) })
+      .receive("error", (err) => { if (callback) callback(err) })
+  }
+
+  importWorld(json, callback) {
+    this.channel
+      .push("import_world", { json })
+      .receive("ok", (resp) => { if (callback) callback(null, resp) })
+      .receive("error", (err) => { if (callback) callback(err) })
+  }
+
+  importShare(shareCode, callback) {
+    this.channel
+      .push("import_share", { share_code: shareCode })
+      .receive("ok", (resp) => { if (callback) callback(null, resp) })
+      .receive("error", (err) => { if (callback) callback(err) })
+  }
+
   disconnect() {
     if (this.channel) this.channel.leave()
     if (this.socket) this.socket.disconnect()

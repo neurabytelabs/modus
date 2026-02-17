@@ -6,6 +6,34 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v2.2.1 · **Speculum** — _Export & Share_
+_17 Şubat 2026_
+
+### ✨ Features
+- **World Export (JSON)** — Full portable export including terrain, agents, buildings, rules, timeline, and history
+- **World Import** — Upload JSON file or paste share code to recreate any exported world
+  - Validates structure before import
+  - Restores terrain, agents (with personality/inventory/relationships), buildings, and rules
+- **Share Code** — Base64+zlib compressed share string — no file needed, paste-to-import
+- **Chronicle Download** — Download world chronicle as `.md` file (previously copy-only)
+- **Screenshot with Overlay** — Screenshots now include world name, tick counter, and MODUS branding bar
+- **Export & Share Modal** — New 📤 button in toolbar with Export/Import/Share tabs
+- **Drag & Drop Import** — Drop `.json` files directly onto the import zone
+- **Clipboard Copy** — One-click copy for share codes
+
+### 🔧 Technical
+- New module: `Modus.Persistence.WorldExport` (~350 LOC) — export/import/share logic
+- Channel handlers: `export_world`, `export_share`, `import_world`, `import_share`
+- WorldSocket methods: `exportWorld()`, `exportShare()`, `importWorld()`, `importShare()`
+- LiveView hooks: `ImportFile` (drag & drop + file picker), `CopyToClipboard`
+- JS: `download_file` event for browser-side file downloads
+- JS: `screenshot_with_overlay` event with canvas compositing + branding bar
+- Keyboard shortcut `P` updated to use overlay screenshot
+- Safe atom validation for import (prevents atom table exhaustion)
+- zlib compression for share codes (typically 60-80% smaller than raw base64)
+
+---
+
 ## v2.2.0 · **Speculum** — _Observatory Dashboard_
 _17 Şubat 2026_
 
