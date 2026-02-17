@@ -143,20 +143,23 @@ defmodule Modus.Simulation.Agent do
     GenServer.cast(via(agent_id), {:move_toward, target})
   end
 
-  @doc "Find agents within perception radius of a position."
+  @doc "Find agents within perception radius of a position. Uses spatial index for O(1) lookups."
   @spec nearby_agents({integer(), integer()}, integer()) :: [String.t()]
   def nearby_agents(position, radius \\ @perception_radius) do
-    {px, py} = position
-
-    # Use Registry values (stored as {position, alive?}) to avoid GenServer calls
-    Modus.AgentRegistry
-    |> Registry.select([{{:"$1", :_, :"$3"}, [], [{{:"$1", :"$3"}}]}])
-    |> Enum.filter(fn
-      {_id, {ax, ay, true}} ->
-        in_radius?({ax, ay}, {px, py}, radius)
-      _ -> false
-    end)
-    |> Enum.map(fn {id, _} -> id end)
+    try do
+      Modus.Performance.SpatialIndex.nearby(position, radius)
+    catch
+      _, _ ->
+        # Fallback to registry scan
+        {px, py} = position
+        Modus.AgentRegistry
+        |> Registry.select([{{:"$1", :_, :"$3"}, [], [{{:"$1", :"$3"}}]}])
+        |> Enum.filter(fn
+          {_id, {ax, ay, true}} -> in_radius?({ax, ay}, {px, py}, radius)
+          _ -> false
+        end)
+        |> Enum.map(fn {id, _} -> id end)
+    end
   end
 
   # --- GenServer ---
@@ -188,12 +191,24 @@ defmodule Modus.Simulation.Agent do
   def handle_info(_msg, agent), do: {:noreply, agent}
 
   def handle_cast({:tick, tick_number, _context}, %{alive?: false} = agent) do
-    # Dead agents don't tick
     _ = tick_number
     {:noreply, agent}
   end
 
   def handle_cast({:tick, tick_number, context}, agent) do
+    # Lazy evaluation: distant agents get simplified processing (skip if critical needs)
+    critical = agent.needs.hunger > 90.0 or agent.needs.rest < 5.0 or agent.conatus_energy < 0.1
+    if not critical and
+       Modus.Performance.LazyEval.distant?(agent.position, tick_number) and
+       Modus.Performance.LazyEval.lazy?(agent.id, agent.position, tick_number) do
+      agent = Modus.Performance.LazyEval.simplified_tick(agent)
+      {:noreply, agent}
+    else
+      do_full_tick(agent, tick_number, context)
+    end
+  end
+
+  defp do_full_tick(agent, tick_number, context) do
     # Build decision context
     nearby = nearby_agents(agent.position)
     decision_context = Map.merge(context, %{
@@ -255,8 +270,19 @@ defmodule Modus.Simulation.Agent do
       |> record_memory(tick_number, {action, params})
 
     # Update registry with current position+alive for fast lookups
+    old_pos = Map.get(context, :old_position, agent.position)
     {px, py} = agent.position
     Registry.update_value(Modus.AgentRegistry, agent.id, fn _ -> {px, py, agent.alive?} end)
+
+    # Update spatial index
+    try do
+      Modus.Performance.SpatialIndex.update(agent.id, old_pos, agent.position)
+    catch
+      _, _ -> :ok
+    end
+
+    # Trim state to enforce 10KB limit
+    agent = Modus.Performance.StateLimiter.trim(agent)
 
     {:noreply, agent}
   end

@@ -133,7 +133,10 @@ defmodule ModusWeb.UniverseLive do
        zen_mode: false,
        # LLM Metrics
        llm_metrics_open: false,
-       llm_metrics: %{calls_this_tick: 0, total_calls: 0, cache_hit_rate: 0.0, avg_latency_ms: 0, active_model: "none", sparkline: []}
+       llm_metrics: %{calls_this_tick: 0, total_calls: 0, cache_hit_rate: 0.0, avg_latency_ms: 0, active_model: "none", sparkline: []},
+       # Performance Monitor
+       perf_monitor_open: false,
+       perf_metrics: %{agent_count: 0, tick: 0, tick_state: :paused, memory_total_mb: 0.0, memory_processes_mb: 0.0, memory_ets_mb: 0.0, cpu_percent: 0.0, health: :healthy}
      )}
   end
 
@@ -154,6 +157,26 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("toggle_zen_mode", _params, socket) do
     {:noreply, assign(socket, zen_mode: !socket.assigns.zen_mode)}
+  end
+
+  def handle_event("keypress", %{"key" => "p"}, socket) do
+    send(self(), :toggle_perf_monitor)
+    {:noreply, socket}
+  end
+  def handle_event("keypress", %{"key" => "P"}, socket) do
+    send(self(), :toggle_perf_monitor)
+    {:noreply, socket}
+  end
+  def handle_event("keypress", _params, socket), do: {:noreply, socket}
+
+  def handle_event("toggle_perf_monitor", _params, socket) do
+    open = !socket.assigns.perf_monitor_open
+    metrics = if open do
+      try do Modus.Performance.Monitor.metrics() catch _, _ -> socket.assigns.perf_metrics end
+    else
+      socket.assigns.perf_metrics
+    end
+    {:noreply, assign(socket, perf_monitor_open: open, perf_metrics: metrics)}
   end
 
   def handle_event("toggle_llm_metrics", _params, socket) do
@@ -461,6 +484,14 @@ defmodule ModusWeb.UniverseLive do
       []
     end
 
+    # Refresh perf monitor if open
+    perf_assigns = if socket.assigns.perf_monitor_open and is_integer(tick) and rem(tick, 10) == 0 do
+      metrics = try do Modus.Performance.Monitor.metrics() catch _, _ -> socket.assigns.perf_metrics end
+      [perf_metrics: metrics]
+    else
+      []
+    end
+
     # Refresh LLM metrics if panel is open
     llm_assigns = if socket.assigns.llm_metrics_open do
       metrics = try do Modus.Intelligence.LlmMetrics.get_metrics() catch _, _ -> socket.assigns.llm_metrics end
@@ -477,7 +508,7 @@ defmodule ModusWeb.UniverseLive do
         {:trades_count, eco.trades},
         {:births_count, life.births},
         {:deaths_count, life.deaths}
-        | season_assigns ++ obs_assigns ++ llm_assigns]
+        | season_assigns ++ obs_assigns ++ llm_assigns ++ perf_assigns]
      )}
   end
 
@@ -1169,6 +1200,16 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, toasts: toasts)}
   end
 
+  def handle_info(:toggle_perf_monitor, socket) do
+    open = !socket.assigns.perf_monitor_open
+    metrics = if open do
+      try do Modus.Performance.Monitor.metrics() catch _, _ -> socket.assigns.perf_metrics end
+    else
+      socket.assigns.perf_metrics
+    end
+    {:noreply, assign(socket, perf_monitor_open: open, perf_metrics: metrics)}
+  end
+
   def handle_info(:clear_settings_saved, socket) do
     {:noreply, assign(socket, settings_saved: false, settings_open: false)}
   end
@@ -1549,7 +1590,7 @@ defmodule ModusWeb.UniverseLive do
 
   defp render_simulation(assigns) do
     ~H"""
-    <div class="h-screen flex flex-col bg-[#050508] text-slate-200 font-mono overflow-hidden">
+    <div class="h-screen flex flex-col bg-[#050508] text-slate-200 font-mono overflow-hidden" phx-window-keydown="keypress">
       <%!-- Zen Mode indicator --%>
       <%= if @zen_mode do %>
         <div class="fixed top-3 right-3 z-50 text-[10px] text-slate-600 bg-black/50 px-2 py-1 rounded backdrop-blur-sm">Z</div>
@@ -1564,7 +1605,7 @@ defmodule ModusWeb.UniverseLive do
           <span class="text-xl font-bold tracking-tighter">
             MODUS<span class="text-purple-400">_</span>
           </span>
-          <span class="text-xs text-slate-600 hidden sm:inline">v3.2.0 · Ratio</span>
+          <span class="text-xs text-slate-600 hidden sm:inline">v3.3.0 · Optimum</span>
           <%= if @rules["preset"] && @rules["preset"] != "Custom" do %>
             <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 hidden sm:inline">
               🎛️ <%= @rules["preset"] %>
@@ -2724,6 +2765,82 @@ defmodule ModusWeb.UniverseLive do
           <div class="mt-1 text-[9px] text-slate-600 flex justify-between">
             <span>total: <%= @llm_metrics.total_calls %> calls</span>
             <span>budget: <%= try do Modus.Intelligence.BudgetTracker.get_remaining() rescue _ -> "?" end %>/<%= try do Modus.Intelligence.BudgetTracker.max_per_tick() rescue _ -> "?" end %></span>
+          </div>
+        </div>
+      <% end %>
+
+      <%!-- Performance Monitor Panel (toggle with P key) --%>
+      <%= if @perf_monitor_open do %>
+        <% pm = @perf_metrics %>
+        <% health_color = case pm.health do
+          :healthy -> "text-emerald-400"
+          :warning -> "text-amber-400"
+          :critical -> "text-red-400"
+        end %>
+        <% health_border = case pm.health do
+          :healthy -> "border-emerald-500/20"
+          :warning -> "border-amber-500/20"
+          :critical -> "border-red-500/20"
+        end %>
+        <% mem_pct = min(pm.memory_total_mb / 512.0 * 100, 100) %>
+        <% mem_bar_color = cond do
+          mem_pct > 80 -> "bg-red-500"
+          mem_pct > 50 -> "bg-amber-500"
+          true -> "bg-emerald-500"
+        end %>
+        <div class={"fixed top-16 right-4 z-40 w-[250px] rounded-xl border #{health_border} bg-[#0A0A0F]/95 backdrop-blur-md shadow-lg p-3 font-mono"}>
+          <div class="flex items-center justify-between mb-2">
+            <span class={"text-[10px] uppercase tracking-wider font-bold #{health_color}"}>📊 Performance</span>
+            <div class="flex items-center gap-2">
+              <span class={"w-1.5 h-1.5 rounded-full #{String.replace(health_color, "text-", "bg-")} #{if pm.health != :healthy, do: "animate-pulse", else: ""}"} />
+              <button phx-click="toggle_perf_monitor" class="text-slate-600 hover:text-slate-400 text-xs">✕</button>
+            </div>
+          </div>
+
+          <%!-- Agent Count & Tick --%>
+          <div class="grid grid-cols-2 gap-2 mb-2">
+            <div>
+              <div class="text-xl font-bold text-purple-400 tabular-nums"><%= pm.agent_count %></div>
+              <div class="text-[8px] uppercase text-slate-600">agents</div>
+            </div>
+            <div>
+              <div class="text-xl font-bold text-cyan-400 tabular-nums"><%= pm.tick %></div>
+              <div class="text-[8px] uppercase text-slate-600">tick</div>
+            </div>
+          </div>
+
+          <%!-- Memory Bar --%>
+          <div class="mb-2">
+            <div class="flex justify-between text-[9px] mb-0.5">
+              <span class="text-slate-500">Memory</span>
+              <span class={health_color}><%= pm.memory_total_mb %> MB</span>
+            </div>
+            <div class="h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <div class={"h-full rounded-full transition-all #{mem_bar_color}"} style={"width: #{mem_pct}%"} />
+            </div>
+            <div class="flex justify-between text-[8px] text-slate-600 mt-0.5">
+              <span>proc: <%= pm.memory_processes_mb %>MB</span>
+              <span>ets: <%= pm.memory_ets_mb %>MB</span>
+            </div>
+          </div>
+
+          <%!-- CPU --%>
+          <div class="flex items-center justify-between text-[10px]">
+            <span class="text-slate-500">CPU</span>
+            <span class={"font-bold tabular-nums #{cond do
+              pm.cpu_percent > 80 -> "text-red-400"
+              pm.cpu_percent > 50 -> "text-amber-400"
+              true -> "text-emerald-400"
+            end}"}><%= pm.cpu_percent %>%</span>
+          </div>
+
+          <%!-- Health Status --%>
+          <div class={"mt-2 text-center text-[9px] uppercase tracking-wider #{health_color}"}>
+            <%= case pm.health do
+              :healthy -> "✅ All Systems Healthy"
+              :warning -> "⚠️ Warning — High Load"
+              :critical -> "🔴 Critical — Reduce Agents"
+            end %>
           </div>
         </div>
       <% end %>

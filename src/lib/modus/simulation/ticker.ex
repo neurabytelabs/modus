@@ -134,6 +134,11 @@ defmodule Modus.Simulation.Ticker do
     # Broadcast to agents (self-tick)
     Phoenix.PubSub.broadcast(@pubsub, "simulation:ticks", {:tick, new_tick})
 
+    # Rebuild spatial index every 10 ticks for O(1) neighbor lookups
+    if rem(new_tick, 10) == 0 do
+      try do Modus.Performance.SpatialIndex.rebuild() catch _, _ -> :ok end
+    end
+
     # Decay unowned buildings + detect neighborhoods every 100 ticks
     if rem(new_tick, 100) == 0 do
       try do

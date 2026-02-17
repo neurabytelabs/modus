@@ -17,6 +17,8 @@ defmodule Modus.Application do
     Modus.Simulation.RulesEngine.init()
     Modus.Mind.Goals.init()
     Modus.Mind.Culture.init()
+    Modus.Performance.SpatialIndex.init()
+    Modus.Performance.GcTuning.apply_defaults()
 
     children = [
       Modus.Repo,
