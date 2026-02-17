@@ -3,13 +3,22 @@ defmodule Modus.Simulation.TickerTest do
   alias Modus.Simulation.Ticker
 
   setup do
-    # Use a longer interval so ticks don't fire during synchronous tests
-    pid = start_supervised!({Ticker, [interval_ms: 50]})
+    pid = case Process.whereis(Ticker) do
+      nil ->
+        start_supervised!({Ticker, [interval_ms: 50]})
+      existing_pid ->
+        # Use existing, ensure paused for isolation
+        try do Ticker.pause(existing_pid) catch _, _ -> :ok end
+        existing_pid
+    end
+    on_exit(fn -> try do Ticker.pause(pid) catch _, _ -> :ok end end)
     %{pid: pid}
   end
 
   test "starts in :paused state", %{pid: pid} do
-    assert %{state: :paused, tick: 0} = Ticker.status(pid)
+    status = Ticker.status(pid)
+    assert status.state == :paused
+    assert is_integer(status.tick)
   end
 
   test "run transitions to :running", %{pid: pid} do

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MODUS — Classic RPG</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#2a1f3d;--panel:rgba(20,12,28,.92);--border:#c8a96e;--gold:#f0d060;--hp:#4ade80;--text:#e8dcc8;--dim:#8b7e6a;--warm:#3d2b1f}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;width:100vw}
+.pixel{font-family:'Press Start 2P',monospace}
+.pxborder{border:3px solid var(--border);box-shadow:inset 0 0 0 1px #000,0 0 0 1px #000,4px 4px 0 rgba(0,0,0,.4)}
+canvas#world{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;image-rendering:pixelated}
+/* HUD layers */
+.hud{position:fixed;z-index:10;pointer-events:none}
+.hud>*{pointer-events:auto}
+/* TOP-LEFT logo */
+#logo{top:12px;left:12px;display:flex;align-items:center;gap:10px}
+#logo h1{font-size:22px;color:var(--gold);text-shadow:3px 3px 0 #000,0 0 8px rgba(240,208,96,.3)}
+.badge{font-size:9px;padding:4px 8px;background:var(--panel);border-radius:4px;color:var(--gold)}
+/* TOP-CENTER speed */
+#speed{top:12px;left:50%;transform:translateX(-50%);display:flex;gap:4px}
+#speed button{width:40px;height:34px;font-size:16px;border:2px solid var(--border);background:var(--panel);color:var(--text);cursor:pointer;border-radius:4px;transition:.15s}
+#speed button.active{background:var(--border);color:#000}
+#speed button:hover{background:rgba(200,169,110,.3)}
+/* TOP-RIGHT resources */
+#resources{top:12px;right:12px;display:flex;gap:6px}
+.res-box{font-size:10px;padding:5px 8px;background:var(--panel);border-radius:4px;border:2px solid var(--border);white-space:nowrap}
+.res-box span{font-size:13px}
+/* Event log */
+#eventlog{top:56px;left:50%;transform:translateX(-50%);width:420px;max-height:120px;overflow-y:auto;background:rgba(0,0,0,.65);border-radius:6px;padding:8px 12px;font-size:11px;line-height:1.6}
+#eventlog::-webkit-scrollbar{width:4px}
+#eventlog::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.evt-day{color:var(--gold);font-size:9px;margin-right:4px}
+/* LEFT agent strip */
+#agents-strip{top:50%;left:10px;transform:translateY(-50%);display:flex;flex-direction:column;gap:6px;max-height:70vh;overflow-y:auto}
+#agents-strip::-webkit-scrollbar{display:none}
+.agent-dot{width:42px;height:42px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;position:relative;transition:.2s;background:var(--panel)}
+.agent-dot:hover,.agent-dot.sel{transform:scale(1.15);box-shadow:0 0 10px var(--gold)}
+.agent-dot .aname{position:absolute;left:50px;font-size:8px;white-space:nowrap;background:var(--panel);padding:2px 6px;border-radius:3px;display:none;border:1px solid var(--border)}
+.agent-dot:hover .aname{display:block}
+/* RIGHT detail panel */
+#detail{top:50%;right:-340px;transform:translateY(-50%);width:320px;max-height:80vh;overflow-y:auto;background:var(--panel);border-radius:8px;padding:14px;transition:right .3s ease;font-size:11px}
+#detail::-webkit-scrollbar{width:4px}
+#detail::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+#detail.open{right:12px}
+#detail .close-btn{position:absolute;top:6px;right:10px;cursor:pointer;font-size:14px;color:var(--dim)}
+#detail h2{font-size:13px;color:var(--gold);margin-bottom:2px}
+#detail .subtitle{color:var(--dim);font-size:9px;margin-bottom:10px}
+.bar-wrap{background:#1a1a2e;border-radius:3px;height:14px;margin:4px 0 8px;position:relative;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .4s}
+.bar-label{position:absolute;top:1px;left:6px;font-size:8px;color:#fff}
+.mood-line{margin-bottom:10px;font-size:12px}
+.stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:10px;text-align:center}
+.stat-cell{background:rgba(200,169,110,.1);border:1px solid var(--border);border-radius:3px;padding:4px 0}
+.stat-cell .sval{font-size:14px;color:var(--gold);display:block}
+.stat-cell .sname{font-size:7px;color:var(--dim)}
+.inv-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;margin-bottom:10px}
+.inv-slot{aspect-ratio:1;background:rgba(0,0,0,.4);border:1px solid #555;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:14px;position:relative}
+.inv-slot .iqty{position:absolute;bottom:1px;right:3px;font-size:7px;color:var(--gold)}
+.quest-item{margin:3px 0;font-size:10px}
+.quest-item .qicon{margin-right:4px}
+.rel-row{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+.rel-chip{font-size:9px;background:rgba(200,169,110,.15);padding:3px 6px;border-radius:3px;border:1px solid var(--border)}
+.mem-item{font-size:9px;color:var(--dim);margin:2px 0;font-style:italic}
+.section-title{font-size:9px;color:var(--gold);margin:10px 0 4px;text-transform:uppercase;letter-spacing:1px}
+/* Chat input */
+#chat-box{margin-top:10px;display:flex;gap:4px}
+#chat-box input{flex:1;background:#1a1a2e;border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:3px;font-size:10px}
+#chat-box button{background:var(--border);color:#000;border:none;padding:5px 8px;border-radius:3px;cursor:pointer;font-size:10px}
+/* BOTTOM-LEFT minimap */
+#minimap{bottom:12px;left:12px}
+#minimap canvas{border-radius:6px;image-rendering:pixelated}
+/* BOTTOM-RIGHT toolbar */
+#toolbar{bottom:12px;right:12px;display:flex;gap:8px}
+.tb-btn{width:48px;height:48px;border-radius:50%;border:2px solid var(--border);background:var(--panel);font-size:18px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:.15s}
+.tb-btn:hover{background:rgba(200,169,110,.25);transform:translateY(-3px)}
+.tb-btn .tbl{font-size:6px;color:var(--dim);margin-top:1px}
+/* BOTTOM-CENTER extras */
+#extras{bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:6px}
+#extras button{font-size:9px;padding:6px 10px;background:var(--panel);border:2px solid var(--border);color:var(--text);border-radius:4px;cursor:pointer}
+#extras button:hover{background:rgba(200,169,110,.2)}
+/* Toast */
+#toast{top:50%;left:50%;transform:translate(-50%,-50%) scale(0);background:var(--panel);border:3px solid var(--gold);border-radius:8px;padding:14px 24px;font-size:11px;text-align:center;z-index:99;transition:.3s;opacity:0}
+#toast.show{transform:translate(-50%,-50%) scale(1);opacity:1}
+/* Keyboard hints */
+#kbd-hints{bottom:70px;left:50%;transform:translateX(-50%);font-size:7px;color:var(--dim);text-align:center;opacity:.6}
+</style>
+</head>
+<body>
+<canvas id="world"></canvas>
+
+<div class="hud" id="logo"><h1 class="pixel">MODUS</h1><span class="badge pxborder pixel">🌸 Spring — Day 47</span></div>
+
+<div class="hud" id="speed">
+<button title="Pause" onclick="setSpeed(0,this)">⏸️</button>
+<button class="active" title="1x" onclick="setSpeed(1,this)">▶️</button>
+<button title="5x" onclick="setSpeed(5,this)">⏩</button>
+<button title="10x" onclick="setSpeed(10,this)">⏩⏩</button>
+</div>
+
+<div class="hud" id="resources">
+<div class="res-box pxborder"><span>🪵</span> 142</div>
+<div class="res-box pxborder"><span>🪨</span> 89</div>
+<div class="res-box pxborder"><span>🥩</span> 23</div>
+<div class="res-box pxborder"><span>🐟</span> 67</div>
+<div class="res-box pxborder"><span>🌾</span> 156</div>
+<div class="res-box pxborder"><span>🌿</span> 45</div>
+</div>
+
+<div class="hud" id="eventlog"></div>
+
+<div class="hud" id="agents-strip"></div>
+
+<div class="hud pxborder" id="detail">
+<span class="close-btn" onclick="closeDetail()">✕</span>
+<div id="detail-content"></div>
+</div>
+
+<div class="hud pxborder" id="minimap"><canvas id="minicanvas" width="120" height="120"></canvas></div>
+
+<div class="hud" id="toolbar">
+<div class="tb-btn" title="Build" onclick="showToast('🔨 Build mode coming soon!')"><span>🔨</span><span class="tbl">Build</span></div>
+<div class="tb-btn" title="Chat" onclick="showToast('💬 Chat mode!')"><span>💬</span><span class="tbl">Chat</span></div>
+<div class="tb-btn" title="Settings" onclick="showToast('⚙️ Rules: Balanced')"><span>⚙️</span><span class="tbl">Settings</span></div>
+<div class="tb-btn" title="Stats" onclick="showToast('📊 Happiness: 72% | Trades: 34 | Births: 3 | Deaths: 1')"><span>📊</span><span class="tbl">Stats</span></div>
+<div class="tb-btn" title="Save" onclick="showToast('💾 Saved!')"><span>💾</span><span class="tbl">Save</span></div>
+<div class="tb-btn" title="God Mode" onclick="toggleGod()"><span>👁️</span><span class="tbl">God</span></div>
+</div>
+
+<div class="hud" id="extras">
+<button onclick="showToast('🌐 Universe Gallery — 3 worlds saved')">🌐 Gallery</button>
+<button onclick="showToast('📤 Link copied!')">📤 Share</button>
+<button onclick="showToast('📥 Load from file…')">📥 Load</button>
+</div>
+
+<div class="hud" id="kbd-hints">
+<span>[Space] Pause</span> · <span>[1-4] Speed</span> · <span>[G] God</span> · <span>[M] Minimap</span> · <span>[Esc] Close</span>
+</div>
+
+<div class="hud" id="toast"></div>
+
+<script>
+// --- DATA ---
+const agents=[
+{name:"Maya",job:"Explorer",mood:"Happy 😊",energy:78,pos:[22,14],action:"Exploring",color:"#e06060",
+ ocean:.9,cons:.4,extr:.8,agree:.7,neur:.2,inv:[["🪵",5],["🪨",3],["🥩",2],["🐟",4],["🌿",1]],
+ goals:[["Build Home","done"],["Make 3 Friends (2/3)","prog"],["Explore Map (64%)","todo"]],
+ rels:[["Kai","❤️❤️❤️"],["Zoe","❤️❤️"],["Rio","❤️"]],
+ mems:["Survived the wolf attack of Day 23","Helped Kai build the market"],catch:"The horizon calls!"},
+{name:"Kai",job:"Builder",mood:"Happy 😊",energy:65,pos:[25,25],action:"Building house",color:"#60a0e0"},
+{name:"Luna",job:"Healer",mood:"Sad 😢",energy:42,pos:[35,20],action:"Gathering herbs",color:"#c080e0"},
+{name:"Zoe",job:"Farmer",mood:"Happy 😊",energy:81,pos:[28,28],action:"Harvesting",color:"#80c040"},
+{name:"Rio",job:"Hunter",mood:"Eager 🔥",energy:70,pos:[15,8],action:"Stalking deer",color:"#e09040"},
+{name:"Ash",job:"Merchant",mood:"Happy 😊",energy:55,pos:[26,24],action:"Trading",color:"#c0a060"},
+{name:"Noor",job:"Guard",mood:"Calm 😐",energy:60,pos:[18,12],action:"Patrolling",color:"#6080c0"},
+{name:"Eira",job:"Scholar",mood:"Happy 😊",energy:73,pos:[27,26],action:"Reading",color:"#a0a0d0"},
+{name:"Jax",job:"Fisher",mood:"Calm 😐",energy:68,pos:[10,30],action:"Fishing",color:"#40a0c0"},
+{name:"Sage",job:"Artist",mood:"Happy 😊",energy:77,pos:[25,26],action:"Painting",color:"#e080a0"},
+{name:"Ember",job:"Blacksmith",mood:"Eager 🔥",energy:85,pos:[24,25],action:"Crafting",color:"#e06020"},
+{name:"Willow",job:"Herbalist",mood:"Calm 😐",energy:50,pos:[34,22],action:"Collecting",color:"#60c080"},
+{name:"Flint",job:"Miner",mood:"Scared 😨",energy:35,pos:[8,5],action:"Hiding from wolf",color:"#909090"},
+{name:"Brook",job:"Caretaker",mood:"Happy 😊",energy:90,pos:[26,27],action:"Tending child",color:"#e0a0c0"},
+{name:"Reed",job:"Scout",mood:"Eager 🔥",energy:62,pos:[20,10],action:"Scouting",color:"#a0c060"},
+{name:"Dawn",job:"Elder",mood:"Sad 😢",energy:28,pos:[27,25],action:"Resting",color:"#c0a080"},
+{name:"Moss",job:"Woodcutter",mood:"Calm 😐",energy:71,pos:[12,15],action:"Chopping tree",color:"#408040"},
+{name:"Pip",job:"Child",mood:"Happy 😊",energy:95,pos:[26,26],action:"Playing",color:"#f0c040"}
+];
+
+const wildlife=[
+{type:"🦌",count:4,positions:[[14,7],[16,8],[30,40],[32,42]]},
+{type:"🐇",count:6,positions:[[20,18],[22,30],[35,25],[40,15],[12,35],[28,40]]},
+{type:"🐺",count:2,positions:[[10,10],[13,12]]},
+{type:"🐦",count:8,positions:[[5,5],[15,20],[25,10],[35,30],[45,5],[40,25],[20,40],[30,15]]},
+];
+
+const events=[
+["47","Rio hunted a deer in the northern forest"],
+["47","Kai finished building a stone house! 🏠"],
+["46","⚠️ Wolf spotted near Sunrise Quarter"],
+["46","Luna gathered rare herbs"],
+["45","🌸 Spring has arrived!"],
+["44","Zoe and Ash became friends at the campfire"],
+["43","Maya reached 64% map exploration"],
+["42","Golden Age begins — happiness above 70%"]
+];
+
+const buildings=[
+{name:"House",pos:[25,24],icon:"🏠"},{name:"House",pos:[26,23],icon:"🏠"},{name:"House",pos:[27,24],icon:"🏠"},
+{name:"Market",pos:[26,25],icon:"🏪"},{name:"Well",pos:[25,26],icon:"🪣"},
+{name:"Hut",pos:[17,13],icon:"🛖"},{name:"Hut",pos:[18,14],icon:"🛖"},{name:"Watchtower",pos:[19,11],icon:"🗼"},
+{name:"Hut",pos:[11,32],icon:"🛖"},{name:"Hut",pos:[12,33],icon:"🛖"},{name:"Farm",pos:[13,31],icon:"🌾"},
+{name:"Farm",pos:[8,6],icon:"🌾"}
+];
+
+// --- WORLD MAP ---
+const W=50,H=50;
+const terrain=[];
+function genTerrain(){
+ for(let y=0;y<H;y++){terrain[y]=[];for(let x=0;x<W;x++){
+  let c;
+  if(y<8&&x<15)c='#707880'; // mountain
+  else if(y<12&&x<20)c='#1a5c1a'; // dense forest
+  else if(x>=8&&x<=12)c='#3080c0'; // river
+  else if(y>42&&x>20&&x<40)c='#4090d0'; // lake
+  else if(y>44&&x>20&&x<40)c='#d4c090'; // beach
+  else if(x>30&&y>15&&y<28)c='#a07cd0'; // meadow
+  else if(y>22&&y<32&&x>22&&x<30)c='#8b6b3a'; // village paths
+  else if(y>26&&y<34&&x>28&&x<36)c='#c0a040'; // farms
+  else c='#2d8c2d'; // grass
+  // variation
+  let r=parseInt(c.slice(1,3),16),g=parseInt(c.slice(3,5),16),b=parseInt(c.slice(5,7),16);
+  let v=(Math.random()-.5)*15|0;
+  c=`rgb(${Math.max(0,Math.min(255,r+v))},${Math.max(0,Math.min(255,g+v))},${Math.max(0,Math.min(255,b+v))})`;
+  terrain[y][x]=c;
+ }}
+}
+genTerrain();
+
+const wCanvas=document.getElementById('world');
+const wCtx=wCanvas.getContext('2d');
+const mCanvas=document.getElementById('minicanvas');
+const mCtx=mCanvas.getContext('2d');
+
+let animFrame=0,simSpeed=1,godMode=false,selectedAgent=null;
+
+function resize(){wCanvas.width=window.innerWidth;wCanvas.height=window.innerHeight}
+window.addEventListener('resize',resize);resize();
+
+function drawWorld(){
+ const cw=wCanvas.width,ch=wCanvas.height;
+ const ts=Math.max(cw/W,ch/H)|0;
+ const ox=((cw-ts*W)/2)|0,oy=((ch-ts*H)/2)|0;
+ wCtx.fillStyle='#1a1a2e';wCtx.fillRect(0,0,cw,ch);
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+  wCtx.fillStyle=terrain[y][x];
+  wCtx.fillRect(ox+x*ts,oy+y*ts,ts,ts);
+ }
+ // buildings
+ wCtx.font=`${ts*0.8}px serif`;wCtx.textAlign='center';wCtx.textBaseline='middle';
+ buildings.forEach(b=>{wCtx.fillText(b.icon,ox+b.pos[0]*ts+ts/2,oy+b.pos[1]*ts+ts/2)});
+ // wildlife
+ wCtx.font=`${ts*0.7}px serif`;
+ wildlife.forEach(w=>{w.positions.forEach(p=>{
+  let px=p[0]+Math.sin(animFrame*.02+p[1])*.5,py=p[1]+Math.cos(animFrame*.02+p[0])*.5;
+  wCtx.fillText(w.type,ox+px*ts+ts/2,oy+py*ts+ts/2);
+ })});
+ // agents
+ agents.forEach((a,i)=>{
+  let px=a.pos[0]+Math.sin(animFrame*.015+i)*0.3,py=a.pos[1]+Math.cos(animFrame*.015+i)*0.3;
+  let cx=ox+px*ts+ts/2,cy=oy+py*ts+ts/2;
+  wCtx.beginPath();wCtx.arc(cx,cy,ts*0.4,0,Math.PI*2);
+  wCtx.fillStyle=a.color;wCtx.fill();
+  wCtx.strokeStyle='#000';wCtx.lineWidth=1.5;wCtx.stroke();
+  if(selectedAgent===i){wCtx.strokeStyle=var_gold;wCtx.lineWidth=2.5;wCtx.stroke()}
+  if(godMode){wCtx.fillStyle='#fff';wCtx.font='9px sans-serif';wCtx.fillText(a.name,cx,cy-ts*0.6)}
+ });
+}
+const var_gold='#f0d060';
+
+function drawMinimap(){
+ const s=120/W;
+ mCtx.clearRect(0,0,120,120);
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++){mCtx.fillStyle=terrain[y][x];mCtx.fillRect(x*s,y*s,s+.5,s+.5)}
+ agents.forEach(a=>{mCtx.fillStyle=a.color;mCtx.fillRect(a.pos[0]*s-1,a.pos[1]*s-1,3,3)});
+}
+
+function animate(){
+ animFrame++;
+ if(simSpeed>0&&animFrame%Math.max(1,10-simSpeed*2)===0){
+  agents.forEach(a=>{a.pos[0]+=((Math.random()-.5)*.3);a.pos[1]+=((Math.random()-.5)*.3)});
+ }
+ drawWorld();
+ if(animFrame%30===0)drawMinimap();
+ requestAnimationFrame(animate);
+}
+
+// --- AGENTS STRIP ---
+function buildStrip(){
+ const el=document.getElementById('agents-strip');
+ el.innerHTML=agents.map((a,i)=>`<div class="agent-dot${selectedAgent===i?' sel':''}" style="background:${a.color}" onclick="selectAgent(${i})"><span class="aname pixel">${a.name}</span>${a.name[0]}</div>`).join('');
+}
+
+function selectAgent(i){
+ selectedAgent=i;buildStrip();
+ const a=agents[i];
+ const d=a.ocean!==undefined;
+ let h=`<h2 class="pixel">${a.name}</h2><div class="subtitle pixel">${a.job} — "${a.action}"</div>`;
+ h+=`<div class="mood-line">${a.mood}</div>`;
+ const ec=a.energy>60?'#4ade80':a.energy>30?'#fbbf24':'#ef4444';
+ h+=`<div class="bar-wrap"><div class="bar-fill" style="width:${a.energy}%;background:${ec}"></div><div class="bar-label pixel">HP ${a.energy}%</div></div>`;
+ if(d){
+  h+=`<div class="section-title pixel">Stats (OCEAN)</div><div class="stats-grid">`;
+  [['O',a.ocean],['C',a.cons],['E',a.extr],['A',a.agree],['N',a.neur]].forEach(s=>{
+   h+=`<div class="stat-cell pxborder"><span class="sval">${(s[1]*10)|0}</span><span class="sname pixel">${s[0]}</span></div>`;
+  });
+  h+=`</div>`;
+  h+=`<div class="section-title pixel">Inventory</div><div class="inv-grid">`;
+  for(let j=0;j<12;j++){
+   if(a.inv&&a.inv[j])h+=`<div class="inv-slot pxborder">${a.inv[j][0]}<span class="iqty">${a.inv[j][1]}</span></div>`;
+   else h+=`<div class="inv-slot"></div>`;
+  }
+  h+=`</div>`;
+  h+=`<div class="section-title pixel">Quests</div>`;
+  a.goals.forEach(g=>{
+   const icon=g[1]==='done'?'✅':g[1]==='prog'?'🔄':'◻️';
+   h+=`<div class="quest-item"><span class="qicon">${icon}</span>${g[0]}</div>`;
+  });
+  h+=`<div class="section-title pixel">Relationships</div><div class="rel-row">`;
+  a.rels.forEach(r=>{h+=`<span class="rel-chip">${r[0]} ${r[1]}</span>`});
+  h+=`</div>`;
+  h+=`<div class="section-title pixel">Memories</div>`;
+  a.mems.forEach(m=>{h+=`<div class="mem-item">"${m}"</div>`});
+  h+=`<div style="margin-top:6px;font-size:9px;color:var(--gold)">💬 "${a.catch}"</div>`;
+ }
+ h+=`<div id="chat-box"><input placeholder="Talk to ${a.name}…" onkeydown="if(event.key==='Enter')showToast('💬 ${a.name}: Thanks!')"><button onclick="showToast('💬 ${a.name}: Thanks!')">Send</button></div>`;
+ document.getElementById('detail-content').innerHTML=h;
+ document.getElementById('detail').classList.add('open');
+}
+
+function closeDetail(){document.getElementById('detail').classList.remove('open');selectedAgent=null;buildStrip()}
+
+// --- EVENT LOG ---
+function buildEventLog(){
+ const el=document.getElementById('eventlog');
+ el.innerHTML=events.map(e=>`<div><span class="evt-day pixel">D${e[0]}</span>${e[1]}</div>`).join('');
+}
+
+// --- SPEED ---
+function setSpeed(s,btn){
+ simSpeed=s;
+ document.querySelectorAll('#speed button').forEach(b=>b.classList.remove('active'));
+ btn.classList.add('active');
+}
+
+// --- TOAST ---
+let toastTimer;
+function showToast(msg){
+ const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+ clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// --- GOD MODE ---
+function toggleGod(){godMode=!godMode;showToast(godMode?'👁️ God Mode ON':'👁️ God Mode OFF')}
+
+// --- KEYBOARD ---
+document.addEventListener('keydown',e=>{
+ if(e.target.tagName==='INPUT')return;
+ if(e.code==='Space'){e.preventDefault();setSpeed(simSpeed?0:1,document.querySelectorAll('#speed button')[simSpeed?0:1])}
+ if(e.key==='1')setSpeed(1,document.querySelectorAll('#speed button')[1]);
+ if(e.key==='2')setSpeed(5,document.querySelectorAll('#speed button')[2]);
+ if(e.key==='3')setSpeed(10,document.querySelectorAll('#speed button')[3]);
+ if(e.key==='g')toggleGod();
+ if(e.key==='Escape')closeDetail();
+});
+
+// --- INIT ---
+buildStrip();buildEventLog();drawMinimap();
+setTimeout(()=>showToast('🏆 Kai built a stone house!'),2000);
+animate();
+</script>
+</body>
+</html>

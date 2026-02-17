@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MODUS Observatory · Sunrise Valley</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0f;--grid:#1a1a2e;--cyan:#06B6D4;--purple:#7C3AED;--text:#e0e0e0;--dim:#666;--card:#0f0f1a;--border:#1e1e3a}
+@font-face{font-family:sys;src:local('SF Mono'),local('Fira Code'),local('Consolas')}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;overflow:hidden;height:100vh;
+background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+background-size:40px 40px}
+.mono{font-family:'SF Mono','Fira Code','Consolas',monospace}
+/* TOP BAR */
+.topbar{height:40px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--border);background:rgba(10,10,15,.9);backdrop-filter:blur(8px);z-index:10;position:relative}
+.topbar .title{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--dim)}.topbar .title b{color:var(--cyan)}
+.topbar .controls{display:flex;gap:8px;align-items:center}
+.topbar .controls button{background:var(--card);border:1px solid var(--border);color:var(--dim);padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer;font-family:inherit}
+.topbar .controls button:hover,.topbar .controls button.active{color:var(--cyan);border-color:var(--cyan)}
+/* MAIN LAYOUT */
+.main{display:grid;grid-template-columns:1fr 200px;grid-template-rows:1fr;height:calc(100vh - 40px)}
+.content{display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:100px 1fr 1fr;gap:8px;padding:8px;overflow:hidden}
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;position:relative;overflow:hidden}
+.card:hover{border-color:rgba(6,182,212,.3)}
+.card .label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--dim);margin-bottom:6px}
+.card .big{font-size:42px;font-weight:700;line-height:1}
+.glow{filter:drop-shadow(0 0 6px rgba(6,182,212,.3))}
+/* TOP ROW */
+.top-pop{grid-column:1}.top-happy{grid-column:2}.top-era{grid-column:3}
+/* CENTER */
+.center-map{grid-column:1/3;grid-row:2}
+.center-network{grid-column:3;grid-row:2}
+/* BOTTOM */
+.bottom-timeline{grid-column:1}
+.bottom-radar{grid-column:2}
+.bottom-metrics{grid-column:3}
+/* SIDEBAR */
+.sidebar{background:var(--card);border-left:1px solid var(--border);padding:10px;overflow-y:auto;font-size:11px}
+.sidebar h3{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--dim);margin:12px 0 6px}
+.sidebar .agent-row{display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer}
+.sidebar .agent-row:hover{color:var(--cyan)}
+.sidebar .bar{height:4px;border-radius:2px;background:var(--border);flex:1}
+.sidebar .bar-fill{height:100%;border-radius:2px;transition:width .6s}
+.sidebar .leader{padding:4px 0;border-bottom:1px solid var(--border)}
+.sidebar .leader span{color:var(--cyan)}
+/* MAP */
+.map-canvas{width:100%;height:100%;image-rendering:pixelated}
+.map-controls{position:absolute;top:8px;right:8px;display:flex;gap:4px}
+.map-controls button{background:rgba(15,15,26,.8);border:1px solid var(--border);color:var(--dim);padding:2px 8px;border-radius:3px;font-size:10px;cursor:pointer}
+.map-controls button:hover,.map-controls button.active{color:var(--cyan);border-color:var(--cyan)}
+/* NETWORK */
+.network-svg{width:100%;height:100%}
+.network-svg circle{cursor:pointer;transition:r .2s}
+.network-svg line{stroke-linecap:round}
+/* TIMELINE */
+.timeline-svg{width:100%;height:100%}
+/* RADAR */
+.radar-svg{width:100%;height:100%}
+.radar-select{position:absolute;top:8px;right:8px;display:flex;gap:4px}
+.radar-select select{background:var(--card);border:1px solid var(--border);color:var(--text);padding:2px 6px;border-radius:3px;font-size:10px}
+/* METRICS */
+.metrics-feed{overflow-y:auto;height:calc(100% - 24px);font-size:12px}
+.metric-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(30,30,58,.5)}
+.metric-row .val{color:var(--cyan);font-weight:600}
+.metric-row .change{font-size:10px;color:#4ade80}
+.sparkline{width:50px;height:16px}
+/* CMD PALETTE */
+.cmd-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:flex-start;justify-content:center;padding-top:20vh}
+.cmd-overlay.open{display:flex}
+.cmd-box{background:var(--card);border:1px solid var(--border);border-radius:12px;width:480px;padding:12px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.cmd-box input{width:100%;background:transparent;border:none;color:var(--text);font-size:16px;outline:none;padding:8px 0;font-family:inherit}
+.cmd-box .hint{font-size:11px;color:var(--dim);padding-top:8px;border-top:1px solid var(--border)}
+/* DETAIL OVERLAY */
+.detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:90;align-items:center;justify-content:center}
+.detail-overlay.open{display:flex}
+.detail-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto}
+.detail-panel h2{font-size:18px;margin-bottom:12px;color:var(--cyan)}
+.detail-panel .close-btn{float:right;background:none;border:none;color:var(--dim);cursor:pointer;font-size:18px}
+.detail-panel p,.detail-panel li{font-size:13px;line-height:1.6;color:var(--dim)}
+/* TOAST */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--cyan);color:var(--cyan);padding:8px 20px;border-radius:8px;font-size:12px;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+/* GAUGE */
+@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+@keyframes countup{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.animate-in{animation:countup .6s ease-out both}
+</style>
+</head>
+<body>
+<!-- TOP BAR -->
+<div class="topbar">
+ <div class="title"><b>MODUS</b> Observatory · Sunrise Valley · 🌸 Spring · ☀️ Day 47</div>
+ <div class="controls">
+  <button onclick="setSpeed(0)">⏸</button>
+  <button class="active" onclick="setSpeed(1)">1×</button>
+  <button onclick="setSpeed(5)">5×</button>
+  <button onclick="setSpeed(10)">10×</button>
+  <button onclick="toggleGod()" id="godBtn">👁 God</button>
+  <button onclick="openCmd()">⌘K</button>
+  <button>💾 Save</button>
+  <button>📤 Export</button>
+  <button>🌌 Gallery</button>
+ </div>
+</div>
+<div class="main">
+<div class="content">
+ <!-- TOP ROW -->
+ <div class="card top-pop" onclick="showDetail('pop')">
+  <div class="label">Population</div>
+  <div style="display:flex;align-items:flex-end;gap:12px">
+   <div class="big mono animate-in" style="color:var(--cyan)" id="popNum">0</div>
+   <svg class="sparkline glow" viewBox="0 0 100 30" style="width:120px;height:36px">
+    <polyline fill="none" stroke="var(--cyan)" stroke-width="1.5" points="0,28 15,26 25,22 40,20 55,15 70,10 85,6 100,4" opacity=".7"/>
+    <polyline fill="url(#sparkGrad)" stroke="none" points="0,28 15,26 25,22 40,20 55,15 70,10 85,6 100,4 100,30 0,30"/>
+    <defs><linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--cyan)" stop-opacity=".2"/><stop offset="1" stop-color="var(--cyan)" stop-opacity="0"/></linearGradient></defs>
+   </svg>
+  </div>
+  <div style="font-size:10px;color:var(--dim);margin-top:4px">Births: 3 · Deaths: 1</div>
+ </div>
+ <div class="card top-happy" onclick="showDetail('happy')">
+  <div class="label">Happiness Index</div>
+  <div style="display:flex;align-items:center;gap:12px">
+   <svg viewBox="0 0 80 80" width="64" height="64" class="glow">
+    <defs><linearGradient id="hGrad" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#ef4444"/><stop offset=".5" stop-color="#eab308"/><stop offset="1" stop-color="#22c55e"/></linearGradient></defs>
+    <circle cx="40" cy="40" r="34" fill="none" stroke="var(--border)" stroke-width="6"/>
+    <circle cx="40" cy="40" r="34" fill="none" stroke="url(#hGrad)" stroke-width="6" stroke-dasharray="214" stroke-dashoffset="60" stroke-linecap="round" transform="rotate(-90 40 40)" id="happyArc"/>
+    <text x="40" y="44" text-anchor="middle" fill="var(--cyan)" font-size="18" font-weight="700" font-family="monospace" id="happyNum">0%</text>
+   </svg>
+   <div><div style="font-size:22px;font-weight:600;color:#22c55e">Good</div><div style="font-size:10px;color:var(--dim)">12 happy · 4 calm · 2 sad</div></div>
+  </div>
+ </div>
+ <div class="card top-era" onclick="showDetail('era')">
+  <div class="label">Current Era</div>
+  <div style="font-size:22px;font-weight:600;color:var(--purple)" class="animate-in">Golden Age</div>
+  <div style="font-size:10px;color:var(--dim);margin:4px 0">Day 42 → present (5 days)</div>
+  <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+   <div style="width:100%;height:100%;border-radius:3px;background:linear-gradient(90deg,#6366f1,var(--purple));animation:pulse 2s infinite"></div>
+  </div>
+ </div>
+ <!-- CENTER MAP -->
+ <div class="card center-map" style="padding:0;position:relative">
+  <div class="map-controls">
+   <button class="active" onclick="setMapMode('normal',this)">Normal</button>
+   <button onclick="setMapMode('happiness',this)">Happiness</button>
+   <button onclick="setMapMode('activity',this)">Activity</button>
+   <button onclick="setMapMode('relations',this)">Relations</button>
+  </div>
+  <canvas class="map-canvas" id="mapCanvas"></canvas>
+  <!-- MINIMAP -->
+  <canvas id="minimap" style="position:absolute;bottom:8px;left:8px;width:80px;height:80px;border:1px solid var(--border);border-radius:4px;image-rendering:pixelated"></canvas>
+ </div>
+ <!-- CENTER NETWORK -->
+ <div class="card center-network" onclick="showDetail('network')">
+  <div class="label">Relationship Network</div>
+  <svg class="network-svg" id="networkSvg"></svg>
+ </div>
+ <!-- BOTTOM TIMELINE -->
+ <div class="card bottom-timeline" onclick="showDetail('timeline')">
+  <div class="label">Timeline</div>
+  <svg class="timeline-svg" id="timelineSvg"></svg>
+ </div>
+ <!-- BOTTOM RADAR -->
+ <div class="card bottom-radar" style="position:relative">
+  <div class="label">OCEAN Personality</div>
+  <div class="radar-select">
+   <select id="radarA" onchange="drawRadar()"></select>
+   <select id="radarB" onchange="drawRadar()"><option value="">Compare...</option></select>
+  </div>
+  <svg class="radar-svg" id="radarSvg"></svg>
+ </div>
+ <!-- BOTTOM METRICS -->
+ <div class="card bottom-metrics">
+  <div class="label">Live Metrics</div>
+  <div class="metrics-feed" id="metricsFeed"></div>
+ </div>
+</div>
+<!-- SIDEBAR -->
+<div class="sidebar">
+ <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--cyan);margin-bottom:8px">Agents by Energy</div>
+ <div id="agentList"></div>
+ <h3>🏆 Leaderboard</h3>
+ <div class="leader">Most Social: <span>Maya</span></div>
+ <div class="leader">Wealthiest: <span>Ash</span></div>
+ <div class="leader">Most Traveled: <span>Maya</span></div>
+ <div class="leader">Most Energetic: <span>Pip</span></div>
+ <div class="leader">Oldest: <span>Dawn</span></div>
+ <h3>🐾 Wildlife</h3>
+ <div style="color:var(--dim);line-height:1.8">🦌 Deer: 4<br>🐇 Rabbits: 6<br>🐺 Wolves: 2<br>🐦 Birds: 8<br>🐟 Fish: 12</div>
+ <h3>🏠 Buildings (12)</h3>
+ <div style="color:var(--dim);line-height:1.8;font-size:10px">Sunrise Quarter: 3🏠 1🏪 1💧<br>Forest Edge: 2🛖 1🗼<br>Riverside: 2🛖 1🌾<br>Mountain: 1🛖 1🌾</div>
+ <h3>⚙️ Settings</h3>
+ <div style="color:var(--dim);font-size:10px">Preset: Balanced<br>
+ <label style="cursor:pointer"><input type="checkbox" style="accent-color:var(--cyan)"> Build Mode</label></div>
+</div>
+</div>
+<!-- CMD PALETTE -->
+<div class="cmd-overlay" id="cmdOverlay" onclick="if(event.target===this)closeCmd()">
+ <div class="cmd-box">
+  <input placeholder="Talk to an agent or type a command..." id="cmdInput" onkeydown="if(event.key==='Escape')closeCmd()"/>
+  <div class="hint">💬 "Maya, what do you see?" · 🔧 /spawn · /weather rain · /speed 5 · Esc to close</div>
+ </div>
+</div>
+<!-- DETAIL OVERLAY -->
+<div class="detail-overlay" id="detailOverlay" onclick="if(event.target===this)closeDetail()">
+ <div class="detail-panel" id="detailPanel"></div>
+</div>
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// DATA
+const agents=[
+{name:'Maya',job:'Explorer',mood:'Happy',moodC:'#22c55e',energy:78,x:12,y:18,ocean:[.9,.4,.8,.7,.2]},
+{name:'Kai',job:'Builder',mood:'Happy',moodC:'#22c55e',energy:65,x:25,y:25,ocean:[.5,.8,.6,.6,.3]},
+{name:'Luna',job:'Healer',mood:'Sad',moodC:'#60a5fa',energy:42,x:35,y:15,ocean:[.6,.5,.4,.9,.6]},
+{name:'Zoe',job:'Farmer',mood:'Happy',moodC:'#22c55e',energy:81,x:28,y:30,ocean:[.4,.7,.5,.8,.2]},
+{name:'Rio',job:'Hunter',mood:'Eager',moodC:'#f97316',energy:70,x:15,y:8,ocean:[.7,.5,.7,.4,.4]},
+{name:'Ash',job:'Merchant',mood:'Happy',moodC:'#22c55e',energy:55,x:26,y:24,ocean:[.6,.6,.8,.5,.3]},
+{name:'Noor',job:'Guard',mood:'Calm',moodC:'#a78bfa',energy:60,x:18,y:20,ocean:[.3,.8,.4,.6,.2]},
+{name:'Eira',job:'Scholar',mood:'Happy',moodC:'#22c55e',energy:73,x:24,y:22,ocean:[.9,.7,.3,.7,.4]},
+{name:'Jax',job:'Fisher',mood:'Calm',moodC:'#a78bfa',energy:68,x:8,y:30,ocean:[.5,.5,.5,.6,.3]},
+{name:'Sage',job:'Artist',mood:'Happy',moodC:'#22c55e',energy:77,x:24,y:26,ocean:[.9,.3,.7,.8,.5]},
+{name:'Ember',job:'Blacksmith',mood:'Eager',moodC:'#f97316',energy:85,x:22,y:28,ocean:[.4,.8,.6,.5,.2]},
+{name:'Willow',job:'Herbalist',mood:'Calm',moodC:'#a78bfa',energy:50,x:36,y:18,ocean:[.6,.5,.3,.9,.4]},
+{name:'Flint',job:'Miner',mood:'Scared',moodC:'#ef4444',energy:35,x:40,y:5,ocean:[.3,.6,.4,.3,.8]},
+{name:'Brook',job:'Caretaker',mood:'Happy',moodC:'#22c55e',energy:90,x:23,y:25,ocean:[.5,.6,.7,.9,.1]},
+{name:'Reed',job:'Scout',mood:'Eager',moodC:'#f97316',energy:62,x:30,y:12,ocean:[.7,.4,.8,.5,.5]},
+{name:'Dawn',job:'Elder',mood:'Sad',moodC:'#60a5fa',energy:28,x:22,y:24,ocean:[.7,.6,.3,.8,.5]},
+{name:'Moss',job:'Woodcutter',mood:'Calm',moodC:'#a78bfa',energy:71,x:10,y:14,ocean:[.3,.7,.4,.5,.3]},
+{name:'Pip',job:'Child',mood:'Happy',moodC:'#22c55e',energy:95,x:25,y:26,ocean:[.8,.2,.9,.7,.1]}
+];
+const relations=[
+{a:'Maya',b:'Kai',s:5},{a:'Maya',b:'Zoe',s:3},{a:'Maya',b:'Rio',s:1},
+{a:'Kai',b:'Ash',s:3},{a:'Kai',b:'Ember',s:4},{a:'Zoe',b:'Ash',s:2},
+{a:'Luna',b:'Willow',s:4},{a:'Luna',b:'Brook',s:3},{a:'Noor',b:'Reed',s:3},
+{a:'Eira',b:'Sage',s:2},{a:'Eira',b:'Dawn',s:3},{a:'Jax',b:'Moss',s:2},
+{a:'Ember',b:'Flint',s:3},{a:'Brook',b:'Pip',s:5},{a:'Sage',b:'Pip',s:2}
+];
+const eras=[
+{name:'The Founding',d:[1,10],color:'#6366f1'},
+{name:'Age of Exploration',d:[11,20],color:'#06B6D4'},
+{name:'The Wolf Crisis',d:[21,30],color:'#ef4444'},
+{name:'Era of Building',d:[31,41],color:'#eab308'},
+{name:'Golden Age',d:[42,47],color:'#7C3AED'}
+];
+const events=[
+{day:47,t:'Rio hunted a deer'},{day:47,t:'Kai finished stone house!'},
+{day:46,t:'⚠️ Wolf near Sunrise Quarter'},{day:46,t:'Luna gathered rare herbs'},
+{day:45,t:'🌸 Spring arrived!'},{day:44,t:'Zoe & Ash became friends'},
+{day:43,t:'Maya reached 64% map'},{day:42,t:'Golden Age begins!'}
+];
+const metrics=[
+{l:'Trades',v:'34',c:'↑2'},{l:'Births',v:'3',c:'+1'},{l:'Deaths',v:'1',c:'—'},
+{l:'🪵 Wood',v:'142',c:'↑8'},{l:'🪨 Stone',v:'89',c:'↑3'},{l:'🥩 Meat',v:'23',c:'↑2'},
+{l:'🐟 Fish',v:'67',c:'↑5'},{l:'🌾 Grain',v:'156',c:'↑12'},{l:'🌿 Herbs',v:'45',c:'↑3'},
+{l:'Buildings',v:'12',c:'↑1'},{l:'Avg Happiness',v:'72%',c:'↑2%'},{l:'Population',v:'18',c:'↑1'}
+];
+
+// COUNT UP ANIMATION
+function countUp(el,target,suffix='',dur=1200){
+ let start=0,st=null;
+ function step(ts){if(!st)st=ts;const p=Math.min((ts-st)/dur,1);el.textContent=Math.floor(p*target)+suffix;if(p<1)requestAnimationFrame(step)}
+ requestAnimationFrame(step);
+}
+setTimeout(()=>{countUp(document.getElementById('popNum'),18,'',800);countUp(document.getElementById('happyNum'),72,'%',1000)},200);
+
+// HAPPINESS ARC animation
+setTimeout(()=>{document.getElementById('happyArc').style.transition='stroke-dashoffset 1s';document.getElementById('happyArc').setAttribute('stroke-dashoffset','60')},100);
+
+// MAP
+function drawMap(){
+ const c=document.getElementById('mapCanvas'),ctx=c.getContext('2d');
+ const rect=c.parentElement.getBoundingClientRect();c.width=rect.width;c.height=rect.height;
+ const s=Math.min(c.width/50,c.height/50);
+ const colors={mount:'#2a2a3a',forest:'#1a3a2a',village:'#3a2a1a',farm:'#3a3a1a',meadow:'#2a1a3a',river:'#1a2a4a',lake:'#1a3050',grass:'#1a2a1a',sand:'#3a3a2a'};
+ for(let y=0;y<50;y++)for(let x=0;x<50;x++){
+  let t='grass';
+  if(y<10&&x>30)t='mount';else if(y<15&&x<20)t='forest';
+  else if(y>20&&y<35&&x>20&&x<32)t='village';
+  else if(y>28&&y<36&&x>25&&x<35)t='farm';
+  else if(x>30&&y>10&&y<25)t='meadow';
+  else if(x<10&&y>10)t='river';
+  else if(y>38)t=x>15&&x<35?'lake':'sand';
+  let col=colors[t];
+  if(mapMode==='happiness'){const a=agents.find(ag=>Math.abs(ag.x-x)<4&&Math.abs(ag.y-y)<4);if(a)col=a.moodC+'44'}
+  if(mapMode==='activity'){const a=agents.find(ag=>Math.abs(ag.x-x)<3&&Math.abs(ag.y-y)<3);if(a)col='rgba(6,182,212,0.3)'}
+  ctx.fillStyle=col;ctx.fillRect(x*s,y*s,s+.5,s+.5);
+ }
+ // agents
+ const time=Date.now()/1000;
+ agents.forEach(a=>{
+  const r=3+Math.sin(time+a.energy)*1;
+  ctx.beginPath();ctx.arc(a.x*s+s/2,a.y*s+s/2,r,0,Math.PI*2);
+  ctx.fillStyle=a.moodC;ctx.globalAlpha=.6+Math.sin(time*2+a.energy)*.3;ctx.fill();
+  ctx.globalAlpha=1;
+  // glow
+  ctx.beginPath();ctx.arc(a.x*s+s/2,a.y*s+s/2,r+3,0,Math.PI*2);
+  ctx.strokeStyle=a.moodC;ctx.globalAlpha=.2;ctx.stroke();ctx.globalAlpha=1;
+ });
+ // animals
+ [[15,7,'#c4a882'],[18,6,'#c4a882'],[8,35,'#c4a882'],[20,8,'#c4a882']].forEach(([x,y,c])=>{
+  ctx.fillStyle=c;ctx.globalAlpha=.5;ctx.fillRect(x*s,y*s,s,s);ctx.globalAlpha=1;
+ });
+ // minimap
+ const mc=document.getElementById('minimap'),mx=mc.getContext('2d');mc.width=50;mc.height=50;mx.drawImage(c,0,0,50,50);
+}
+let mapMode='normal';
+function setMapMode(m,btn){mapMode=m;document.querySelectorAll('.map-controls button').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');drawMap()}
+
+// NETWORK
+function drawNetwork(){
+ const svg=document.getElementById('networkSvg');
+ const rect=svg.getBoundingClientRect();const w=rect.width,h=rect.height;
+ // layout agents in circle
+ const cx=w/2,cy=h/2,r=Math.min(w,h)/2-30;
+ const pos={};agents.forEach((a,i)=>{
+  const ang=(i/agents.length)*Math.PI*2-Math.PI/2;
+  pos[a.name]={x:cx+Math.cos(ang)*r,y:cy+Math.sin(ang)*r};
+ });
+ let html='';
+ relations.forEach(rel=>{
+  const p1=pos[rel.a],p2=pos[rel.b];if(!p1||!p2)return;
+  html+=`<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="var(--border)" stroke-width="${rel.s*.8}" opacity=".4" data-a="${rel.a}" data-b="${rel.b}"/>`;
+ });
+ agents.forEach(a=>{
+  const p=pos[a.name];
+  html+=`<circle cx="${p.x}" cy="${p.y}" r="8" fill="${a.moodC}" opacity=".8" data-name="${a.name}" onmouseenter="hlNetwork('${a.name}')" onmouseleave="resetNetwork()"><title>${a.name} (${a.mood})</title></circle>`;
+  html+=`<text x="${p.x}" y="${p.y+20}" text-anchor="middle" fill="var(--dim)" font-size="8">${a.name}</text>`;
+ });
+ svg.innerHTML=html;
+}
+function hlNetwork(name){
+ document.querySelectorAll('#networkSvg line').forEach(l=>{
+  if(l.dataset.a===name||l.dataset.b===name){l.setAttribute('stroke','var(--cyan)');l.setAttribute('opacity','1')}
+  else{l.setAttribute('opacity','.1')}
+ });
+ document.querySelectorAll('#networkSvg circle').forEach(c=>{
+  if(c.dataset.name===name)c.setAttribute('r','12');
+ });
+}
+function resetNetwork(){
+ document.querySelectorAll('#networkSvg line').forEach(l=>{l.setAttribute('stroke','var(--border)');l.setAttribute('opacity','.4')});
+ document.querySelectorAll('#networkSvg circle').forEach(c=>{if(c.dataset.name)c.setAttribute('r','8')});
+}
+
+// TIMELINE
+function drawTimeline(){
+ const svg=document.getElementById('timelineSvg');
+ const rect=svg.getBoundingClientRect();const w=rect.width,h=rect.height;
+ const pad=30,bh=24;let html='';
+ const scale=d=>(d/47)*(w-pad*2)+pad;
+ eras.forEach((e,i)=>{
+  const x1=scale(e.d[0]),x2=scale(e.d[1]),y=h/2-bh/2;
+  html+=`<rect x="${x1}" y="${y}" width="${x2-x1}" height="${bh}" rx="4" fill="${e.color}" opacity=".6"><title>${e.name} (Day ${e.d[0]}-${e.d[1]})</title></rect>`;
+  if(x2-x1>40)html+=`<text x="${(x1+x2)/2}" y="${y+bh/2+3}" text-anchor="middle" fill="white" font-size="8" opacity=".8">${e.name}</text>`;
+ });
+ // axis
+ html+=`<line x1="${pad}" y1="${h/2+bh/2+8}" x2="${w-pad}" y2="${h/2+bh/2+8}" stroke="var(--dim)" stroke-width=".5"/>`;
+ for(let d=0;d<=47;d+=10)html+=`<text x="${scale(d)}" y="${h/2+bh/2+20}" text-anchor="middle" fill="var(--dim)" font-size="8">D${d}</text>`;
+ // events
+ events.forEach(ev=>{
+  const x=scale(ev.day);
+  html+=`<circle cx="${x}" cy="${h/2-bh/2-10}" r="3" fill="var(--cyan)" opacity=".7"><title>Day ${ev.day}: ${ev.t}</title></circle>`;
+ });
+ svg.innerHTML=html;
+}
+
+// RADAR
+function drawRadar(){
+ const svg=document.getElementById('radarSvg');
+ const rect=svg.getBoundingClientRect();const w=rect.width,h=rect.height;
+ const cx=w/2,cy=h/2+10,R=Math.min(w,h)/2-30;
+ const labels=['O','C','E','A','N'];
+ const aName=document.getElementById('radarA').value;
+ const bName=document.getElementById('radarB').value;
+ const a1=agents.find(a=>a.name===aName);
+ const a2=bName?agents.find(a=>a.name===bName):null;
+ let html='';
+ // grid
+ for(let lv=.2;lv<=1;lv+=.2){
+  let pts=[];for(let i=0;i<5;i++){const ang=(i/5)*Math.PI*2-Math.PI/2;pts.push(`${cx+Math.cos(ang)*R*lv},${cy+Math.sin(ang)*R*lv}`)}
+  html+=`<polygon points="${pts.join(' ')}" fill="none" stroke="var(--border)" stroke-width=".5"/>`;
+ }
+ // labels
+ for(let i=0;i<5;i++){const ang=(i/5)*Math.PI*2-Math.PI/2;html+=`<text x="${cx+Math.cos(ang)*(R+14)}" y="${cy+Math.sin(ang)*(R+14)+3}" text-anchor="middle" fill="var(--dim)" font-size="10">${labels[i]}</text>`}
+ // data
+ function plotOcean(oc,color,op){let pts=[];for(let i=0;i<5;i++){const ang=(i/5)*Math.PI*2-Math.PI/2;pts.push(`${cx+Math.cos(ang)*R*oc[i]},${cy+Math.sin(ang)*R*oc[i]}`)}
+  html+=`<polygon points="${pts.join(' ')}" fill="${color}" fill-opacity="${op}" stroke="${color}" stroke-width="1.5"/>`;
+ }
+ if(a1)plotOcean(a1.ocean,'var(--cyan)',.15);
+ if(a2)plotOcean(a2.ocean,'var(--purple)',.15);
+ svg.innerHTML=html;
+}
+// populate selects
+agents.forEach(a=>{
+ document.getElementById('radarA').innerHTML+=`<option ${a.name==='Maya'?'selected':''}>${a.name}</option>`;
+ document.getElementById('radarB').innerHTML+=`<option>${a.name}</option>`;
+});
+
+// METRICS FEED
+function drawMetrics(){
+ const el=document.getElementById('metricsFeed');
+ let html='';
+ const sparks=[[4,6,5,8,7,9,8],[2,3,2,3,3,4,3],[0,0,0,1,1,1,1],[20,30,35,40,50,55,60],[15,20,25,30,35,40,45]];
+ metrics.forEach((m,i)=>{
+  const sp=sparks[i%sparks.length];
+  const svgPts=sp.map((v,j)=>`${j*(50/(sp.length-1))},${16-v/Math.max(...sp)*14}`).join(' ');
+  html+=`<div class="metric-row"><span>${m.l}</span><svg class="sparkline" viewBox="0 0 50 16"><polyline fill="none" stroke="var(--cyan)" stroke-width="1" points="${svgPts}" opacity=".5"/></svg><span class="mono val">${m.v}</span><span class="change">${m.c}</span></div>`;
+ });
+ el.innerHTML=html;
+}
+
+// SIDEBAR
+function drawSidebar(){
+ const sorted=[...agents].sort((a,b)=>b.energy-a.energy);
+ let html='';
+ sorted.forEach(a=>{
+  const col=a.energy>70?'var(--cyan)':a.energy>40?'#eab308':'#ef4444';
+  html+=`<div class="agent-row" onclick="showAgentDetail('${a.name}')"><span style="width:50px;font-size:10px">${a.name}</span><div class="bar"><div class="bar-fill" style="width:${a.energy}%;background:${col}"></div></div><span class="mono" style="font-size:9px;width:28px;text-align:right;color:${col}">${a.energy}%</span></div>`;
+ });
+ document.getElementById('agentList').innerHTML=html;
+}
+
+// SPEED
+function setSpeed(s){
+ document.querySelectorAll('.topbar .controls button').forEach(b=>b.classList.remove('active'));
+ event.target.classList.add('active');
+ toast(s===0?'⏸ Paused':`▶ Speed ${s}×`);
+}
+function toggleGod(){const b=document.getElementById('godBtn');b.classList.toggle('active');toast(b.classList.contains('active')?'👁 God Mode ON':'God Mode OFF')}
+
+// CMD
+function openCmd(){document.getElementById('cmdOverlay').classList.add('open');document.getElementById('cmdInput').focus()}
+function closeCmd(){document.getElementById('cmdOverlay').classList.remove('open')}
+
+// DETAIL
+function showDetail(type){
+ const p=document.getElementById('detailPanel');
+ const info={
+  pop:{t:'Population',b:'<p>18 agents inhabit Sunrise Valley.</p><p>Births: 3 · Deaths: 1</p><p>Growth trend: steady increase since founding.</p>'},
+  happy:{t:'Happiness Index',b:'<p>Average: 72% — Good</p><p>Happy: 12 agents · Calm: 4 · Sad: 2 · Eager: 3 · Scared: 1</p><p>Golden Age threshold: 70%+</p>'},
+  era:{t:'Era History',b:'<ul><li>Day 1-10: The Founding</li><li>Day 11-20: Age of Exploration</li><li>Day 21-30: The Wolf Crisis</li><li>Day 31-41: Era of Building</li><li>Day 42+: Golden Age</li></ul>'},
+  network:{t:'Relationships',b:'<p>15 active relationships across 18 agents.</p><p>Strongest: Maya↔Kai, Brook↔Pip</p>'},
+  timeline:{t:'Timeline',b:'<p>'+events.map(e=>`Day ${e.day}: ${e.t}`).join('<br>')+'</p>'}
+ };
+ const d=info[type]||{t:'Detail',b:''};
+ p.innerHTML=`<button class="close-btn" onclick="closeDetail()">✕</button><h2>${d.t}</h2>${d.b}`;
+ document.getElementById('detailOverlay').classList.add('open');
+}
+function showAgentDetail(name){
+ const a=agents.find(ag=>ag.name===name);if(!a)return;
+ const p=document.getElementById('detailPanel');
+ const rels=relations.filter(r=>r.a===name||r.b===name).map(r=>r.a===name?r.b:r.a);
+ let extra='';
+ if(name==='Maya')extra='<p><b>Inventory:</b> 🪵5 🪨3 🥩2 🐟4 🌿1</p><p><b>Goals:</b> ✅ Build Home | 🔄 Make 3 Friends (2/3) | ◻️ Explore Map (64%)</p><p><b>Catchphrase:</b> "The horizon calls!"</p><p><b>Memories:</b> Survived wolf attack Day 23, Helped Kai build market</p>';
+ p.innerHTML=`<button class="close-btn" onclick="closeDetail()">✕</button><h2>${a.name} — ${a.job}</h2><p>Mood: ${a.mood} · Energy: ${a.energy}%</p><p>OCEAN: O:${a.ocean[0]} C:${a.ocean[1]} E:${a.ocean[2]} A:${a.ocean[3]} N:${a.ocean[4]}</p><p><b>Friends:</b> ${rels.join(', ')||'None'}</p>${extra}`;
+ document.getElementById('detailOverlay').classList.add('open');
+}
+function closeDetail(){document.getElementById('detailOverlay').classList.remove('open')}
+
+// TOAST
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
+
+// KEYBOARD
+document.addEventListener('keydown',e=>{
+ if(e.key==='k'&&(e.metaKey||e.ctrlKey)){e.preventDefault();openCmd()}
+ if(e.key==='Escape'){closeCmd();closeDetail()}
+});
+
+// INIT
+function init(){drawMap();drawNetwork();drawTimeline();drawRadar();drawMetrics();drawSidebar()}
+// Animate map
+function animate(){drawMap();requestAnimationFrame(animate)}
+window.addEventListener('resize',()=>{drawMap();drawNetwork();drawTimeline();drawRadar()});
+init();animate();
+// Show initial toast
+setTimeout(()=>toast('🔭 Observatory loaded — Day 47, Golden Age'),500);
+</script>
+</body>
+</html>

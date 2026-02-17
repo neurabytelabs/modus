@@ -90,7 +90,9 @@ defmodule Modus.Mind.AffectMemory do
   end
 
   def clear(agent_id) do
-    :ets.match_delete(@table, {agent_id, :_})
+    if :ets.whereis(@table) != :undefined do
+      :ets.match_delete(@table, {agent_id, :_})
+    end
     :ok
   end
 end

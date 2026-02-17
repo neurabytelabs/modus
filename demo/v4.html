@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MODUS v2.3 — Terminal</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d1117;--green:#4ade80;--amber:#fbbf24;--cyan:#06b6d4;--red:#ef4444;--dim:#30363d;--text:#c9d1d9;--bright:#e6edf3}
+body{background:var(--bg);color:var(--green);font-family:'JetBrains Mono',monospace;font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden;position:relative}
+body::after{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:999}
+.topbar{text-align:center;color:var(--amber);padding:4px 0;font-weight:700;white-space:nowrap;flex-shrink:0}
+.main{display:flex;flex:1;min-height:0}
+.left{width:40%;border-right:1px solid var(--dim);display:flex;flex-direction:column;min-height:0}
+.right{width:60%;display:flex;flex-direction:column;min-height:0}
+.right-top{height:45%;border-bottom:1px solid var(--dim);overflow-y:auto}
+.right-bottom{flex:1;overflow-y:auto}
+.pane-title{color:var(--amber);padding:2px 8px;border-bottom:1px solid var(--dim);font-weight:700;white-space:nowrap}
+.map-wrap{flex:1;padding:4px 8px;overflow:auto;line-height:1.6;white-space:pre;font-size:14px}
+.agent-row{padding:1px 8px;cursor:pointer;white-space:nowrap}
+.agent-row:hover{background:#161b22}
+.agent-row.sel{background:#1c2333;color:var(--bright)}
+.agent-row .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.dot-happy{background:#4ade80}.dot-sad{background:#60a5fa}.dot-eager{background:#f97316}.dot-calm{background:#94a3b8}.dot-scared{background:#ef4444}
+.detail{padding:4px 8px;line-height:1.7}
+.detail .label{color:var(--amber)}
+.bar{display:inline-block}.bar-fill{color:var(--green)}.bar-empty{color:var(--dim)}
+.bottom{border-top:1px solid var(--dim);display:flex;flex-direction:column;flex-shrink:0}
+.events{height:120px;overflow-y:auto;padding:2px 8px;color:var(--cyan);font-size:12px;border-bottom:1px solid var(--dim)}
+.events .warn{color:var(--red)}
+.prompt-line{padding:4px 8px;display:flex;align-items:center;border-bottom:1px solid var(--dim)}
+.prompt-line span{color:var(--amber)}
+.prompt-input{background:none;border:none;color:var(--green);font:inherit;flex:1;outline:none;margin-left:4px}
+.cursor-blink{animation:blink 1s step-end infinite;color:var(--green)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.response-line{padding:2px 8px;color:var(--text);font-size:12px;border-bottom:1px solid var(--dim)}
+.statusbar{padding:2px 8px;color:var(--dim);font-size:12px;display:flex;justify-content:space-between;flex-shrink:0}
+.statusbar .keys span{color:var(--amber)}
+.minimap{position:absolute;top:28px;right:8px;border:1px solid var(--dim);padding:2px;font-size:5px;line-height:1;background:var(--bg);opacity:.7;z-index:10;white-space:pre}
+.toast{position:fixed;top:32px;left:50%;transform:translateX(-50%);background:#1c2333;border:1px solid var(--amber);color:var(--amber);padding:4px 16px;font-size:12px;z-index:100;animation:fadeout 3s forwards}
+@keyframes fadeout{0%,70%{opacity:1}100%{opacity:0}}
+.speed-ctrl{display:inline-flex;gap:4px;margin-left:12px}
+.speed-ctrl button{background:none;border:1px solid var(--dim);color:var(--green);font:inherit;font-size:11px;padding:0 4px;cursor:pointer}
+.speed-ctrl button.active{border-color:var(--amber);color:var(--amber)}
+.stats-row{color:var(--text);font-size:12px;padding:0 8px}
+</style>
+</head>
+<body>
+<div class="topbar">═══ MODUS v2.3 · Sunrise Valley · 🌸 Spring · ☀️ Day · Day 47 · Pop: 18 · Era: Golden Age ═══<span class="speed-ctrl"><button onclick="setSpeed(this)" data-s="⏸">⏸</button><button class="active" onclick="setSpeed(this)" data-s="1x">1x</button><button onclick="setSpeed(this)" data-s="5x">5x</button><button onclick="setSpeed(this)" data-s="10x">10x</button></span></div>
+<div class="main">
+<div class="left">
+<div class="pane-title">┌─ WORLD MAP ─────────────────────────┐</div>
+<div class="map-wrap" id="map"></div>
+</div>
+<div class="right">
+<div class="right-top">
+<div class="pane-title">┌─ AGENTS (18) ────────────────────────────────────────┐</div>
+<div id="agent-list"></div>
+<div class="pane-title" style="border-top:1px solid var(--dim);border-bottom:none">┌─ STATS / OBSERVATORY ───────────────────────────────┐</div>
+<div class="stats-row">Avg Happiness: 72% │ Trades: 34 │ Births: 3 │ Deaths: 1</div>
+<div class="stats-row">Resources: 🪵142 🪨89 🥩23 🐟67 🌾156 🌿45</div>
+<div class="stats-row">Buildings: 12 (4 huts, 3 houses, 2 farms, 1 market, 1 well, 1 watchtower)</div>
+</div>
+<div class="right-bottom">
+<div class="pane-title">┌─ AGENT DETAIL ───────────────────────────────────────┐</div>
+<div class="detail" id="detail"></div>
+</div>
+</div>
+</div>
+<div class="bottom">
+<div class="pane-title">┌─ EVENT LOG ──────────────────────────────────────────────────────────────────┐</div>
+<div class="events" id="events"></div>
+<div class="prompt-line"><span>modus&gt;&nbsp;</span><input class="prompt-input" id="cmd" placeholder='talk maya "What do you see?"' autofocus><span class="cursor-blink">█</span></div>
+<div class="response-line" id="response">Maya says: "I see rolling hills to the east, and... is that smoke from the forge? The horizon calls!"</div>
+<div class="statusbar"><div class="keys"><span>[h]</span>elp <span>[b]</span>uild <span>[c]</span>hat <span>[s]</span>ave <span>[g]</span>od <span>[t]</span>ext <span>[z]</span>en <span>[q]</span>uit <span>[e]</span>xport <span>[u]</span>niverse <span>[l]</span>oad</div><div>God:OFF │ Rules:Balanced │ 🌸 Spring Day 47</div></div>
+</div>
+<div class="toast" id="toast">🏠 Kai finished building a stone house!</div>
+<div class="minimap" id="minimap"></div>
+<script>
+const agents=[
+{n:"Maya",o:"Explorer",m:"Happy",me:"😊",e:78,pos:"Forest edge",act:"Exploring"},
+{n:"Kai",o:"Builder",m:"Happy",me:"😊",e:65,pos:"Village center",act:"Building house"},
+{n:"Luna",o:"Healer",m:"Sad",me:"😢",e:42,pos:"Flower meadow",act:"Gathering herbs"},
+{n:"Zoe",o:"Farmer",m:"Happy",me:"😊",e:81,pos:"Wheat farm",act:"Harvesting"},
+{n:"Rio",o:"Hunter",m:"Eager",me:"🔥",e:70,pos:"Northern forest",act:"Stalking deer"},
+{n:"Ash",o:"Merchant",m:"Happy",me:"😊",e:55,pos:"Market stall",act:"Trading"},
+{n:"Noor",o:"Guard",m:"Calm",me:"😐",e:60,pos:"Watchtower",act:"Patrolling"},
+{n:"Eira",o:"Scholar",m:"Happy",me:"😊",e:73,pos:"Library",act:"Reading"},
+{n:"Jax",o:"Fisher",m:"Calm",me:"😐",e:68,pos:"River bank",act:"Fishing"},
+{n:"Sage",o:"Artist",m:"Happy",me:"😊",e:77,pos:"Village plaza",act:"Painting"},
+{n:"Ember",o:"Blacksmith",m:"Eager",me:"🔥",e:85,pos:"Forge",act:"Crafting"},
+{n:"Willow",o:"Herbalist",m:"Calm",me:"😐",e:50,pos:"Meadow",act:"Collecting"},
+{n:"Flint",o:"Miner",m:"Scared",me:"😨",e:35,pos:"Mountain cave",act:"Hiding from wolf"},
+{n:"Brook",o:"Caretaker",m:"Happy",me:"😊",e:90,pos:"Nursery",act:"Tending child"},
+{n:"Reed",o:"Scout",m:"Eager",me:"🔥",e:62,pos:"Hilltop",act:"Scouting"},
+{n:"Dawn",o:"Elder",m:"Sad",me:"😢",e:28,pos:"Home",act:"Resting"},
+{n:"Moss",o:"Woodcutter",m:"Calm",me:"😐",e:71,pos:"Forest",act:"Chopping tree"},
+{n:"Pip",o:"Child",m:"Happy",me:"😊",e:95,pos:"Village",act:"Playing"}
+];
+let sel=0;
+const events=[
+{d:42,t:"Golden Age begins — average happiness above 70%"},
+{d:43,t:"Maya reached 64% map exploration"},
+{d:44,t:"Zoe and Ash became friends at the campfire"},
+{d:45,t:"🌸 Spring has arrived!"},
+{d:46,t:"Luna gathered rare herbs"},
+{d:46,t:"⚠️ Wolf spotted near Sunrise Quarter",w:1},
+{d:47,t:"Kai finished building a stone house!"},
+{d:47,t:"Rio hunted a deer in the northern forest"}
+];
+
+// MAP
+const grid=[
+"⛰️⛰️⛰️⛰️⛰️🌲🌲🌲🌲🌲🌲🌲· · · · · · · · ",
+"⛰️⛰️⛰️🌲🌲🌲🐺🌲🦌🌲🌲· · · · · · · · · ",
+"⛰️· · 🌲🌲🌲🌲🌲🌲🦌· · · · · 🐇· · · · ",
+"· · · · 🌲🌲Ⓡ🌲🌲· · · · · · · · · · · ",
+"· · · · · 🌲🌲Ⓜ️· · · · · 🌸🌸🌸🌸· · · ",
+"🌊· · · · · · · · · 🏠🏠· 🌸Ⓛ🌸🌸🐇· · ",
+"🌊🌊· · · · 🏠Ⓚ🏠🏪🏠· · · 🌸🌸· · · · ",
+"🌊· · · · · Ⓢ· Ⓐ· 🏠Ⓔ· · · · · · 🐇· ",
+"🌊· · Ⓙ· · · Ⓟ· · · · · · · · · · · · ",
+"🌊🌊· 🐟· · 🌾🌾Ⓩ🌾🌾· · · · · · · · · ",
+"· 🌊🌊· · · 🌾🌾🌾🌾· · · · · 🐇· · · · ",
+"· · 🌊🌊🐟· · · · · · · · 🐦· · · 🐦· · ",
+"· · · 🌊🌊🌊· · · · · · Ⓦ· · · · · · · ",
+"· · · · 🌊🌊🌊🌊🐟🌊· · · · · · 🐦· · · ",
+"· · · · · 🌊🌊🌊🌊🌊🌊· · · · · · · · · "
+];
+// Agents on map: M=Maya R=Rio L=Luna K=Kai S=Sage A=Ash E=Eira J=Jax Z=Zoe P=Pip W=Willow
+// Others implied nearby
+
+document.getElementById('map').textContent=grid.join('\n');
+
+// Minimap
+const mini=grid.map(r=>r.replace(/[^⛰️🌲🌊🌾🌸·]/g,'·').substring(0,30)).join('\n');
+document.getElementById('minimap').textContent=mini;
+
+// Agent list
+function renderAgents(){
+const el=document.getElementById('agent-list');
+el.innerHTML=agents.map((a,i)=>{
+const dc='dot-'+a.m.toLowerCase();
+const s=i===sel?' sel':'';
+const pre=i===sel?'▸ ':'  ';
+return `<div class="agent-row${s}" onclick="sel=${i};renderAgents();renderDetail()">${pre}<span class="dot ${dc}"></span>${a.n.padEnd(8)} ${a.o.padEnd(12)} ${a.me} ${String(a.e).padStart(3)}%</div>`;
+}).join('');
+}
+
+function bar(v){const f=Math.round(v/10),e=10-f;return'<span class="bar-fill">'+'█'.repeat(f)+'</span><span class="bar-empty">'+'░'.repeat(e)+'</span> '+v+'%';}
+
+function renderDetail(){
+const a=agents[sel];
+const el=document.getElementById('detail');
+const isMaya=a.n==='Maya';
+el.innerHTML=`
+<div><span class="label">Name:</span> ${a.n} — ${a.o} ${a.me}</div>
+<div><span class="label">Energy:</span> ${bar(a.e)}</div>
+<div><span class="label">Position:</span> ${a.pos} │ <span class="label">Action:</span> ${a.act}</div>
+<div><span class="label">Mood:</span> ${a.m} ${a.me}</div>
+${isMaya?`<div><span class="label">Personality:</span> O:0.9 C:0.4 E:0.8 A:0.7 N:0.2 <span style="color:var(--dim)">("curious free spirit")</span></div>
+<div><span class="label">Inventory:</span> 🪵5 🪨3 🥩2 🐟4 🌿1</div>
+<div><span class="label">Goals:</span> ✅ Build Home │ 🔄 Make 3 Friends (2/3) │ ◻️ Explore Map (64%)</div>
+<div><span class="label">Relations:</span> Kai <span style="color:var(--cyan)">(close friend)</span>, Zoe <span style="color:var(--cyan)">(friend)</span>, Rio <span style="color:var(--dim)">(acquaintance)</span></div>
+<div><span class="label">Culture:</span> "The horizon calls!"</div>
+<div><span class="label">Memories:</span> "Survived the wolf attack of Day 23", "Helped Kai build the market"</div>`:`<div style="color:var(--dim)">Select Maya for full detail view</div>`}
+<div style="margin-top:4px;color:var(--dim)">─── Wildlife: 🦌4 🐇6 🐺2 🐦8 🐟12 ───</div>
+<div style="color:var(--dim)">─── Buildings: Sunrise Quarter(3H,1M,1W) │ Forest Camp(2H,1T) │ River(2H,1F) │ Mountain(1H,1F) ───</div>
+<div style="margin-top:4px;color:var(--dim)">─── Timeline ───</div>
+<div style="font-size:11px;color:var(--text)">D1-10: The Founding │ D11-20: Age of Exploration │ D21-30: Wolf Crisis │ D31-41: Era of Building │ D42+: Golden Age</div>
+`;
+}
+
+// Events
+const evEl=document.getElementById('events');
+events.forEach(e=>{
+const cls=e.w?'warn':'';
+evEl.innerHTML+=`<div class="${cls}">[Day ${e.d}] ${e.t}</div>`;
+});
+evEl.scrollTop=evEl.scrollHeight;
+
+// Command
+document.getElementById('cmd').addEventListener('keydown',e=>{
+if(e.key==='Enter'){
+const v=e.target.value.trim();
+if(v){
+evEl.innerHTML+=`<div>[cmd] ${v}</div>`;
+const resp=document.getElementById('response');
+if(v.toLowerCase().includes('talk')){
+const name=v.match(/talk\s+(\w+)/i);
+const ag=name?agents.find(a=>a.n.toLowerCase()===name[1].toLowerCase()):null;
+resp.textContent=ag?`${ag.n} says: "Ah, interesting question! I'm busy ${ag.act.toLowerCase()} right now at the ${ag.pos.toLowerCase()}."`:resp.textContent;
+}else{
+resp.textContent='Unknown command. Try: talk <agent> "<message>"';
+}
+evEl.scrollTop=evEl.scrollHeight;
+}
+e.target.value='';
+}
+});
+
+function setSpeed(btn){document.querySelectorAll('.speed-ctrl button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+
+renderAgents();renderDetail();
+setTimeout(()=>{const t=document.getElementById('toast');if(t)t.remove();},3500);
+</script>
+</body>
+</html>

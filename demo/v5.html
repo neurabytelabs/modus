@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>MODUS — Touch First</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--purple:#7C3AED;--purple-light:#EDE9FE;--glass:rgba(255,255,255,0.72);--glass-border:rgba(255,255,255,0.3);--shadow:0 4px 24px rgba(0,0,0,0.08);--radius:16px;--touch:44px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;overflow:hidden;height:100dvh;width:100vw;background:#1a1a2e;color:#1e1e2e;touch-action:none}
+canvas#map{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+
+/* Top pill */
+.top-pill{position:fixed;top:env(safe-area-inset-top,12px);left:50%;transform:translateX(-50%);z-index:100;background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:28px;padding:8px 20px;font-size:14px;font-weight:600;white-space:nowrap;box-shadow:var(--shadow);margin-top:12px}
+
+/* Speed controls */
+.speed-ctrl{position:fixed;top:env(safe-area-inset-top,12px);right:12px;z-index:100;display:flex;gap:2px;background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:20px;padding:4px;box-shadow:var(--shadow);margin-top:12px}
+.speed-ctrl button{border:none;background:transparent;border-radius:16px;padding:6px 12px;font-size:13px;font-weight:600;color:#555;cursor:pointer;min-width:var(--touch);min-height:32px}
+.speed-ctrl button.active{background:var(--purple);color:#fff}
+
+/* Minimap */
+.minimap{position:fixed;top:72px;left:12px;z-index:100;width:64px;height:64px;border-radius:50%;overflow:hidden;border:3px solid #fff;box-shadow:var(--shadow);cursor:pointer}
+.minimap canvas{width:100%;height:100%}
+
+/* Toast */
+.toast{position:fixed;top:-80px;left:50%;transform:translateX(-50%);z-index:200;background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:var(--radius);padding:12px 20px;font-size:13px;font-weight:500;box-shadow:var(--shadow);transition:top .4s cubic-bezier(.4,0,.2,1);max-width:90vw;white-space:nowrap}
+.toast.show{top:calc(env(safe-area-inset-top,12px) + 56px)}
+
+/* FAB */
+.fab{position:fixed;bottom:32px;right:20px;z-index:150;width:56px;height:56px;border-radius:50%;background:var(--purple);color:#fff;border:none;font-size:28px;box-shadow:0 6px 20px rgba(124,58,237,.4);cursor:pointer;transition:transform .3s,background .3s;display:flex;align-items:center;justify-content:center;line-height:1}
+.fab:active{transform:scale(.9)}
+.fab.open{transform:rotate(45deg);background:#6D28D9}
+
+/* Radial menu */
+.radial{position:fixed;bottom:32px;right:20px;z-index:149;pointer-events:none}
+.radial.open{pointer-events:auto}
+.radial-item{position:absolute;width:44px;height:44px;border-radius:50%;background:#fff;color:var(--purple);border:2px solid var(--purple);display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:var(--shadow);cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);opacity:0;transform:scale(0)}
+.radial.open .radial-item{opacity:1;transform:scale(1)}
+.radial-item span{font-size:11px;position:absolute;bottom:-18px;white-space:nowrap;color:#555;font-weight:600}
+
+/* Bottom Sheet */
+.sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,0);z-index:119;pointer-events:none;transition:background .3s}
+.sheet-overlay.active{background:rgba(0,0,0,0.3);pointer-events:auto}
+.bottom-sheet{position:fixed;left:0;right:0;bottom:0;z-index:120;background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -4px 30px rgba(0,0,0,0.1);transition:transform .35s cubic-bezier(.4,0,.2,1);will-change:transform;max-height:90dvh;overflow:hidden}
+.sheet-handle{width:36px;height:5px;border-radius:3px;background:#ddd;margin:10px auto 8px}
+.sheet-peek{padding:0 20px 16px;display:flex;align-items:center;gap:12px}
+.avatar-row{display:flex;gap:-4px}
+.avatar{width:36px;height:36px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0}
+.sheet-peek .label{font-size:14px;font-weight:600;color:#888}
+
+/* Agent cards horizontal */
+.agent-scroll{padding:0 16px 16px;overflow-x:auto;display:flex;gap:12px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.agent-scroll::-webkit-scrollbar{display:none}
+.agent-card{flex:0 0 140px;background:var(--purple-light);border-radius:var(--radius);padding:14px;cursor:pointer;transition:transform .2s}
+.agent-card:active{transform:scale(.96)}
+.agent-card .name{font-weight:700;font-size:14px;margin-top:8px}
+.agent-card .occ{font-size:12px;color:#666;margin-top:2px}
+.agent-card .mood{font-size:12px;margin-top:4px}
+.energy-bar{height:4px;border-radius:2px;background:#e5e7eb;margin-top:6px;overflow:hidden}
+.energy-bar .fill{height:100%;border-radius:2px;background:var(--purple);transition:width .3s}
+
+/* Agent detail */
+.agent-detail{padding:0 20px 24px;display:none}
+.agent-detail.visible{display:block}
+.agent-detail .back{font-size:14px;color:var(--purple);font-weight:600;cursor:pointer;margin-bottom:12px;display:inline-block}
+.detail-header{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.detail-avatar{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#fff}
+.detail-info .name{font-size:20px;font-weight:700}
+.detail-info .sub{font-size:13px;color:#888}
+.personality-viz{display:flex;gap:8px;margin:12px 0}
+.trait-bar{flex:1;text-align:center}
+.trait-bar .bar-bg{height:60px;background:#f3f4f6;border-radius:8px;position:relative;overflow:hidden}
+.trait-bar .bar-fill{position:absolute;bottom:0;left:0;right:0;background:var(--purple);border-radius:8px;transition:height .5s}
+.trait-bar .lbl{font-size:11px;font-weight:600;color:#888;margin-top:4px}
+.section-title{font-size:13px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px}
+.inv-row{display:flex;gap:8px;flex-wrap:wrap}
+.inv-item{background:#f9fafb;border-radius:12px;padding:6px 12px;font-size:13px}
+.goal-item{padding:4px 0;font-size:13px}
+.rel-item{font-size:13px;color:#555;padding:2px 0}
+
+/* Chat */
+.chat-bar{position:fixed;left:0;right:0;bottom:0;z-index:130;background:#fff;border-top:1px solid #eee;padding:10px 16px;display:none;align-items:center;gap:10px}
+.chat-bar.visible{display:flex}
+.chat-bar input{flex:1;height:var(--touch);border-radius:22px;border:1px solid #ddd;padding:0 16px;font-size:15px;outline:none}
+.chat-bar input:focus{border-color:var(--purple)}
+.chat-bar button{width:var(--touch);height:var(--touch);border-radius:50%;background:var(--purple);color:#fff;border:none;font-size:18px;cursor:pointer}
+
+/* Build toolbar */
+.build-bar{position:fixed;left:0;right:0;bottom:0;z-index:130;background:#fff;border-top:1px solid #eee;padding:12px;display:none;gap:8px;overflow-x:auto;scrollbar-width:none}
+.build-bar.visible{display:flex}
+.build-bar::-webkit-scrollbar{display:none}
+.build-item{min-width:var(--touch);min-height:var(--touch);border-radius:14px;background:#f3f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 14px;font-size:22px;cursor:pointer;border:2px solid transparent;flex-shrink:0}
+.build-item.active{border-color:var(--purple);background:var(--purple-light)}
+.build-item .lbl{font-size:10px;font-weight:600;color:#888;margin-top:2px}
+
+/* Settings overlay */
+.settings-overlay{position:fixed;inset:0;z-index:200;background:#fff;transform:translateY(100%);transition:transform .4s cubic-bezier(.4,0,.2,1);overflow-y:auto;padding:20px}
+.settings-overlay.open{transform:translateY(0)}
+.settings-overlay .close-btn{position:sticky;top:0;background:#fff;padding:8px 0 12px;display:flex;justify-content:space-between;align-items:center}
+.settings-overlay h2{font-size:22px;font-weight:700}
+.settings-overlay .x{font-size:24px;color:#888;cursor:pointer;width:var(--touch);height:var(--touch);display:flex;align-items:center;justify-content:center}
+.setting-group{margin:16px 0}
+.setting-group h3{font-size:14px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.setting-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #f3f4f6}
+.setting-row .name{font-size:15px;font-weight:500}
+.toggle{width:48px;height:28px;border-radius:14px;background:#ddd;position:relative;cursor:pointer;transition:background .3s}
+.toggle.on{background:var(--purple)}
+.toggle::after{content:'';position:absolute;width:24px;height:24px;border-radius:50%;background:#fff;top:2px;left:2px;transition:transform .3s;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.toggle.on::after{transform:translateX(20px)}
+
+/* Timeline carousel */
+.timeline-scroll{padding:0 16px 16px;overflow-x:auto;display:flex;gap:12px;scrollbar-width:none}
+.timeline-scroll::-webkit-scrollbar{display:none}
+.era-card{flex:0 0 160px;border-radius:var(--radius);padding:16px;cursor:pointer;color:#fff;font-size:13px}
+.era-card .era-name{font-weight:700;font-size:15px;margin-bottom:4px}
+.era-card .era-days{opacity:.8;font-size:12px}
+
+/* Stats cards */
+.stats-scroll{padding:0 16px 16px;overflow-x:auto;display:flex;gap:12px;scrollbar-width:none}
+.stats-scroll::-webkit-scrollbar{display:none}
+.stat-card{flex:0 0 130px;background:#f9fafb;border-radius:var(--radius);padding:14px;text-align:center}
+.stat-card .val{font-size:24px;font-weight:700;color:var(--purple)}
+.stat-card .lbl{font-size:11px;color:#888;margin-top:4px}
+
+/* Events log */
+.events-list{padding:0 20px 16px;max-height:200px;overflow-y:auto}
+.event-item{font-size:13px;color:#555;padding:6px 0;border-bottom:1px solid #f5f5f5}
+.event-item .day{color:var(--purple);font-weight:600}
+
+/* Gesture hint */
+.gesture-hint{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);z-index:90;font-size:12px;color:rgba(255,255,255,.6);display:flex;gap:16px;pointer-events:none}
+
+/* Tabs in sheet */
+.sheet-tabs{display:flex;padding:0 16px;gap:4px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none}
+.sheet-tabs::-webkit-scrollbar{display:none}
+.sheet-tab{padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;color:#888;background:#f5f5f5;border:none;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.sheet-tab.active{background:var(--purple);color:#fff}
+
+/* God mode banner */
+.god-banner{position:fixed;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#7C3AED,#EC4899,#F59E0B,#7C3AED);background-size:300% 100%;z-index:300;display:none}
+.god-banner.on{display:block;animation:godShift 2s linear infinite}
+@keyframes godShift{0%{background-position:0 0}100%{background-position:300% 0}}
+
+/* Keyboard hints */
+.kbd-hints{position:fixed;bottom:8px;left:50%;transform:translateX(-50%);z-index:80;font-size:11px;color:rgba(255,255,255,.4);display:none}
+@media(min-width:768px){.kbd-hints{display:block}}
+</style>
+</head>
+<body>
+
+<canvas id="map"></canvas>
+<canvas id="minicanvas" width="100" height="100" style="display:none"></canvas>
+
+<div class="god-banner" id="godBanner"></div>
+
+<!-- Top pill -->
+<div class="top-pill" id="topPill">🌸 Spring · Day 47 · 👥 18</div>
+
+<!-- Speed -->
+<div class="speed-ctrl">
+<button onclick="setSpeed(0)">⏸</button>
+<button class="active" onclick="setSpeed(1)">1x</button>
+<button onclick="setSpeed(5)">5x</button>
+<button onclick="setSpeed(10)">10x</button>
+</div>
+
+<!-- Minimap -->
+<div class="minimap" id="minimap"><canvas id="minicanvasDisplay" width="100" height="100"></canvas></div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Gesture hint -->
+<div class="gesture-hint">🤏 pinch to zoom &nbsp; ↕ swipe up for agents</div>
+
+<!-- Keyboard hints -->
+<div class="kbd-hints">B build · C chat · S settings · G god mode · 1-4 speed · Space pause</div>
+
+<!-- Bottom sheet overlay -->
+<div class="sheet-overlay" id="sheetOverlay" onclick="setSheet('peek')"></div>
+
+<!-- Bottom sheet -->
+<div class="bottom-sheet" id="sheet">
+<div class="sheet-handle" id="sheetHandle"></div>
+<div class="sheet-peek" id="sheetPeek" onclick="setSheet('half')">
+<div class="avatar-row">
+<div class="avatar" style="background:#7C3AED">M</div>
+<div class="avatar" style="background:#EC4899;margin-left:-8px">K</div>
+<div class="avatar" style="background:#F59E0B;margin-left:-8px">L</div>
+</div>
+<div class="label">18 agents · tap to expand</div>
+</div>
+
+<div id="sheetContent" style="display:none">
+<div class="sheet-tabs">
+<button class="sheet-tab active" onclick="showTab('agents')">Agents</button>
+<button class="sheet-tab" onclick="showTab('timeline')">Timeline</button>
+<button class="sheet-tab" onclick="showTab('stats')">Stats</button>
+<button class="sheet-tab" onclick="showTab('events')">Events</button>
+<button class="sheet-tab" onclick="showTab('wildlife')">Wildlife</button>
+<button class="sheet-tab" onclick="showTab('buildings')">Buildings</button>
+</div>
+
+<div id="tabAgents">
+<div class="agent-scroll" id="agentScroll"></div>
+</div>
+<div id="tabTimeline" style="display:none">
+<div class="timeline-scroll" id="timelineScroll"></div>
+</div>
+<div id="tabStats" style="display:none">
+<div class="stats-scroll" id="statsScroll"></div>
+</div>
+<div id="tabEvents" style="display:none">
+<div class="events-list" id="eventsList"></div>
+</div>
+<div id="tabWildlife" style="display:none">
+<div class="stats-scroll" id="wildlifeScroll"></div>
+</div>
+<div id="tabBuildings" style="display:none">
+<div class="events-list" id="buildingsList"></div>
+</div>
+
+<div class="agent-detail" id="agentDetail"></div>
+</div>
+</div>
+
+<!-- FAB -->
+<button class="fab" id="fab" onclick="toggleFab()">+</button>
+<div class="radial" id="radial">
+<div class="radial-item" style="bottom:72px;right:6px" onclick="openMode('build')">🔨<span>Build</span></div>
+<div class="radial-item" style="bottom:60px;right:56px" onclick="openMode('chat')">💬<span>Chat</span></div>
+<div class="radial-item" style="bottom:20px;right:72px" onclick="saveWorld()">💾<span>Save</span></div>
+<div class="radial-item" style="bottom:-20px;right:72px" onclick="openSettings()">⚙️<span>Settings</span></div>
+<div class="radial-item" style="bottom:-28px;right:24px" onclick="toggleGod()">⚡<span>God</span></div>
+</div>
+
+<!-- Chat bar -->
+<div class="chat-bar" id="chatBar">
+<input type="text" placeholder="Talk to agent…" id="chatInput">
+<button onclick="sendChat()">↑</button>
+</div>
+
+<!-- Build bar -->
+<div class="build-bar" id="buildBar">
+<div class="build-item" onclick="selBuild(this,'grass')"><span>🌿</span><span class="lbl">Grass</span></div>
+<div class="build-item" onclick="selBuild(this,'forest')"><span>🌲</span><span class="lbl">Forest</span></div>
+<div class="build-item" onclick="selBuild(this,'water')"><span>💧</span><span class="lbl">Water</span></div>
+<div class="build-item" onclick="selBuild(this,'mountain')"><span>⛰️</span><span class="lbl">Mountain</span></div>
+<div class="build-item" onclick="selBuild(this,'farm')"><span>🌾</span><span class="lbl">Farm</span></div>
+<div class="build-item" onclick="selBuild(this,'house')"><span>🏠</span><span class="lbl">House</span></div>
+<div class="build-item" onclick="selBuild(this,'path')"><span>🟫</span><span class="lbl">Path</span></div>
+<div class="build-item" onclick="closeBuild()"><span>✕</span><span class="lbl">Close</span></div>
+</div>
+
+<!-- Settings overlay -->
+<div class="settings-overlay" id="settingsOverlay">
+<div class="close-btn"><h2>Settings</h2><div class="x" onclick="closeSettings()">✕</div></div>
+<div class="setting-group"><h3>Simulation</h3>
+<div class="setting-row"><span class="name">Rules Preset</span><span style="color:var(--purple);font-weight:600">Balanced</span></div>
+<div class="setting-row"><span class="name">Auto-save</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+<div class="setting-row"><span class="name">Sound Effects</span><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+</div>
+<div class="setting-group"><h3>Display</h3>
+<div class="setting-row"><span class="name">Show Wildlife</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+<div class="setting-row"><span class="name">Show Grid Lines</span><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+<div class="setting-row"><span class="name">Agent Labels</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+</div>
+<div class="setting-group"><h3>Data</h3>
+<div class="setting-row"><span class="name">Export World</span><span style="color:var(--purple);font-weight:600;cursor:pointer" onclick="showToast('📦 World exported!')">Export ↗</span></div>
+<div class="setting-row"><span class="name">Share Link</span><span style="color:var(--purple);font-weight:600;cursor:pointer" onclick="showToast('🔗 Link copied!')">Copy</span></div>
+<div class="setting-row"><span class="name">Universe Gallery</span><span style="color:var(--purple);font-weight:600;cursor:pointer" onclick="showToast('🌌 Gallery opened')">Browse</span></div>
+</div>
+<div class="setting-group"><h3>Keyboard Shortcuts</h3>
+<div style="font-size:13px;color:#888;line-height:1.8">
+<b>B</b> Build mode · <b>C</b> Chat · <b>S</b> Settings · <b>G</b> God mode<br>
+<b>1-4</b> Speed · <b>Space</b> Pause · <b>Esc</b> Close
+</div></div>
+</div>
+
+<script>
+// DATA
+const agents=[
+{n:'Maya',occ:'Explorer',mood:'Happy 😊',energy:78,pos:'Forest edge',act:'Exploring',color:'#7C3AED'},
+{n:'Kai',occ:'Builder',mood:'Happy 😊',energy:65,pos:'Village center',act:'Building house',color:'#EC4899'},
+{n:'Luna',occ:'Healer',mood:'Sad 😢',energy:42,pos:'Flower meadow',act:'Gathering herbs',color:'#F59E0B'},
+{n:'Zoe',occ:'Farmer',mood:'Happy 😊',energy:81,pos:'Wheat farm',act:'Harvesting',color:'#10B981'},
+{n:'Rio',occ:'Hunter',mood:'Eager 🔥',energy:70,pos:'Northern forest',act:'Stalking deer',color:'#EF4444'},
+{n:'Ash',occ:'Merchant',mood:'Happy 😊',energy:55,pos:'Market stall',act:'Trading',color:'#F97316'},
+{n:'Noor',occ:'Guard',mood:'Calm 😐',energy:60,pos:'Watchtower',act:'Patrolling',color:'#6366F1'},
+{n:'Eira',occ:'Scholar',mood:'Happy 😊',energy:73,pos:'Library',act:'Reading',color:'#8B5CF6'},
+{n:'Jax',occ:'Fisher',mood:'Calm 😐',energy:68,pos:'River bank',act:'Fishing',color:'#06B6D4'},
+{n:'Sage',occ:'Artist',mood:'Happy 😊',energy:77,pos:'Village plaza',act:'Painting',color:'#D946EF'},
+{n:'Ember',occ:'Blacksmith',mood:'Eager 🔥',energy:85,pos:'Forge',act:'Crafting',color:'#F43F5E'},
+{n:'Willow',occ:'Herbalist',mood:'Calm 😐',energy:50,pos:'Meadow',act:'Collecting',color:'#84CC16'},
+{n:'Flint',occ:'Miner',mood:'Scared 😨',energy:35,pos:'Mountain cave',act:'Hiding from wolf',color:'#78716C'},
+{n:'Brook',occ:'Caretaker',mood:'Happy 😊',energy:90,pos:'Nursery',act:'Tending child',color:'#FB923C'},
+{n:'Reed',occ:'Scout',mood:'Eager 🔥',energy:62,pos:'Hilltop',act:'Scouting',color:'#A3E635'},
+{n:'Dawn',occ:'Elder',mood:'Sad 😢',energy:28,pos:'Home',act:'Resting',color:'#FDA4AF'},
+{n:'Moss',occ:'Woodcutter',mood:'Calm 😐',energy:71,pos:'Forest',act:'Chopping tree',color:'#22C55E'},
+{n:'Pip',occ:'Child',mood:'Happy 😊',energy:95,pos:'Village',act:'Playing',color:'#FACC15'}
+];
+const events=['Rio hunted a deer in the northern forest (Day 47)','Kai finished building a stone house! (Day 47)','⚠️ Wolf spotted near Sunrise Quarter (Day 46)','Luna gathered rare herbs (Day 46)','🌸 Spring has arrived! (Day 45)','Zoe and Ash became friends at the campfire (Day 44)','Maya reached 64% map exploration (Day 43)','Golden Age begins — average happiness above 70% (Day 42)'];
+const eras=[{n:'The Founding',d:'Day 1-10',c:'#6366F1'},{n:'Age of Exploration',d:'Day 11-20',c:'#7C3AED'},{n:'The Wolf Crisis',d:'Day 21-30',c:'#EF4444'},{n:'Era of Building',d:'Day 31-41',c:'#F59E0B'},{n:'Golden Age',d:'Day 42+',c:'#10B981'}];
+const stats=[{v:'72%',l:'Happiness'},{v:'34',l:'Trades'},{v:'3',l:'Births'},{v:'1',l:'Deaths'},{v:'142',l:'🪵 Wood'},{v:'89',l:'🪨 Stone'},{v:'156',l:'🌾 Grain'},{v:'67',l:'🐟 Fish'},{v:'45',l:'🌿 Herbs'}];
+const wildlife=[{v:'4',l:'🦌 Deer'},{v:'6',l:'🐇 Rabbits'},{v:'2',l:'🐺 Wolves'},{v:'8',l:'🐦 Birds'},{v:'12',l:'🐟 Fish'}];
+const buildings=['Sunrise Quarter: 3 houses, 1 market, 1 well','Forest Edge Camp: 2 huts, 1 watchtower','Riverside: 2 huts, 1 farm','Mountain Base: 1 hut, 1 farm'];
+
+// MAP
+const W=50,H=50,canvas=document.getElementById('map'),ctx=canvas.getContext('2d');
+let tileW,tileH,camX=0,camY=0,zoom=1;
+const grid=[];
+const colors={grass:'#86EFAC',dforest:'#166534',lforest:'#4ADE80',mountain:'#9CA3AF',village:'#D4A574',farm:'#FDE047',meadow:'#E9D5FF',river:'#60A5FA',lake:'#3B82F6',sand:'#FDE68A'};
+
+function initGrid(){
+for(let y=0;y<H;y++){grid[y]=[];for(let x=0;x<W;x++){
+let t='grass';
+if(y<8&&x>20&&x<35)t='mountain';
+else if(y<12&&x>10&&x<25)t='dforest';
+else if(y>=20&&y<=28&&x>=18&&x<=32)t='village';
+else if((y>=22&&y<=26&&x>=33&&x<=38)||(y>=35&&y<=39&&x>=20&&x<=26))t='farm';
+else if(x>=30&&y>=15&&y<=25)t='meadow';
+else if(x>=8&&x<=10)t='river';
+else if(y>=40&&x>=15&&x<=30)t='lake';
+else if(y>=42&&x>=12&&x<=33)t='sand';
+else if(y<15&&Math.random()<.3)t='lforest';
+grid[y][x]=t;
+}}
+}
+initGrid();
+
+// Agent positions on map
+const agentPos=agents.map((_,i)=>{
+const zones=[[35,5],[25,24],[22,30],[30,22],[15,6],[26,25],[12,10],[24,23],[9,32],[25,26],[27,24],[20,30],[28,4],[24,22],[20,14],[23,23],[14,12],[25,25]];
+return zones[i]||[Math.floor(Math.random()*W),Math.floor(Math.random()*H)];
+});
+const animalPos=[{x:16,y:5,e:'🦌'},{x:18,y:7,e:'🦌'},{x:20,y:38,e:'🦌'},{x:25,y:40,e:'🦌'},{x:30,y:15,e:'🐇'},{x:12,y:20,e:'🐇'},{x:35,y:30,e:'🐇'},{x:5,y:25,e:'🐇'},{x:40,y:10,e:'🐇'},{x:22,y:35,e:'🐇'},{x:8,y:8,e:'🐺'},{x:14,y:4,e:'🐺'}];
+
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight;tileW=canvas.width/W*zoom;tileH=canvas.height/H*zoom;draw()}
+function draw(){
+ctx.clearRect(0,0,canvas.width,canvas.height);
+const tw=canvas.width/(W/zoom),th=canvas.height/(H/zoom);
+for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+ctx.fillStyle=colors[grid[y][x]]||colors.grass;
+ctx.fillRect((x-camX)*tw,(y-camY)*th,tw+1,th+1);
+}
+// animals
+ctx.font=`${Math.max(12,tw*.6)}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+animalPos.forEach(a=>{ctx.fillText(a.e,(a.x-camX)*tw+tw/2,(a.y-camY)*th+th/2)});
+// agents
+agents.forEach((a,i)=>{
+const[ax,ay]=agentPos[i];
+const sx=(ax-camX)*tw+tw/2,sy=(ay-camY)*th+th/2,r=Math.max(6,tw*.35);
+ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.fillStyle=a.color;ctx.fill();
+ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+if(tw>14){ctx.fillStyle='#fff';ctx.font=`bold ${Math.max(8,r)}px sans-serif`;ctx.fillText(a.n[0],sx,sy)}
+});
+drawMinimap();
+}
+function drawMinimap(){
+const mc=document.getElementById('minicanvasDisplay'),mx=mc.getContext('2d'),s=mc.width/W;
+mx.clearRect(0,0,mc.width,mc.height);
+for(let y=0;y<H;y++)for(let x=0;x<W;x++){mx.fillStyle=colors[grid[y][x]]||colors.grass;mx.fillRect(x*s,y*s,s+.5,s+.5)}
+agents.forEach((a,i)=>{const[ax,ay]=agentPos[i];mx.fillStyle=a.color;mx.beginPath();mx.arc(ax*s+s/2,ay*s+s/2,2,0,Math.PI*2);mx.fill()});
+}
+addEventListener('resize',resize);resize();
+
+// Map tap → select agent
+canvas.addEventListener('click',e=>{
+const tw=canvas.width/(W/zoom),th=canvas.height/(H/zoom);
+const mx=(e.clientX/tw)+camX,my=(e.clientY/th)+camY;
+let best=-1,bestD=3;
+agents.forEach((a,i)=>{const[ax,ay]=agentPos[i];const d=Math.hypot(ax-mx,ay-my);if(d<bestD){bestD=d;best=i}});
+if(best>=0){selectAgent(best);setSheet('full')}
+});
+
+// BOTTOM SHEET
+const sheet=document.getElementById('sheet'),sheetOverlay=document.getElementById('sheetOverlay');
+let sheetState='peek';
+function setSheet(s){
+sheetState=s;
+const h=innerHeight;
+if(s==='peek'){sheet.style.transform='translateY(0)';sheet.style.height='80px';sheetOverlay.classList.remove('active');document.getElementById('sheetContent').style.display='none';document.getElementById('sheetPeek').style.display='flex'}
+else if(s==='half'){sheet.style.transform='translateY(0)';sheet.style.height=Math.min(380,h*.45)+'px';sheetOverlay.classList.add('active');document.getElementById('sheetContent').style.display='block';document.getElementById('sheetPeek').style.display='none';document.getElementById('agentDetail').classList.remove('visible')}
+else if(s==='full'){sheet.style.transform='translateY(0)';sheet.style.height=Math.min(h*.85,700)+'px';sheetOverlay.classList.add('active');document.getElementById('sheetContent').style.display='block';document.getElementById('sheetPeek').style.display='none'}
+}
+
+// Touch drag on sheet handle
+let touchY0=0;
+document.getElementById('sheetHandle').addEventListener('touchstart',e=>{touchY0=e.touches[0].clientY});
+document.getElementById('sheetHandle').addEventListener('touchend',e=>{
+const dy=e.changedTouches[0].clientY-touchY0;
+if(dy<-30){if(sheetState==='peek')setSheet('half');else if(sheetState==='half')setSheet('full')}
+else if(dy>30){if(sheetState==='full')setSheet('half');else if(sheetState==='half')setSheet('peek')}
+});
+
+// Populate
+function populateAgents(){
+const sc=document.getElementById('agentScroll');
+sc.innerHTML=agents.map((a,i)=>`<div class="agent-card" onclick="selectAgent(${i});setSheet('full')"><div class="avatar" style="background:${a.color};width:32px;height:32px;font-size:14px">${a.n[0]}</div><div class="name">${a.n}</div><div class="occ">${a.occ}</div><div class="mood">${a.mood}</div><div class="energy-bar"><div class="fill" style="width:${a.energy}%"></div></div></div>`).join('');
+}
+populateAgents();
+
+document.getElementById('timelineScroll').innerHTML=eras.map(e=>`<div class="era-card" style="background:${e.c}"><div class="era-name">${e.n}</div><div class="era-days">${e.d}</div></div>`).join('');
+document.getElementById('statsScroll').innerHTML=stats.map(s=>`<div class="stat-card"><div class="val">${s.v}</div><div class="lbl">${s.l}</div></div>`).join('');
+document.getElementById('wildlifeScroll').innerHTML=wildlife.map(w=>`<div class="stat-card"><div class="val">${w.v}</div><div class="lbl">${w.l}</div></div>`).join('');
+document.getElementById('eventsList').innerHTML=events.map(e=>`<div class="event-item">${e}</div>`).join('');
+document.getElementById('buildingsList').innerHTML=buildings.map(b=>`<div class="event-item">${b}</div>`).join('');
+
+function selectAgent(i){
+const a=agents[i],d=document.getElementById('agentDetail');
+const isMaya=a.n==='Maya';
+const traits=isMaya?[['O',90],['C',40],['E',80],['A',70],['N',20]]:[['O',50+Math.random()*40|0],['C',30+Math.random()*50|0],['E',40+Math.random()*40|0],['A',40+Math.random()*40|0],['N',10+Math.random()*50|0]];
+d.innerHTML=`<div class="back" onclick="d.classList.remove('visible')">← Back</div>
+<div class="detail-header"><div class="detail-avatar" style="background:${a.color}">${a.n[0]}</div><div class="detail-info"><div class="name">${a.n}</div><div class="sub">${a.occ} · ${a.mood} · ⚡${a.energy}%</div><div class="sub">${a.pos} — ${a.act}</div></div></div>
+<div class="section-title">Personality</div>
+<div class="personality-viz">${traits.map(t=>`<div class="trait-bar"><div class="bar-bg"><div class="bar-fill" style="height:${t[1]}%"></div></div><div class="lbl">${t[0]}</div></div>`).join('')}</div>
+${isMaya?`<div class="section-title">Inventory</div><div class="inv-row"><div class="inv-item">🪵 5</div><div class="inv-item">🪨 3</div><div class="inv-item">🥩 2</div><div class="inv-item">🐟 4</div><div class="inv-item">🌿 1</div></div>
+<div class="section-title">Goals</div><div class="goal-item">✅ Build Home</div><div class="goal-item">🔄 Make 3 Friends (2/3)</div><div class="goal-item">◻️ Explore Map (64%)</div>
+<div class="section-title">Relationships</div><div class="rel-item">Kai — close friend</div><div class="rel-item">Zoe — friend</div><div class="rel-item">Rio — acquaintance</div>
+<div class="section-title">Memories</div><div class="rel-item">"Survived the wolf attack of Day 23"</div><div class="rel-item">"Helped Kai build the market"</div>
+<div class="section-title">Culture</div><div class="rel-item">💬 "The horizon calls!"</div>`:''}`;
+d.classList.add('visible');
+const dd=d;d.querySelector('.back').onclick=()=>{dd.classList.remove('visible')};
+}
+
+function showTab(t){
+['agents','timeline','stats','events','wildlife','buildings'].forEach(x=>{document.getElementById('tab'+x[0].toUpperCase()+x.slice(1)).style.display=x===t?'':'none'});
+document.querySelectorAll('.sheet-tab').forEach(b=>b.classList.toggle('active',b.textContent.toLowerCase()===t));
+document.getElementById('agentDetail').classList.remove('visible');
+}
+
+// FAB
+let fabOpen=false;
+function toggleFab(){fabOpen=!fabOpen;document.getElementById('fab').classList.toggle('open',fabOpen);document.getElementById('radial').classList.toggle('open',fabOpen)}
+
+function openMode(m){
+toggleFab();
+if(m==='build'){document.getElementById('buildBar').classList.add('visible');document.getElementById('chatBar').classList.remove('visible');setSheet('peek')}
+if(m==='chat'){document.getElementById('chatBar').classList.add('visible');document.getElementById('buildBar').classList.remove('visible');setSheet('peek');document.getElementById('chatInput').focus()}
+}
+function closeBuild(){document.getElementById('buildBar').classList.remove('visible')}
+function selBuild(el,t){document.querySelectorAll('.build-item').forEach(b=>b.classList.remove('active'));el.classList.add('active')}
+function sendChat(){const v=document.getElementById('chatInput').value;if(v){showToast('💬 Maya: "Interesting thought!"');document.getElementById('chatInput').value=''}}
+function saveWorld(){showToast('💾 World saved!');toggleFab()}
+function openSettings(){document.getElementById('settingsOverlay').classList.add('open');if(fabOpen)toggleFab()}
+function closeSettings(){document.getElementById('settingsOverlay').classList.remove('open')}
+
+let godMode=false;
+function toggleGod(){godMode=!godMode;document.getElementById('godBanner').classList.toggle('on',godMode);showToast(godMode?'⚡ God Mode ON':'God Mode OFF');if(fabOpen)toggleFab()}
+
+function setSpeed(s){document.querySelectorAll('.speed-ctrl button').forEach((b,i)=>b.classList.toggle('active',[0,1,5,10][i]===s));showToast(s===0?'⏸ Paused':`▶ Speed ${s}x`)}
+
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
+
+// Keyboard
+addEventListener('keydown',e=>{
+if(e.target.tagName==='INPUT')return;
+if(e.key==='b')openMode('build');
+if(e.key==='c')openMode('chat');
+if(e.key==='s')openSettings();
+if(e.key==='g')toggleGod();
+if(e.key===' '){e.preventDefault();setSpeed(0)}
+if(e.key==='1')setSpeed(1);if(e.key==='2')setSpeed(5);if(e.key==='3')setSpeed(10);
+if(e.key==='Escape'){closeSettings();closeBuild();document.getElementById('chatBar').classList.remove('visible');setSheet('peek')}
+});
+
+// Initial toast
+setTimeout(()=>showToast('🏠 Kai finished building a stone house!'),1500);
+
+// Animate agents slightly
+setInterval(()=>{
+agents.forEach((_,i)=>{agentPos[i][0]+=(.5-Math.random())*.3;agentPos[i][1]+=(.5-Math.random())*.3;agentPos[i][0]=Math.max(0,Math.min(W-1,agentPos[i][0]));agentPos[i][1]=Math.max(0,Math.min(H-1,agentPos[i][1]))});
+draw();
+},2000);
+
+setSheet('peek');
+</script>
+</body>
+</html>

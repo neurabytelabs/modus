@@ -11,7 +11,7 @@ defmodule Modus.Mind.Cerebro.SocialInsightTest do
   describe "describe_relationships/1" do
     test "returns empty message when no friends" do
       result = SocialInsight.describe_relationships("lonely_agent")
-      assert result == "Henüz kimseyi tanımıyorsun."
+      assert result == "You don't know anyone yet."
     end
 
     test "returns relationship descriptions when friends exist" do
@@ -23,14 +23,14 @@ defmodule Modus.Mind.Cerebro.SocialInsightTest do
       result = SocialInsight.describe_relationships("agent_a")
       # Should mention the relationship (though agent name will be "Bilinmeyen" without real agent)
       assert is_binary(result)
-      assert result != "Henüz kimseyi tanımıyorsun."
+      assert result != "You don't know anyone yet."
     end
   end
 
   describe "describe_relationship/3" do
     test "unknown relationship" do
       result = SocialInsight.describe_relationship("x", "y", "Ali")
-      assert result == "Ali ile daha önce tanışmadınız."
+      assert result == "You haven't met Ali before."
     end
 
     test "known relationship" do

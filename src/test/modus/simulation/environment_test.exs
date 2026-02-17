@@ -4,9 +4,19 @@ defmodule Modus.Simulation.EnvironmentTest do
   alias Modus.Simulation.Environment
 
   setup do
-    # Start PubSub if not already started
-    start_supervised!({Phoenix.PubSub, name: Modus.PubSub})
-    start_supervised!(Environment)
+    # Reset Environment state for test isolation
+    case Process.whereis(Environment) do
+      nil ->
+        if Process.whereis(Modus.PubSub) == nil do
+          start_supervised!({Phoenix.PubSub, name: Modus.PubSub})
+        end
+        start_supervised!(Environment)
+      _pid ->
+        # Reset to initial state
+        :sys.replace_state(Environment, fn _state ->
+          %Modus.Simulation.Environment{}
+        end)
+    end
     :ok
   end
 

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MODUS — UI Design Demos</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0d1117; color: #e6edf3; font-family: 'Inter', -apple-system, sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 60px 20px; }
+h1 { font-size: 2.5rem; margin-bottom: 8px; }
+h1 span { background: linear-gradient(135deg, #7C3AED, #06B6D4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.subtitle { color: #8b949e; font-size: 1.1rem; margin-bottom: 50px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 24px; max-width: 1200px; width: 100%; }
+.card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 28px; transition: all 0.3s; cursor: pointer; text-decoration: none; color: inherit; }
+.card:hover { border-color: #7C3AED; transform: translateY(-4px); box-shadow: 0 8px 30px rgba(124,58,237,0.15); }
+.card-num { font-size: 0.75rem; color: #7C3AED; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; }
+.card h2 { font-size: 1.4rem; margin-bottom: 8px; }
+.card .emoji { font-size: 2rem; margin-bottom: 12px; }
+.card p { color: #8b949e; font-size: 0.9rem; line-height: 1.6; }
+.card .inspiration { margin-top: 12px; font-size: 0.8rem; color: #58a6ff; }
+.footer { margin-top: 60px; color: #484f58; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1><span>MODUS</span> UI Demos</h1>
+<p class="subtitle">10 radically different interface approaches — pick your universe</p>
+<div class="grid">
+  <a class="card" href="v1.html"><div class="emoji">🧘</div><div class="card-num">Demo 01</div><h2>Zen Garden</h2><p>Almost no UI. Glassmorphism floating controls. World fills 95% of screen. Controls appear on hover.</p><div class="inspiration">→ Journey, Calm, Muji, Monument Valley</div></a>
+  <a class="card" href="v2.html"><div class="emoji">🖥️</div><div class="card-num">Demo 02</div><h2>Mission Control</h2><p>Multi-panel dashboard. Resizable panes. Data-dense, professional. Every metric visible at once.</p><div class="inspiration">→ Bloomberg Terminal, Grafana, NASA</div></a>
+  <a class="card" href="v3.html"><div class="emoji">🎮</div><div class="card-num">Demo 03</div><h2>Classic RPG</h2><p>Game HUD with health bars, minimap, inventory grid, action buttons. Pixel art borders.</p><div class="inspiration">→ Stardew Valley, Zelda, Terraria</div></a>
+  <a class="card" href="v4.html"><div class="emoji">💻</div><div class="card-num">Demo 04</div><h2>Terminal</h2><p>Full terminal aesthetic. Monospace font, green/amber text, box-drawing chars. Command prompt.</p><div class="inspiration">→ Dwarf Fortress, lazygit, htop, btop</div></a>
+  <a class="card" href="v5.html"><div class="emoji">📱</div><div class="card-num">Demo 05</div><h2>Touch First</h2><p>Mobile-first. Bottom sheets, floating action buttons, swipe areas. Map fullscreen with overlays.</p><div class="inspiration">→ Google Maps, Apple Maps, Figma mobile</div></a>
+  <a class="card" href="v6.html"><div class="emoji">📋</div><div class="card-num">Demo 06</div><h2>Notion Studio</h2><p>SaaS dashboard. Sidebar navigation, breadcrumbs, clean typography. Tables and card views.</p><div class="inspiration">→ Linear, Notion, Vercel Dashboard</div></a>
+  <a class="card" href="v7.html"><div class="emoji">🗺️</div><div class="card-num">Demo 07</div><h2>Cartographer</h2><p>Map IS everything. Full-screen world, information as floating cards on the map. Compass, scale bar.</p><div class="inspiration">→ OpenStreetMap, Tolkien maps, National Geographic</div></a>
+  <a class="card" href="v8.html"><div class="emoji">📖</div><div class="card-num">Demo 08</div><h2>Chronicle</h2><p>Narrative-first. Left: live world. Right: flowing story text with events, dialogues, eras. Book metaphor.</p><div class="inspiration">→ Reigns, 80 Days, Inkle Studios, Medium</div></a>
+  <a class="card" href="v9.html"><div class="emoji">🔬</div><div class="card-num">Demo 09</div><h2>Observatory</h2><p>Data visualization focused. Small map surrounded by graphs, network diagrams, time series. Academic feel.</p><div class="inspiration">→ CERN dashboard, Refik Anadol, Observable</div></a>
+  <a class="card" href="v10.html"><div class="emoji">🧸</div><div class="card-num">Demo 10</div><h2>Playground</h2><p>Playful creative tool. Drag-and-drop, emoji-heavy, rounded corners, pastel colors. Toolbar on top.</p><div class="inspiration">→ Figma, Miro, tldraw, Scratch</div></a>
+</div>
+<p class="footer">MODUS by NeuraByte Labs · "Deus sive Natura" — Spinoza · Designed with RUNE</p>
+</body>
+</html>

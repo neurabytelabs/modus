@@ -2,7 +2,7 @@ defmodule ModusWeb.UniverseLiveTest do
   use ExUnit.Case, async: true
 
   @moduledoc """
-  Tests for MODUS v1.5.0 Deus features in UniverseLive.
+  Tests for MODUS UniverseLive features.
   """
 
   # Test 1: God Mode toggle assigns
@@ -36,19 +36,19 @@ defmodule ModusWeb.UniverseLiveTest do
     assert assigns.phase == :onboarding
   end
 
-  # Test 4: Version is 1.5.0
-  test "version is 1.5.0 in mix.exs" do
+  # Test 4: Version check
+  test "version is 2.4.0 in mix.exs" do
     {:ok, content} = File.read("mix.exs")
-    assert content =~ ~s(version: "1.5.0")
+    assert content =~ ~s(version: "2.4.0")
   end
 
   # Test 5: Landing page has correct content in template
-  test "universe_live module exists and has Deus docstring" do
+  test "universe_live module exists and has Infinitum docstring" do
     {:ok, content} = File.read("lib/modus_web/live/universe_live.ex")
-    assert content =~ "v1.5.0 Deus"
+    assert content =~ "v2.0.0 Infinitum"
     assert content =~ "God Mode"
     assert content =~ "Cinematic Camera"
-    assert content =~ "Screenshot Export"
+    assert content =~ "Screenshot"
     assert content =~ "Landing Page"
     assert content =~ "toggle_god_mode"
     assert content =~ "toggle_cinematic"

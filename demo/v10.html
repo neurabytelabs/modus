@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MODUS — Sunrise Valley</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#1e1e2e;--surface:#2a2a3d;--surface2:#33334a;--border:#3e3e58;--text:#e8e8f0;--text2:#a0a0b8;--purple:#b4a0e8;--mint:#7ee8c8;--pink:#f0a0b8;--sky:#80c8f0;--yellow:#f0d870;--radius:14px;--shadow:0 4px 16px rgba(0,0,0,.3)}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;display:flex;flex-direction:column;user-select:none}
+/* TOOLBAR */
+.toolbar{height:52px;background:var(--surface);display:flex;align-items:center;padding:0 12px;gap:12px;border-bottom:1px solid var(--border);z-index:100}
+.logo{font-weight:800;font-size:18px;background:linear-gradient(135deg,var(--purple),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;padding:4px 10px;border-radius:10px;border:2px solid var(--purple);cursor:default}
+.world-name{font-weight:700;font-size:15px;color:var(--yellow);margin-left:4px}
+.tool-group{display:flex;background:var(--surface2);border-radius:26px;padding:3px;gap:2px;margin:0 auto}
+.tool-btn{padding:6px 14px;border-radius:22px;border:none;background:transparent;color:var(--text2);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+.tool-btn:hover{background:var(--border);color:var(--text)}
+.tool-btn.active{background:var(--purple);color:#fff}
+.tb-right{display:flex;align-items:center;gap:6px;margin-left:auto}
+.speed-btn{width:36px;height:28px;border-radius:8px;border:none;font-weight:700;font-size:11px;cursor:pointer;transition:.15s}
+.speed-btn:hover{transform:scale(1.08)}
+.speed-btn.active{box-shadow:0 0 0 2px var(--text)}
+.badge{padding:4px 10px;border-radius:10px;font-size:12px;font-weight:700;background:var(--surface2)}
+.share-btn{padding:6px 14px;border-radius:10px;border:none;background:var(--mint);color:#1e1e2e;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit}
+.share-btn:hover{transform:scale(1.05)}
+/* LAYOUT */
+.main{flex:1;display:flex;overflow:hidden;position:relative}
+/* PANELS */
+.panel{background:var(--surface);display:flex;flex-direction:column;overflow:hidden;transition:width .2s}
+.panel-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;font-weight:700;font-size:13px;color:var(--text2);border-bottom:1px solid var(--border)}
+.panel-toggle{width:24px;height:24px;border-radius:6px;border:none;background:var(--surface2);color:var(--text2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
+.panel-toggle:hover{background:var(--border)}
+.left-panel{width:260px;border-right:1px solid var(--border)}
+.left-panel.collapsed{width:36px}
+.left-panel.collapsed .panel-content,.left-panel.collapsed .panel-header span{display:none}
+.right-panel{width:300px;border-left:1px solid var(--border)}
+.right-panel.collapsed{width:36px}
+.right-panel.collapsed .panel-content,.right-panel.collapsed .panel-header span{display:none}
+.panel-content{flex:1;overflow-y:auto;padding:8px}
+.panel-content::-webkit-scrollbar{width:4px}
+.panel-content::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+/* LAYERS */
+.layer-group{margin-bottom:4px}
+.layer-head{display:flex;align-items:center;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;gap:6px;transition:.1s}
+.layer-head:hover{background:var(--surface2)}
+.layer-arrow{font-size:10px;width:16px;transition:.15s;display:inline-block}
+.layer-arrow.open{transform:rotate(90deg)}
+.layer-items{padding-left:22px;display:none}
+.layer-items.open{display:block}
+.layer-item{display:flex;align-items:center;padding:4px 8px;border-radius:6px;font-size:12px;gap:6px;cursor:pointer;transition:.1s}
+.layer-item:hover{background:var(--surface2)}
+.layer-item.selected{background:rgba(180,160,232,.2)}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.layer-icons{margin-left:auto;display:flex;gap:4px;opacity:0;transition:.1s}
+.layer-item:hover .layer-icons,.layer-head:hover .layer-icons{opacity:1}
+.layer-icon{font-size:11px;cursor:pointer;opacity:.5}
+.layer-icon:hover{opacity:1}
+.drag-handle{color:var(--text2);font-size:10px;cursor:grab;opacity:.3;letter-spacing:-1px}
+/* CENTER MAP */
+.center{flex:1;position:relative;overflow:hidden;background:#181828}
+.ruler-h,.ruler-v{position:absolute;background:var(--surface);z-index:10}
+.ruler-h{top:0;left:24px;right:0;height:20px;border-bottom:1px solid var(--border);display:flex;align-items:flex-end}
+.ruler-v{top:20px;left:0;bottom:0;width:24px;border-right:1px solid var(--border);display:flex;flex-direction:column}
+.ruler-mark{font-size:8px;color:var(--text2);padding:0 4px}
+.map-viewport{position:absolute;top:20px;left:24px;right:0;bottom:0;overflow:hidden;cursor:crosshair}
+canvas{image-rendering:pixelated}
+/* SELECTION BOX */
+.sel-rect{position:absolute;border:2px dashed var(--sky);background:rgba(128,200,240,.08);pointer-events:none;border-radius:4px;z-index:20}
+/* RIGHT PANEL PROPS */
+.prop-section{margin-bottom:12px}
+.prop-label{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.prop-input{width:100%;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:13px;font-weight:600}
+.prop-select{composes:prop-input;cursor:pointer}
+.slider-wrap{display:flex;align-items:center;gap:8px}
+.slider-wrap label{font-size:11px;width:14px;font-weight:700;color:var(--text2)}
+.slider-wrap span{font-size:11px;width:30px;text-align:right;color:var(--text2)}
+input[type=range]{-webkit-appearance:none;flex:1;height:6px;border-radius:3px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3);cursor:pointer}
+.energy-slider::-webkit-slider-runnable-track{background:linear-gradient(90deg,var(--pink),var(--yellow),var(--mint))}
+.mood-row{display:flex;gap:6px;font-size:20px}
+.mood-row span{cursor:pointer;transition:.1s;border-radius:8px;padding:2px 4px}
+.mood-row span:hover{background:var(--surface2);transform:scale(1.15)}
+.mood-row span.active{background:rgba(180,160,232,.3)}
+.inv-grid{display:flex;flex-wrap:wrap;gap:6px}
+.inv-item{background:var(--surface2);border-radius:8px;padding:4px 8px;font-size:12px;font-weight:600}
+.inv-add{background:var(--border);border-radius:8px;padding:4px 8px;font-size:12px;cursor:pointer}
+.inv-add:hover{background:var(--purple);color:#fff}
+.goal-item{display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 0}
+.goal-item input[type=checkbox]{accent-color:var(--mint)}
+.rel-item{font-size:12px;padding:2px 0;color:var(--text2)}
+/* BOTTOM PANEL */
+.bottom-panel{border-top:1px solid var(--border);background:var(--surface);transition:height .2s;overflow:hidden}
+.bottom-panel.collapsed{height:32px}
+.bottom-header{display:flex;align-items:center;padding:6px 12px;gap:12px;font-size:12px;font-weight:700;color:var(--text2)}
+.bottom-tab{padding:4px 10px;border-radius:8px;cursor:pointer;transition:.1s}
+.bottom-tab:hover,.bottom-tab.active{background:var(--surface2);color:var(--text)}
+.bottom-content{display:flex;height:140px;overflow:hidden}
+.timeline-bar{flex:1;display:flex;align-items:stretch;gap:2px;padding:8px;overflow-x:auto}
+.era-block{border-radius:8px;padding:8px 12px;font-size:11px;font-weight:700;min-width:100px;display:flex;flex-direction:column;justify-content:center}
+.event-log{flex:1;padding:8px;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+.event-bubble{padding:6px 10px;border-radius:10px;font-size:12px;background:var(--surface2);max-width:85%;animation:popIn .2s}
+.event-bubble.warn{border-left:3px solid var(--yellow)}
+.stats-cards{display:flex;gap:8px;padding:8px;flex-wrap:wrap}
+.stat-card{background:var(--surface2);border-radius:12px;padding:10px 14px;min-width:110px;text-align:center}
+.stat-card .emoji{font-size:22px}
+.stat-card .num{font-size:20px;font-weight:800}
+.stat-card .lbl{font-size:10px;color:var(--text2);font-weight:600}
+/* FLOATING */
+.minimap{position:absolute;bottom:12px;right:12px;width:140px;height:100px;background:var(--surface);border-radius:12px;box-shadow:var(--shadow);z-index:50;overflow:hidden;border:2px solid var(--border)}
+.minimap canvas{width:100%;height:100%}
+.toast-area{position:absolute;top:60px;right:16px;z-index:200;display:flex;flex-direction:column;gap:8px}
+.toast{padding:10px 16px;border-radius:12px;background:var(--surface);box-shadow:var(--shadow);font-size:13px;font-weight:600;animation:slideIn .3s;border-left:4px solid var(--mint)}
+.color-picker{position:absolute;bottom:12px;left:12px;width:44px;background:var(--surface);border-radius:22px;box-shadow:var(--shadow);z-index:50;padding:6px;display:flex;flex-direction:column;gap:4px;align-items:center}
+.cp-dot{width:28px;height:28px;border-radius:50%;cursor:pointer;transition:.1s;border:2px solid transparent}
+.cp-dot:hover{transform:scale(1.15);border-color:#fff}
+.cp-dot.active{border-color:#fff;box-shadow:0 0 8px rgba(255,255,255,.3)}
+.shortcuts{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:var(--surface);border-radius:10px;padding:4px 12px;font-size:10px;color:var(--text2);z-index:50;box-shadow:var(--shadow)}
+.shortcuts kbd{background:var(--surface2);padding:1px 5px;border-radius:4px;font-family:inherit;margin:0 2px}
+@keyframes popIn{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes bounce{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <div class="logo">MODUS</div>
+  <div class="world-name">🌄 Sunrise Valley</div>
+  <div class="tool-group">
+    <button class="tool-btn active" data-tool="select">👆 Select</button>
+    <button class="tool-btn" data-tool="build">🔨 Build</button>
+    <button class="tool-btn" data-tool="agent">🧑 Agent</button>
+    <button class="tool-btn" data-tool="animal">🦌 Animal</button>
+    <button class="tool-btn" data-tool="chat">💬 Chat</button>
+    <button class="tool-btn" data-tool="screenshot">📸</button>
+  </div>
+  <div class="tb-right">
+    <button class="speed-btn" style="background:var(--pink);color:#fff" data-speed="0">⏸</button>
+    <button class="speed-btn active" style="background:var(--mint);color:#1e1e2e" data-speed="1">1×</button>
+    <button class="speed-btn" style="background:var(--sky);color:#1e1e2e" data-speed="5">5×</button>
+    <button class="speed-btn" style="background:var(--yellow);color:#1e1e2e" data-speed="10">10×</button>
+    <div class="badge">🌸 Spring</div>
+    <div class="badge" style="color:var(--yellow)">☀️ Day 47</div>
+    <button class="share-btn">↗ Share</button>
+  </div>
+</div>
+
+<div class="main">
+<!-- LEFT PANEL -->
+<div class="panel left-panel" id="leftPanel">
+  <div class="panel-header"><span>📐 Layers</span><button class="panel-toggle" onclick="togglePanel('left')">◀</button></div>
+  <div class="panel-content" id="layerContent"></div>
+</div>
+
+<!-- CENTER -->
+<div class="center" id="centerArea">
+  <div class="ruler-h" id="rulerH"></div>
+  <div class="ruler-v" id="rulerV"></div>
+  <div class="map-viewport" id="mapViewport">
+    <canvas id="mapCanvas"></canvas>
+    <div id="agentOverlay" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></div>
+    <div class="sel-rect hidden" id="selRect"></div>
+  </div>
+  <div class="minimap"><canvas id="minimapCanvas" width="140" height="100"></canvas></div>
+  <div class="color-picker" id="colorPicker"></div>
+  <div class="shortcuts"><kbd>V</kbd> Select <kbd>B</kbd> Build <kbd>Space</kbd> Pan <kbd>1-4</kbd> Speed <kbd>[</kbd><kbd>]</kbd> Panels</div>
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="panel right-panel" id="rightPanel">
+  <div class="panel-header"><span>⚙️ Properties</span><button class="panel-toggle" onclick="togglePanel('right')">▶</button></div>
+  <div class="panel-content" id="propsContent">
+    <div style="padding:20px;text-align:center;color:var(--text2);font-size:13px">👆 Select an agent<br>to view properties</div>
+  </div>
+</div>
+</div>
+
+<!-- BOTTOM PANEL -->
+<div class="bottom-panel" id="bottomPanel" style="height:172px">
+  <div class="bottom-header">
+    <button class="panel-toggle" onclick="togglePanel('bottom')">▼</button>
+    <span class="bottom-tab active" data-tab="timeline">📅 Timeline</span>
+    <span class="bottom-tab" data-tab="events">💬 Events</span>
+    <span class="bottom-tab" data-tab="stats">📊 Stats</span>
+  </div>
+  <div class="bottom-content" id="bottomContent"></div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-area" id="toastArea">
+  <div class="toast">🎉 Golden Age continues — Day 47!</div>
+</div>
+
+<script>
+const AGENTS=[
+{name:"Maya",occ:"Explorer",mood:"😊",energy:78,pos:[22,15],action:"Exploring",color:"#b4a0e8"},
+{name:"Kai",occ:"Builder",mood:"😊",energy:65,pos:[25,25],action:"Building house",color:"#7ee8c8"},
+{name:"Luna",occ:"Healer",mood:"😢",energy:42,pos:[35,20],action:"Gathering herbs",color:"#f0a0b8"},
+{name:"Zoe",occ:"Farmer",mood:"😊",energy:81,pos:[28,28],action:"Harvesting",color:"#f0d870"},
+{name:"Rio",occ:"Hunter",mood:"🔥",energy:70,pos:[20,8],action:"Stalking deer",color:"#ff9070"},
+{name:"Ash",occ:"Merchant",mood:"😊",energy:55,pos:[26,26],action:"Trading",color:"#80c8f0"},
+{name:"Noor",occ:"Guard",mood:"😐",energy:60,pos:[18,14],action:"Patrolling",color:"#a0b8e8"},
+{name:"Eira",occ:"Scholar",mood:"😊",energy:73,pos:[27,24],action:"Reading",color:"#c8a0f0"},
+{name:"Jax",occ:"Fisher",mood:"😐",energy:68,pos:[12,30],action:"Fishing",color:"#70c8e8"},
+{name:"Sage",occ:"Artist",mood:"😊",energy:77,pos:[25,24],action:"Painting",color:"#e8a0d0"},
+{name:"Ember",occ:"Blacksmith",mood:"🔥",energy:85,pos:[24,22],action:"Crafting",color:"#f0b870"},
+{name:"Willow",occ:"Herbalist",mood:"😐",energy:50,pos:[34,22],action:"Collecting",color:"#90d8a0"},
+{name:"Flint",occ:"Miner",mood:"😨",energy:35,pos:[15,5],action:"Hiding",color:"#b8b8c8"},
+{name:"Brook",occ:"Caretaker",mood:"😊",energy:90,pos:[26,25],action:"Tending",color:"#f8c8d0"},
+{name:"Reed",occ:"Scout",mood:"🔥",energy:62,pos:[30,12],action:"Scouting",color:"#c8e0a0"},
+{name:"Dawn",occ:"Elder",mood:"😢",energy:28,pos:[25,23],action:"Resting",color:"#d0c8b0"},
+{name:"Moss",occ:"Woodcutter",mood:"😐",energy:71,pos:[10,18],action:"Chopping",color:"#80b890"},
+{name:"Pip",occ:"Child",mood:"😊",energy:95,pos:[26,24],action:"Playing",color:"#f8e870"}
+];
+
+const WILDLIFE=[
+{type:"🦌",name:"Deer",count:4,positions:[[18,6],[20,7],[35,38],[33,37]]},
+{type:"🐇",name:"Rabbit",count:6,positions:[[30,18],[14,22],[38,30],[22,32],[40,10],[8,28]]},
+{type:"🐺",name:"Wolf",count:2,positions:[[16,10],[22,12]]},
+{type:"🐦",name:"Bird",count:8,positions:[[10,10],[20,15],[30,20],[40,25],[15,35],[25,5],[35,15],[45,30]]},
+{type:"🐟",name:"Fish",count:12,positions:[[11,28],[12,32],[13,35],[10,38],[11,40],[9,25],[10,30],[11,33],[12,36],[10,42],[9,44],[11,46]]}
+];
+
+const BUILDINGS=[
+{name:"Stone House",zone:"Sunrise Quarter",pos:[25,25]},{name:"House",zone:"Sunrise Quarter",pos:[26,24]},{name:"House",zone:"Sunrise Quarter",pos:[24,26]},
+{name:"Market",zone:"Sunrise Quarter",pos:[26,26]},{name:"Well",zone:"Sunrise Quarter",pos:[25,26]},
+{name:"Hut",zone:"Forest Edge",pos:[18,14]},{name:"Hut",zone:"Forest Edge",pos:[19,13]},{name:"Watchtower",zone:"Forest Edge",pos:[17,15]},
+{name:"Hut",zone:"Riverside",pos:[12,30]},{name:"Hut",zone:"Riverside",pos:[13,31]},{name:"Farm",zone:"Riverside",pos:[14,29]},
+{name:"Farm",zone:"Mountain Base",pos:[16,6]}
+];
+
+const ERAS=[
+{name:"The Founding",days:"1-10",color:"var(--purple)"},{name:"Exploration",days:"11-20",color:"var(--sky)"},
+{name:"Wolf Crisis",days:"21-30",color:"var(--pink)"},{name:"Building",days:"31-41",color:"var(--yellow)"},
+{name:"Golden Age",days:"42+",color:"var(--mint)"}
+];
+
+const EVENTS=[
+"🏹 Rio hunted a deer in the northern forest — Day 47",
+"🏠 Kai finished building a stone house! — Day 47",
+"⚠️ Wolf spotted near Sunrise Quarter — Day 46",
+"🌿 Luna gathered rare herbs — Day 46",
+"🌸 Spring has arrived! — Day 45",
+"🤝 Zoe and Ash became friends at campfire — Day 44",
+"🗺️ Maya reached 64% map exploration — Day 43",
+"✨ Golden Age begins — happiness above 70% — Day 42"
+];
+
+const MAYA_DETAIL={
+  personality:{O:.9,C:.4,E:.8,A:.7,N:.2},
+  inventory:[{e:"🪵",n:5},{e:"🪨",n:3},{e:"🥩",n:2},{e:"🐟",n:4},{e:"🌿",n:1}],
+  goals:[{t:"Build Home",done:true},{t:"Make 3 Friends (2/3)",done:false},{t:"Explore Map (64%)",done:false}],
+  rels:["Kai — close friend","Zoe — friend","Rio — acquaintance"],
+  catchphrase:"The horizon calls!",
+  memories:["Survived the wolf attack of Day 23","Helped Kai build the market"]
+};
+
+let selectedAgent=null, activeTool="select", activeBottomTab="timeline";
+const TILE=12, GRID=50;
+
+// TERRAIN
+const terrain=[];
+(function(){
+  for(let y=0;y<GRID;y++){terrain[y]=[];for(let x=0;x<GRID;x++){
+    let c="#4a7a4a"; // grass
+    if(y<8&&x<20)c="#888898"; // mountain
+    if(y<12&&x>15&&x<35)c="#2d5a2d"; // dense forest
+    if(y>35&&x>15&&x<35)c="#4a88b8"; // lake
+    if(y>38&&x>25&&x<38)c="#d4c090"; // beach
+    if(x>=10&&x<=13)c="#5090c0"; // river
+    if(y>=22&&y<=28&&x>=22&&x<=30)c="#7a6848"; // village paths
+    if(y>=26&&y<=30&&x>=26&&x<=32)c="#c8a840"; // farms
+    if(y>=18&&y<=24&&x>=32&&x<=40)c="#9878b8"; // meadow
+    if(y>=15&&y<=22&&x>=36&&x<=44)c="#5a8a5a"; // light forest
+    terrain[y][x]=c;
+  }}
+})();
+
+// RENDER MAP
+function renderMap(){
+  const cv=document.getElementById('mapCanvas'),ctx=cv.getContext('2d');
+  cv.width=GRID*TILE;cv.height=GRID*TILE;
+  for(let y=0;y<GRID;y++)for(let x=0;x<GRID;x++){
+    ctx.fillStyle=terrain[y][x];ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
+    ctx.strokeStyle="rgba(255,255,255,.04)";ctx.strokeRect(x*TILE,y*TILE,TILE,TILE);
+  }
+  // buildings
+  BUILDINGS.forEach(b=>{ctx.fillStyle="rgba(200,180,140,.7)";ctx.fillRect(b.pos[0]*TILE,b.pos[1]*TILE,TILE,TILE);});
+  // minimap
+  const mc=document.getElementById('minimapCanvas'),mx=mc.getContext('2d');
+  mx.drawImage(cv,0,0,140,100);
+  // agents on minimap
+  AGENTS.forEach(a=>{mx.fillStyle=a.color;mx.beginPath();mx.arc(a.pos[0]*140/GRID,a.pos[1]*100/GRID,2,0,Math.PI*2);mx.fill();});
+}
+
+// AGENT OVERLAY
+function renderAgents(){
+  const ov=document.getElementById('agentOverlay');
+  ov.innerHTML=AGENTS.map((a,i)=>{
+    const x=a.pos[0]*TILE-14,y=a.pos[1]*TILE-10;
+    const sel=selectedAgent===i;
+    return `<div style="position:absolute;left:${x}px;top:${y}px;pointer-events:auto;cursor:pointer;
+      background:${a.color};border-radius:8px;padding:2px 6px;font-size:10px;font-weight:700;
+      white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3);transition:.15s;z-index:${sel?15:10};
+      ${sel?'outline:2px dashed var(--sky);outline-offset:3px;transform:scale(1.1);':''}"
+      onclick="selectAgent(${i})" onmouseenter="this.style.transform='scale(1.12)'" 
+      onmouseleave="this.style.transform='${sel?'scale(1.1)':'scale(1)'}'"
+      >${a.mood} ${a.name}</div>`;
+  }).join('');
+  // wildlife
+  WILDLIFE.forEach(w=>{w.positions.forEach(p=>{
+    ov.innerHTML+=`<div style="position:absolute;left:${p[0]*TILE-4}px;top:${p[1]*TILE-4}px;font-size:10px;pointer-events:none">${w.type}</div>`;
+  });});
+}
+
+// LAYERS
+function renderLayers(){
+  const el=document.getElementById('layerContent');
+  const groups=[
+    {name:"Terrain",icon:"🗺️",items:["Mountains","Forest","Meadow","River","Lake","Village","Farms"],open:false},
+    {name:`Agents (${AGENTS.length})`,icon:"🧑",items:AGENTS.map(a=>a.name),dots:AGENTS.map(a=>a.color),open:true},
+    {name:`Buildings (${BUILDINGS.length})`,icon:"🏠",items:BUILDINGS.map(b=>b.name),open:false},
+    {name:`Wildlife (${WILDLIFE.reduce((s,w)=>s+w.count,0)})`,icon:"🦌",items:WILDLIFE.map(w=>`${w.type} ${w.name} ×${w.count}`),open:false},
+    {name:"Resources",icon:"📦",items:["🪵142","🪨89","🥩23","🐟67","🌾156","🌿45"],open:false}
+  ];
+  el.innerHTML=groups.map((g,gi)=>`
+    <div class="layer-group">
+      <div class="layer-head" onclick="toggleLayer(${gi})">
+        <span class="layer-arrow${g.open?' open':''}" id="arrow${gi}">▶</span>
+        ${g.icon} ${g.name}
+        <div class="layer-icons"><span class="layer-icon">👁</span><span class="layer-icon">🔒</span></div>
+      </div>
+      <div class="layer-items${g.open?' open':''}" id="layer${gi}">
+        ${g.items.map((it,ii)=>`<div class="layer-item${g.dots&&selectedAgent===ii?' selected':''}" ${g.dots?`onclick="selectAgent(${ii})"`:''}>
+          <span class="drag-handle">⠿</span>
+          ${g.dots?`<span class="dot" style="background:${g.dots[ii]}"></span>`:''}
+          ${it}
+          <div class="layer-icons"><span class="layer-icon">👁</span><span class="layer-icon">🔒</span></div>
+        </div>`).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleLayer(i){
+  const el=document.getElementById('layer'+i),ar=document.getElementById('arrow'+i);
+  el.classList.toggle('open');ar.classList.toggle('open');
+}
+
+// SELECT AGENT
+function selectAgent(i){
+  selectedAgent=i;renderAgents();renderLayers();renderProps();
+}
+
+// PROPERTIES
+function renderProps(){
+  const el=document.getElementById('propsContent');
+  if(selectedAgent===null){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text2);font-size:13px">👆 Select an agent</div>';return;}
+  const a=AGENTS[selectedAgent];
+  const d=a.name==="Maya"?MAYA_DETAIL:{
+    personality:{O:.5,C:.5,E:.5,A:.5,N:.5},
+    inventory:[{e:"🪵",n:2},{e:"🪨",n:1}],
+    goals:[{t:"Survive",done:false}],
+    rels:["—"],catchphrase:"...",memories:["—"]
+  };
+  const moods=["😊","😢","😐","🔥","😨"];
+  el.innerHTML=`
+    <div class="prop-section"><div class="prop-label">Name</div><input class="prop-input" value="${a.name}"></div>
+    <div class="prop-section"><div class="prop-label">Occupation</div><select class="prop-input prop-select"><option>${a.occ}</option></select></div>
+    <div class="prop-section"><div class="prop-label">Action</div><div style="font-size:12px;color:var(--text2)">${a.action}</div></div>
+    <div class="prop-section"><div class="prop-label">Energy — ${a.energy}%</div><input type="range" class="energy-slider" min="0" max="100" value="${a.energy}" style="width:100%;background:linear-gradient(90deg,var(--pink),var(--yellow),var(--mint))"></div>
+    <div class="prop-section"><div class="prop-label">Mood</div><div class="mood-row">${moods.map(m=>`<span${a.mood===m?' class="active"':''}>${m}</span>`).join('')}</div></div>
+    <div class="prop-section"><div class="prop-label">Personality (OCEAN)</div>
+      ${Object.entries(d.personality).map(([k,v])=>`<div class="slider-wrap"><label>${k}</label><input type="range" min="0" max="100" value="${v*100}" style="background:var(--purple)"><span>${v.toFixed(1)}</span></div>`).join('')}
+    </div>
+    <div class="prop-section"><div class="prop-label">Inventory</div><div class="inv-grid">${d.inventory.map(it=>`<div class="inv-item">${it.e}×${it.n}</div>`).join('')}<div class="inv-add">+</div></div></div>
+    <div class="prop-section"><div class="prop-label">Goals</div>${d.goals.map(g=>`<div class="goal-item"><input type="checkbox"${g.done?' checked':''}><span>${g.t}</span></div>`).join('')}<div class="inv-add" style="margin-top:4px;display:inline-block">+ Add</div></div>
+    <div class="prop-section"><div class="prop-label">Relationships</div>${d.rels.map(r=>`<div class="rel-item">${r}</div>`).join('')}</div>
+    <div class="prop-section"><div class="prop-label">Catchphrase</div><div style="font-size:12px;font-style:italic;color:var(--yellow)">"${d.catchphrase}"</div></div>
+    <div class="prop-section"><div class="prop-label">Memories</div>${d.memories.map(m=>`<div style="font-size:11px;color:var(--text2);padding:2px 0">• ${m}</div>`).join('')}</div>
+    <div class="prop-section"><div class="prop-label">💬 Talk to ${a.name}</div><div style="display:flex;gap:4px"><input class="prop-input" placeholder="Say something..." style="flex:1"><button style="border:none;background:var(--purple);color:#fff;border-radius:8px;padding:6px 10px;cursor:pointer;font-family:inherit;font-weight:700">Send</button></div></div>
+  `;
+}
+
+// BOTTOM TABS
+function renderBottom(){
+  const el=document.getElementById('bottomContent');
+  if(activeBottomTab==='timeline'){
+    el.innerHTML=`<div class="timeline-bar">${ERAS.map(e=>`<div class="era-block" style="background:${e.color};color:#1e1e2e;flex:1"><div style="font-size:13px">${e.name}</div><div style="font-size:10px;opacity:.7">Day ${e.days}</div></div>`).join('')}</div>`;
+  }else if(activeBottomTab==='events'){
+    el.innerHTML=`<div class="event-log">${EVENTS.map(e=>`<div class="event-bubble${e.includes('⚠️')?' warn':''}">${e}</div>`).join('')}</div>`;
+  }else{
+    const stats=[
+      {e:"😊",n:"72%",l:"Happiness"},{e:"🤝",n:"34",l:"Trades"},{e:"👶",n:"3",l:"Births"},{e:"💀",n:"1",l:"Deaths"},
+      {e:"🪵",n:"142",l:"Wood"},{e:"🪨",n:"89",l:"Stone"},{e:"🥩",n:"23",l:"Meat"},{e:"🐟",n:"67",l:"Fish"},{e:"🌾",n:"156",l:"Grain"},{e:"🌿",n:"45",l:"Herbs"}
+    ];
+    el.innerHTML=`<div class="stats-cards">${stats.map(s=>`<div class="stat-card"><div class="emoji">${s.e}</div><div class="num">${s.n}</div><div class="lbl">${s.l}</div></div>`).join('')}</div>`;
+  }
+}
+
+document.querySelectorAll('.bottom-tab').forEach(t=>t.addEventListener('click',function(){
+  document.querySelectorAll('.bottom-tab').forEach(x=>x.classList.remove('active'));
+  this.classList.add('active');activeBottomTab=this.dataset.tab;renderBottom();
+}));
+
+// PANELS
+function togglePanel(which){
+  if(which==='left')document.getElementById('leftPanel').classList.toggle('collapsed');
+  else if(which==='right')document.getElementById('rightPanel').classList.toggle('collapsed');
+  else{const bp=document.getElementById('bottomPanel');bp.classList.toggle('collapsed');bp.style.height=bp.classList.contains('collapsed')?'32px':'172px';}
+}
+
+// TOOLS
+document.querySelectorAll('.tool-btn').forEach(b=>b.addEventListener('click',function(){
+  document.querySelectorAll('.tool-btn').forEach(x=>x.classList.remove('active'));
+  this.classList.add('active');activeTool=this.dataset.tool;
+}));
+
+// SPEED
+document.querySelectorAll('.speed-btn').forEach(b=>b.addEventListener('click',function(){
+  document.querySelectorAll('.speed-btn').forEach(x=>x.classList.remove('active'));
+  this.classList.add('active');
+}));
+
+// COLOR PICKER
+(function(){
+  const colors=["#4a7a4a","#2d5a2d","#888898","#5090c0","#4a88b8","#d4c090","#c8a840","#9878b8","#7a6848"];
+  document.getElementById('colorPicker').innerHTML=colors.map((c,i)=>`<div class="cp-dot${i===0?' active':''}" style="background:${c}" onclick="document.querySelectorAll('.cp-dot').forEach(d=>d.classList.remove('active'));this.classList.add('active')"></div>`).join('');
+})();
+
+// RULERS
+(function(){
+  const rh=document.getElementById('rulerH'),rv=document.getElementById('rulerV');
+  for(let i=0;i<GRID;i+=5)rh.innerHTML+=`<span class="ruler-mark" style="position:absolute;left:${i*TILE}px">${i}</span>`;
+  for(let i=0;i<GRID;i+=5)rv.innerHTML+=`<span class="ruler-mark" style="position:absolute;top:${i*TILE}px">${i}</span>`;
+})();
+
+// DRAG SELECT
+let dragging=false,dragStart={x:0,y:0};
+document.getElementById('mapViewport').addEventListener('mousedown',e=>{
+  if(activeTool!=='select')return;
+  if(e.target!==document.getElementById('mapCanvas'))return;
+  dragging=true;const r=e.currentTarget.getBoundingClientRect();
+  dragStart={x:e.clientX-r.left,y:e.clientY-r.top};
+  const sr=document.getElementById('selRect');sr.classList.remove('hidden');
+  sr.style.left=dragStart.x+'px';sr.style.top=dragStart.y+'px';sr.style.width='0';sr.style.height='0';
+});
+document.addEventListener('mousemove',e=>{
+  if(!dragging)return;const vp=document.getElementById('mapViewport').getBoundingClientRect();
+  const x=e.clientX-vp.left,y=e.clientY-vp.top;
+  const sr=document.getElementById('selRect');
+  sr.style.left=Math.min(x,dragStart.x)+'px';sr.style.top=Math.min(y,dragStart.y)+'px';
+  sr.style.width=Math.abs(x-dragStart.x)+'px';sr.style.height=Math.abs(y-dragStart.y)+'px';
+});
+document.addEventListener('mouseup',()=>{dragging=false;document.getElementById('selRect').classList.add('hidden');});
+
+// KEYBOARD
+document.addEventListener('keydown',e=>{
+  if(e.key==='v')document.querySelector('[data-tool="select"]').click();
+  if(e.key==='b')document.querySelector('[data-tool="build"]').click();
+  if(e.key==='1')document.querySelector('[data-speed="1"]').click();
+  if(e.key==='2')document.querySelector('[data-speed="5"]').click();
+  if(e.key==='3')document.querySelector('[data-speed="10"]').click();
+  if(e.key==='0')document.querySelector('[data-speed="0"]').click();
+  if(e.key==='[')togglePanel('left');
+  if(e.key===']')togglePanel('right');
+});
+
+// TOAST auto-remove
+setTimeout(()=>{const t=document.querySelector('.toast');if(t)t.style.opacity='0';setTimeout(()=>{const ta=document.getElementById('toastArea');ta.innerHTML='';},300);},4000);
+
+// INIT
+renderMap();renderAgents();renderLayers();renderProps();renderBottom();
+// Select Maya by default
+setTimeout(()=>selectAgent(0),100);
+</script>
+</body>
+</html>

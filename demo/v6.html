@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MODUS — Notion Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d1117;--sidebar:#161b22;--border:#30363d;--surface:#1c2128;--text:#e6edf3;--text2:#8b949e;--accent:#a371f7;--accent2:#8957e5;--green:#3fb950;--red:#f85149;--yellow:#d29922;--blue:#58a6ff}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-size:14px;overflow:hidden;height:100vh;display:flex}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:var(--text)}
+input{font-family:inherit;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;outline:none;font-size:13px}
+input:focus{border-color:var(--accent)}
+
+/* Sidebar */
+.sidebar{width:220px;min-width:220px;background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh}
+.sidebar-logo{padding:20px 16px 16px;font-size:18px;font-weight:700;letter-spacing:2px;color:var(--accent)}
+.sidebar-world{padding:8px 16px;font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.sidebar-world .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.nav-items{flex:1;padding:4px 8px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;font-size:13px;color:var(--text2);cursor:pointer;position:relative;margin-bottom:2px;transition:all .15s}
+.nav-item:hover{background:rgba(255,255,255,.05);color:var(--text)}
+.nav-item.active{background:rgba(163,113,247,.12);color:var(--accent)}
+.nav-item .icon{font-size:16px;width:20px;text-align:center}
+.nav-item .kbd{margin-left:auto;font-size:10px;color:var(--text2);opacity:.5;background:var(--surface);padding:2px 5px;border-radius:3px;border:1px solid var(--border)}
+.nav-item .badge{position:absolute;right:8px;top:6px;background:var(--red);color:#fff;font-size:9px;padding:1px 5px;border-radius:8px;font-weight:600}
+.sidebar-bottom{padding:12px 16px;border-top:1px solid var(--border)}
+.sidebar-bottom .btns{display:flex;gap:6px;margin-bottom:8px}
+.sidebar-bottom button{flex:1;padding:6px;font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text2);transition:all .15s}
+.sidebar-bottom button:hover{border-color:var(--accent);color:var(--text)}
+.sidebar-bottom .version{font-size:10px;color:var(--text2);text-align:center;opacity:.6}
+
+/* Main area */
+.main-area{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+
+/* Topbar */
+.topbar{height:48px;min-height:48px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px}
+.breadcrumb{font-size:13px;color:var(--text2)}.breadcrumb span{color:var(--text)}
+.season-badge{font-size:11px;background:var(--surface);border:1px solid var(--border);padding:3px 8px;border-radius:12px;color:var(--green)}
+.speed-controls{display:flex;gap:2px;margin-left:8px}
+.speed-btn{font-size:11px;padding:3px 8px;border-radius:4px;color:var(--text2);background:var(--surface);border:1px solid var(--border);transition:all .15s}
+.speed-btn.active{background:var(--accent2);color:#fff;border-color:var(--accent)}
+.speed-btn:hover{border-color:var(--accent)}
+.topbar-search{margin-left:auto;width:180px}
+.god-toggle{font-size:11px;display:flex;align-items:center;gap:6px;color:var(--text2);cursor:pointer}
+.god-toggle input{accent-color:var(--accent)}
+
+/* Content */
+.content{flex:1;display:flex;overflow:hidden;position:relative}
+.view{display:none;flex:1;overflow:auto;padding:24px}
+.view.active{display:flex;flex-direction:column}
+
+/* Universe (Map) view */
+.map-container{display:flex;gap:16px;flex:1}
+.map-wrap{flex:1;position:relative}
+.map-canvas{width:100%;aspect-ratio:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;image-rendering:pixelated}
+.minimap{position:absolute;bottom:12px;right:12px;width:100px;height:100px;background:var(--surface);border:1px solid var(--border);border-radius:6px;image-rendering:pixelated}
+.map-legend{font-size:11px;color:var(--text2);margin-top:8px;display:flex;gap:12px;flex-wrap:wrap}
+.map-legend span{display:flex;align-items:center;gap:4px}
+.map-legend .swatch{width:10px;height:10px;border-radius:2px;display:inline-block}
+.wildlife-panel{width:160px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px}
+.wildlife-panel h3{font-size:12px;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}
+.wildlife-item{font-size:13px;margin-bottom:6px;display:flex;justify-content:space-between}
+
+/* Agents view */
+.agent-table{width:100%;border-collapse:collapse;font-size:13px}
+.agent-table th{text-align:left;padding:8px 12px;color:var(--text2);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none}
+.agent-table th:hover{color:var(--text)}
+.agent-table td{padding:8px 12px;border-bottom:1px solid var(--border)}
+.agent-table tr:nth-child(even){background:rgba(255,255,255,.02)}
+.agent-table tr:hover td{background:rgba(163,113,247,.06)}
+.agent-table tr{cursor:pointer;transition:background .1s}
+.energy-bar{width:60px;height:6px;background:var(--border);border-radius:3px;display:inline-block;vertical-align:middle}
+.energy-bar .fill{height:100%;border-radius:3px}
+
+/* Right panel */
+.right-panel{width:0;overflow:hidden;border-left:1px solid var(--border);background:var(--sidebar);transition:width .25s ease;flex-shrink:0}
+.right-panel.open{width:360px}
+.right-panel-inner{width:360px;padding:20px;overflow-y:auto;height:100%}
+.rp-header{margin-bottom:16px}
+.rp-header h2{font-size:18px;font-weight:600;margin-bottom:2px}
+.rp-header .occ{font-size:13px;color:var(--text2)}
+.rp-close{float:right;font-size:18px;color:var(--text2);cursor:pointer;padding:4px}
+.rp-close:hover{color:var(--text)}
+.rp-section{border:1px solid var(--border);border-radius:6px;margin-bottom:8px;overflow:hidden}
+.rp-section-head{padding:10px 12px;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.02)}
+.rp-section-head:hover{background:rgba(255,255,255,.04)}
+.rp-section-head .arrow{transition:transform .2s;font-size:10px;color:var(--text2)}
+.rp-section-head.collapsed .arrow{transform:rotate(-90deg)}
+.rp-section-body{padding:10px 12px;font-size:13px;color:var(--text2);line-height:1.6;border-top:1px solid var(--border)}
+.rp-section-body.hidden{display:none}
+.chat-btn{width:100%;padding:10px;margin-top:12px;background:var(--accent2);color:#fff;border-radius:6px;font-size:13px;font-weight:500;transition:background .15s}
+.chat-btn:hover{background:var(--accent)}
+
+/* Buildings view */
+.buildings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.building-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px}
+.building-card h4{font-size:14px;margin-bottom:4px}
+.building-card .loc{font-size:12px;color:var(--text2)}
+
+/* Observatory */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center}
+.stat-card .val{font-size:28px;font-weight:700;color:var(--accent)}
+.stat-card .lbl{font-size:12px;color:var(--text2);margin-top:4px}
+.resources-row{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px}
+.res-item{font-size:14px;background:var(--surface);border:1px solid var(--border);padding:8px 14px;border-radius:6px}
+
+/* History */
+.timeline{max-width:600px}
+.tl-item{display:flex;gap:12px;margin-bottom:16px;position:relative}
+.tl-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);margin-top:5px;flex-shrink:0}
+.tl-content h4{font-size:14px;margin-bottom:2px}
+.tl-content p{font-size:12px;color:var(--text2)}
+.event-log{margin-top:24px;border-top:1px solid var(--border);padding-top:16px}
+.event-item{font-size:13px;color:var(--text2);padding:4px 0;border-bottom:1px solid rgba(48,54,61,.5)}
+.event-item .day{color:var(--accent);font-weight:500;margin-right:8px}
+
+/* Settings */
+.settings-section{max-width:500px;margin-bottom:20px}
+.settings-section h3{font-size:14px;margin-bottom:10px;color:var(--text2)}
+.setting-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.setting-row select{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:12px}
+
+/* Build mode */
+.build-container{display:flex;gap:16px;flex:1}
+.build-tools{width:140px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px}
+.build-tools h3{font-size:12px;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}
+.tool-btn{width:100%;padding:8px;margin-bottom:4px;font-size:12px;text-align:left;border-radius:4px;color:var(--text2);transition:all .15s}
+.tool-btn:hover,.tool-btn.active{background:rgba(163,113,247,.15);color:var(--accent)}
+.build-canvas{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:13px}
+
+/* Export */
+.export-options{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.export-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:all .15s}
+.export-card:hover{border-color:var(--accent)}
+.export-card .ico{font-size:28px;margin-bottom:8px}
+.export-card h4{font-size:14px;margin-bottom:4px}
+.export-card p{font-size:12px;color:var(--text2)}
+
+/* Chat modal */
+.chat-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:100}
+.chat-overlay.open{display:flex}
+.chat-modal{background:var(--sidebar);border:1px solid var(--border);border-radius:12px;width:440px;max-height:70vh;display:flex;flex-direction:column}
+.chat-modal-head{padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-weight:600}
+.chat-modal-body{flex:1;padding:16px;overflow-y:auto;min-height:200px}
+.chat-msg{margin-bottom:12px;font-size:13px;line-height:1.5}
+.chat-msg.agent{color:var(--accent)}
+.chat-msg.user{color:var(--text2)}
+.chat-modal-input{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border)}
+.chat-modal-input input{flex:1}
+.chat-modal-input button{background:var(--accent2);color:#fff;padding:6px 14px;border-radius:6px;font-size:13px}
+
+/* Toast */
+.toast-container{position:fixed;top:60px;right:16px;z-index:200;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--sidebar);border:1px solid var(--border);padding:10px 16px;border-radius:8px;font-size:13px;animation:slideIn .3s ease;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+@keyframes slideIn{from{transform:translateX(100px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+.section-title{font-size:18px;font-weight:600;margin-bottom:16px}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-logo">MODUS</div>
+  <div class="sidebar-world"><span class="dot"></span> Sunrise Valley</div>
+  <div class="nav-items">
+    <div class="nav-item active" data-view="universe" onclick="switchView('universe')"><span class="icon">🌍</span>Universe<span class="kbd">⌘1</span></div>
+    <div class="nav-item" data-view="agents" onclick="switchView('agents')"><span class="icon">👥</span>Agents<span class="kbd">⌘2</span></div>
+    <div class="nav-item" data-view="buildings" onclick="switchView('buildings')"><span class="icon">🏠</span>Buildings<span class="kbd">⌘3</span></div>
+    <div class="nav-item" data-view="observatory" onclick="switchView('observatory')"><span class="icon">📊</span>Observatory<span class="kbd">⌘4</span></div>
+    <div class="nav-item" data-view="history" onclick="switchView('history')"><span class="icon">📜</span>History<span class="badge">8</span><span class="kbd">⌘5</span></div>
+    <div class="nav-item" data-view="build" onclick="switchView('build')"><span class="icon">🔨</span>Build Mode<span class="kbd">⌘6</span></div>
+    <div class="nav-item" data-view="settings" onclick="switchView('settings')"><span class="icon">⚙️</span>Settings<span class="kbd">⌘7</span></div>
+    <div class="nav-item" data-view="export" onclick="switchView('export')"><span class="icon">📤</span>Export<span class="kbd">⌘8</span></div>
+  </div>
+  <div class="sidebar-bottom">
+    <div class="btns"><button onclick="showToast('💾 World saved!')">Save</button><button onclick="showToast('📂 Load dialog...')">Load</button></div>
+    <div class="version">MODUS v0.6 • Notion Studio</div>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main-area">
+  <div class="topbar">
+    <div class="breadcrumb">Sunrise Valley <span>› Simulation</span></div>
+    <span class="season-badge">🌸 Spring • Day 47 • ☀️ Afternoon</span>
+    <div class="speed-controls">
+      <button class="speed-btn" onclick="setSpeed(this)">⏸</button>
+      <button class="speed-btn active" onclick="setSpeed(this)">1×</button>
+      <button class="speed-btn" onclick="setSpeed(this)">5×</button>
+      <button class="speed-btn" onclick="setSpeed(this)">10×</button>
+    </div>
+    <label class="god-toggle"><input type="checkbox"> God Mode</label>
+    <input class="topbar-search" placeholder="Search agents, places...">
+  </div>
+
+  <div class="content">
+    <!-- Universe View -->
+    <div class="view active" id="view-universe">
+      <div class="section-title">World Map</div>
+      <div class="map-container">
+        <div class="map-wrap">
+          <canvas class="map-canvas" id="mainMap" width="400" height="400"></canvas>
+          <canvas class="minimap" id="miniMap" width="100" height="100"></canvas>
+          <div class="map-legend">
+            <span><span class="swatch" style="background:#2d6a2d"></span>Forest</span>
+            <span><span class="swatch" style="background:#5a8a3c"></span>Grass</span>
+            <span><span class="swatch" style="background:#8b7355"></span>Village</span>
+            <span><span class="swatch" style="background:#d4a843"></span>Farm</span>
+            <span><span class="swatch" style="background:#4a8ab5"></span>Water</span>
+            <span><span class="swatch" style="background:#888"></span>Mountain</span>
+            <span><span class="swatch" style="background:#c9a0dc"></span>Meadow</span>
+            <span><span class="swatch" style="background:#d4c090"></span>Beach</span>
+          </div>
+        </div>
+        <div class="wildlife-panel">
+          <h3>Wildlife</h3>
+          <div class="wildlife-item"><span>🦌 Deer</span><span>4</span></div>
+          <div class="wildlife-item"><span>🐇 Rabbits</span><span>6</span></div>
+          <div class="wildlife-item"><span>🐺 Wolves</span><span>2</span></div>
+          <div class="wildlife-item"><span>🐦 Birds</span><span>8</span></div>
+          <div class="wildlife-item"><span>🐟 Fish</span><span>12</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agents View -->
+    <div class="view" id="view-agents">
+      <div class="section-title">Agents <span style="color:var(--text2);font-size:14px;font-weight:400">(18)</span></div>
+      <table class="agent-table">
+        <thead><tr><th onclick="sortTable(0)">Name ↕</th><th onclick="sortTable(1)">Occupation ↕</th><th onclick="sortTable(2)">Mood ↕</th><th onclick="sortTable(3)">Energy ↕</th><th>Action</th><th>Location</th></tr></thead>
+        <tbody id="agentBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Buildings View -->
+    <div class="view" id="view-buildings">
+      <div class="section-title">Buildings <span style="color:var(--text2);font-size:14px;font-weight:400">(12)</span></div>
+      <div class="buildings-grid" id="buildingsGrid"></div>
+    </div>
+
+    <!-- Observatory View -->
+    <div class="view" id="view-observatory">
+      <div class="section-title">Observatory</div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="val">72%</div><div class="lbl">Avg Happiness</div></div>
+        <div class="stat-card"><div class="val">18</div><div class="lbl">Population</div></div>
+        <div class="stat-card"><div class="val">34</div><div class="lbl">Total Trades</div></div>
+        <div class="stat-card"><div class="val">3</div><div class="lbl">Births</div></div>
+        <div class="stat-card"><div class="val">1</div><div class="lbl">Deaths</div></div>
+        <div class="stat-card"><div class="val">12</div><div class="lbl">Buildings</div></div>
+        <div class="stat-card"><div class="val">47</div><div class="lbl">Days Elapsed</div></div>
+        <div class="stat-card"><div class="val" style="color:var(--green)">Golden</div><div class="lbl">Current Era</div></div>
+      </div>
+      <div class="section-title" style="font-size:15px">Resources Gathered</div>
+      <div class="resources-row">
+        <div class="res-item">🪵 142</div><div class="res-item">🪨 89</div><div class="res-item">🥩 23</div><div class="res-item">🐟 67</div><div class="res-item">🌾 156</div><div class="res-item">🌿 45</div>
+      </div>
+    </div>
+
+    <!-- History View -->
+    <div class="view" id="view-history">
+      <div class="section-title">Timeline</div>
+      <div class="timeline">
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><h4>Golden Age</h4><p>Day 42–present • Prosperity, culture emerging</p></div></div>
+        <div class="tl-item"><div class="tl-dot" style="background:var(--blue)"></div><div class="tl-content"><h4>Era of Building</h4><p>Day 31–41 • Village constructed</p></div></div>
+        <div class="tl-item"><div class="tl-dot" style="background:var(--red)"></div><div class="tl-content"><h4>The Wolf Crisis</h4><p>Day 21–30 • Wolf attacks, 2 agents injured</p></div></div>
+        <div class="tl-item"><div class="tl-dot" style="background:var(--green)"></div><div class="tl-content"><h4>Age of Exploration</h4><p>Day 11–20 • Map discovered</p></div></div>
+        <div class="tl-item"><div class="tl-dot" style="background:var(--yellow)"></div><div class="tl-content"><h4>The Founding</h4><p>Day 1–10 • First settlers arrive</p></div></div>
+      </div>
+      <div class="event-log">
+        <div class="section-title" style="font-size:15px">Recent Events</div>
+        <div class="event-item"><span class="day">Day 47</span>Rio hunted a deer in the northern forest</div>
+        <div class="event-item"><span class="day">Day 47</span>Kai finished building a stone house!</div>
+        <div class="event-item"><span class="day">Day 46</span>⚠️ Wolf spotted near Sunrise Quarter</div>
+        <div class="event-item"><span class="day">Day 46</span>Luna gathered rare herbs</div>
+        <div class="event-item"><span class="day">Day 45</span>🌸 Spring has arrived!</div>
+        <div class="event-item"><span class="day">Day 44</span>Zoe and Ash became friends at the campfire</div>
+        <div class="event-item"><span class="day">Day 43</span>Maya reached 64% map exploration</div>
+        <div class="event-item"><span class="day">Day 42</span>Golden Age begins — average happiness above 70%</div>
+      </div>
+    </div>
+
+    <!-- Build Mode -->
+    <div class="view" id="view-build">
+      <div class="section-title">Build Mode</div>
+      <div class="build-container">
+        <div class="build-tools">
+          <h3>Terrain</h3>
+          <button class="tool-btn active">🌿 Grass</button>
+          <button class="tool-btn">🌲 Forest</button>
+          <button class="tool-btn">🏔 Mountain</button>
+          <button class="tool-btn">💧 Water</button>
+          <button class="tool-btn">🌾 Farm</button>
+          <button class="tool-btn">🌸 Meadow</button>
+          <h3 style="margin-top:12px">Structures</h3>
+          <button class="tool-btn">🏠 House</button>
+          <button class="tool-btn">🛖 Hut</button>
+          <button class="tool-btn">🏪 Market</button>
+          <button class="tool-btn">🪨 Well</button>
+          <button class="tool-btn">🗼 Tower</button>
+          <h3 style="margin-top:12px">Resources</h3>
+          <button class="tool-btn">🪵 Wood</button>
+          <button class="tool-btn">🪨 Stone</button>
+          <button class="tool-btn">🥩 Meat</button>
+        </div>
+        <div class="build-canvas">Click terrain tools, then paint on grid</div>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="view" id="view-settings">
+      <div class="section-title">Settings</div>
+      <div class="settings-section">
+        <h3>Simulation Rules</h3>
+        <div class="setting-row">Rules Preset <select><option selected>Balanced</option><option>Survival</option><option>Creative</option><option>Hardcore</option></select></div>
+        <div class="setting-row">Agent AI Level <select><option>Basic</option><option selected>Advanced</option><option>Expert</option></select></div>
+        <div class="setting-row">Weather Effects <select><option selected>On</option><option>Off</option></select></div>
+        <div class="setting-row">Wildlife Spawning <select><option selected>Normal</option><option>High</option><option>Off</option></select></div>
+        <div class="setting-row">Day/Night Cycle <select><option selected>Real-time</option><option>Fast</option><option>Always Day</option></select></div>
+      </div>
+      <div class="settings-section">
+        <h3>Display</h3>
+        <div class="setting-row">Show Agent Labels <select><option selected>On</option><option>Off</option></select></div>
+        <div class="setting-row">Map Quality <select><option>Low</option><option selected>Medium</option><option>High</option></select></div>
+      </div>
+    </div>
+
+    <!-- Export -->
+    <div class="view" id="view-export">
+      <div class="section-title">Export & Share</div>
+      <div class="export-options">
+        <div class="export-card" onclick="showToast('📋 JSON copied to clipboard')"><div class="ico">📋</div><h4>Copy JSON</h4><p>World state as JSON</p></div>
+        <div class="export-card" onclick="showToast('💾 Downloading...')"><div class="ico">💾</div><h4>Download Save</h4><p>Full save file (.modus)</p></div>
+        <div class="export-card" onclick="showToast('🖼 Screenshot saved')"><div class="ico">🖼</div><h4>Screenshot</h4><p>Capture current view</p></div>
+        <div class="export-card" onclick="showToast('🔗 Link copied')"><div class="ico">🔗</div><h4>Share Link</h4><p>Shareable universe link</p></div>
+        <div class="export-card" onclick="showToast('📊 CSV exported')"><div class="ico">📊</div><h4>Agent CSV</h4><p>Agent data as spreadsheet</p></div>
+        <div class="export-card"><div class="ico">🌐</div><h4>Universe Gallery</h4><p>Browse community worlds</p></div>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="right-panel" id="rightPanel">
+      <div class="right-panel-inner" id="rpContent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Chat Modal -->
+<div class="chat-overlay" id="chatOverlay" onclick="if(event.target===this)closeChat()">
+  <div class="chat-modal">
+    <div class="chat-modal-head"><span id="chatAgent">Maya</span><span style="margin-left:auto;cursor:pointer" onclick="closeChat()">✕</span></div>
+    <div class="chat-modal-body" id="chatBody">
+      <div class="chat-msg agent">Hello! The horizon calls! What would you like to talk about?</div>
+    </div>
+    <div class="chat-modal-input"><input id="chatInput" placeholder="Say something..." onkeydown="if(event.key==='Enter')sendChat()"><button onclick="sendChat()">Send</button></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+const agents=[
+  {name:"Maya",occ:"Explorer",mood:"Happy 😊",energy:78,pos:"Forest edge",action:"Exploring",detail:{pers:"O:0.9 C:0.4 E:0.8 A:0.7 N:0.2 — curious free spirit",inv:"🪵5 🪨3 🥩2 🐟4 🌿1",goals:"✅ Build Home\n🔄 Make 3 Friends (2/3)\n◻️ Explore Map (64%)",rels:"Kai (close friend), Zoe (friend), Rio (acquaintance)",culture:'Catchphrase: "The horizon calls!"',memory:"Survived the wolf attack of Day 23\nHelped Kai build the market"}},
+  {name:"Kai",occ:"Builder",mood:"Happy 😊",energy:65,pos:"Village center",action:"Building house"},
+  {name:"Luna",occ:"Healer",mood:"Sad 😢",energy:42,pos:"Flower meadow",action:"Gathering herbs"},
+  {name:"Zoe",occ:"Farmer",mood:"Happy 😊",energy:81,pos:"Wheat farm",action:"Harvesting"},
+  {name:"Rio",occ:"Hunter",mood:"Eager 🔥",energy:70,pos:"Northern forest",action:"Stalking deer"},
+  {name:"Ash",occ:"Merchant",mood:"Happy 😊",energy:55,pos:"Market stall",action:"Trading"},
+  {name:"Noor",occ:"Guard",mood:"Calm 😐",energy:60,pos:"Watchtower",action:"Patrolling"},
+  {name:"Eira",occ:"Scholar",mood:"Happy 😊",energy:73,pos:"Library",action:"Reading"},
+  {name:"Jax",occ:"Fisher",mood:"Calm 😐",energy:68,pos:"River bank",action:"Fishing"},
+  {name:"Sage",occ:"Artist",mood:"Happy 😊",energy:77,pos:"Village plaza",action:"Painting"},
+  {name:"Ember",occ:"Blacksmith",mood:"Eager 🔥",energy:85,pos:"Forge",action:"Crafting"},
+  {name:"Willow",occ:"Herbalist",mood:"Calm 😐",energy:50,pos:"Meadow",action:"Collecting"},
+  {name:"Flint",occ:"Miner",mood:"Scared 😨",energy:35,pos:"Mountain cave",action:"Hiding from wolf"},
+  {name:"Brook",occ:"Caretaker",mood:"Happy 😊",energy:90,pos:"Nursery",action:"Tending child"},
+  {name:"Reed",occ:"Scout",mood:"Eager 🔥",energy:62,pos:"Hilltop",action:"Scouting"},
+  {name:"Dawn",occ:"Elder",mood:"Sad 😢",energy:28,pos:"Home",action:"Resting"},
+  {name:"Moss",occ:"Woodcutter",mood:"Calm 😐",energy:71,pos:"Forest",action:"Chopping tree"},
+  {name:"Pip",occ:"Child",mood:"Happy 😊",energy:95,pos:"Village",action:"Playing"}
+];
+
+const buildings=[
+  {name:"Stone House",loc:"Sunrise Quarter"},{name:"Wooden House",loc:"Sunrise Quarter"},{name:"Cottage",loc:"Sunrise Quarter"},
+  {name:"Market",loc:"Sunrise Quarter"},{name:"Well",loc:"Sunrise Quarter"},
+  {name:"Hunter's Hut",loc:"Forest Edge Camp"},{name:"Scout Hut",loc:"Forest Edge Camp"},{name:"Watchtower",loc:"Forest Edge Camp"},
+  {name:"Fisherman's Hut",loc:"Riverside"},{name:"River Hut",loc:"Riverside"},{name:"River Farm",loc:"Riverside"},
+  {name:"Mountain Hut",loc:"Mountain Base"}
+];
+
+// Render agents table
+function renderAgents(){
+  const b=document.getElementById('agentBody');
+  b.innerHTML=agents.map((a,i)=>{
+    const c=a.energy>70?'var(--green)':a.energy>40?'var(--yellow)':'var(--red)';
+    return `<tr onclick="showAgent(${i})"><td><strong>${a.name}</strong></td><td>${a.occ}</td><td>${a.mood}</td><td><div class="energy-bar"><div class="fill" style="width:${a.energy}%;background:${c}"></div></div> ${a.energy}%</td><td>${a.action}</td><td style="color:var(--text2)">${a.pos}</td></tr>`;
+  }).join('');
+}
+
+// Render buildings
+function renderBuildings(){
+  document.getElementById('buildingsGrid').innerHTML=buildings.map(b=>`<div class="building-card"><h4>🏠 ${b.name}</h4><div class="loc">${b.loc}</div></div>`).join('');
+}
+
+// Show agent detail
+function showAgent(i){
+  const a=agents[i];const d=a.detail||{};
+  const sec=(t,c)=>`<div class="rp-section"><div class="rp-section-head" onclick="this.classList.toggle('collapsed');this.nextElementSibling.classList.toggle('hidden')"><span class="arrow">▼</span>${t}</div><div class="rp-section-body">${c}</div></div>`;
+  const ec=a.energy>70?'var(--green)':a.energy>40?'var(--yellow)':'var(--red)';
+  document.getElementById('rpContent').innerHTML=`
+    <span class="rp-close" onclick="closePanel()">✕</span>
+    <div class="rp-header"><h2>${a.name}</h2><div class="occ">${a.occ} • ${a.pos}</div></div>
+    ${sec('Status',`<div>Mood: ${a.mood}</div><div>Energy: <div class="energy-bar" style="width:80px"><div class="fill" style="width:${a.energy}%;background:${ec}"></div></div> ${a.energy}%</div><div>Action: ${a.action}</div>`)}
+    ${sec('Personality',d.pers||'Balanced personality')}
+    ${sec('Inventory',d.inv||'Empty')}
+    ${sec('Goals','<pre style="font-family:inherit;white-space:pre-wrap">'+(d.goals||'No active goals')+'</pre>')}
+    ${sec('Relationships',d.rels||'No known relationships')}
+    ${sec('Culture',d.culture||'No cultural traits yet')}
+    ${sec('Memory',d.memory||'No notable memories')}
+    <button class="chat-btn" onclick="openChat('${a.name}')">💬 Talk to ${a.name}</button>`;
+  document.getElementById('rightPanel').classList.add('open');
+}
+
+function closePanel(){document.getElementById('rightPanel').classList.remove('open')}
+
+// Sort table
+let sortDir={};
+function sortTable(col){
+  sortDir[col]=!sortDir[col];
+  const keys=['name','occ','mood','energy'];const k=keys[col];
+  agents.sort((a,b)=>{const v=k==='energy'?a[k]-b[k]:a[k].localeCompare(b[k]);return sortDir[col]?v:-v});
+  renderAgents();
+}
+
+// View switching
+function switchView(v){
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.view===v));
+  closePanel();
+}
+
+// Speed
+function setSpeed(el){document.querySelectorAll('.speed-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active')}
+
+// Chat
+function openChat(name){document.getElementById('chatAgent').textContent=name;document.getElementById('chatOverlay').classList.add('open');document.getElementById('chatInput').focus()}
+function closeChat(){document.getElementById('chatOverlay').classList.remove('open')}
+function sendChat(){const inp=document.getElementById('chatInput');if(!inp.value.trim())return;const b=document.getElementById('chatBody');b.innerHTML+=`<div class="chat-msg user">You: ${inp.value}</div>`;b.innerHTML+=`<div class="chat-msg agent">That's an interesting thought! I'll think about it.</div>`;inp.value='';b.scrollTop=b.scrollHeight}
+
+// Toast
+function showToast(msg){const c=document.getElementById('toastContainer');const t=document.createElement('div');t.className='toast';t.textContent=msg;c.appendChild(t);setTimeout(()=>t.remove(),3000)}
+
+// Build mode tool selection
+document.querySelectorAll('.tool-btn').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tool-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active')}));
+
+// Draw map
+function drawMap(canvas,size){
+  const ctx=canvas.getContext('2d');const s=size/50;
+  const colors={g:'#5a8a3c',f:'#2d6a2d',df:'#1a4a1a',m:'#888',v:'#8b7355',fm:'#d4a843',w:'#4a8ab5',md:'#c9a0dc',b:'#d4c090'};
+  // Fill grass
+  ctx.fillStyle=colors.g;ctx.fillRect(0,0,size,size);
+  // Mountains (north)
+  ctx.fillStyle=colors.m;ctx.fillRect(0,0,size,s*8);
+  // Dense forest
+  ctx.fillStyle=colors.df;ctx.fillRect(0,s*8,size,s*6);
+  ctx.fillStyle=colors.f;ctx.fillRect(0,s*14,size*0.3,s*12);ctx.fillRect(size*0.7,s*8,size*0.3,s*10);
+  // Village center
+  ctx.fillStyle=colors.v;ctx.fillRect(s*18,s*20,s*14,s*10);
+  // Farms
+  ctx.fillStyle=colors.fm;ctx.fillRect(s*14,s*22,s*4,s*6);ctx.fillRect(s*32,s*22,s*4,s*6);
+  // Meadow east
+  ctx.fillStyle=colors.md;ctx.fillRect(s*35,s*14,s*12,s*8);
+  // River west
+  ctx.fillStyle=colors.w;for(let y=5;y<50;y++){ctx.fillRect(s*(8+Math.sin(y/5)*2),s*y,s*2,s*1.2)}
+  // Lake south
+  ctx.fillStyle=colors.w;ctx.beginPath();ctx.ellipse(s*30,s*42,s*8,s*5,0,0,Math.PI*2);ctx.fill();
+  // Beach
+  ctx.fillStyle=colors.b;ctx.beginPath();ctx.ellipse(s*30,s*42,s*10,s*7,0,0,Math.PI*2);ctx.stroke();ctx.fillStyle=colors.b;for(let x=22;x<38;x++)ctx.fillRect(s*x,s*47,s,s*2);
+
+  // Agent dots
+  const positions=[[s*5,s*16],[s*24,s*24],[s*38,s*17],[s*16,s*23],[s*12,s*10],[s*25,s*26],[s*34,s*14],[s*26,s*22],[s*9,s*30],[s*23,s*28],[s*28,s*25],[s*37,s*18],[s*8,s*6],[s*27,s*21],[s*30,s*15],[s*22,s*20],[s*6,s*18],[s*21,s*27]];
+  positions.forEach((p,i)=>{ctx.fillStyle=agents[i].energy>70?'#3fb950':agents[i].energy>40?'#d29922':'#f85149';ctx.beginPath();ctx.arc(p[0],p[1],size>200?4:2,0,Math.PI*2);ctx.fill();if(size>200){ctx.fillStyle='#fff';ctx.font=`${Math.round(size/50)}px Inter`;ctx.fillText(agents[i].name,p[0]+5,p[1]+3)}});
+
+  // Animal dots
+  const animals=[{e:'🦌',p:[[s*14,s*9],[s*35,s*40],[s*10,s*12],[s*38,s*11]]},{e:'🐺',p:[[s*4,s*14],[s*8,s*20]]}];
+  animals.forEach(a=>a.p.forEach(p=>{ctx.fillStyle=a.e==='🐺'?'#f85149':'#d29922';ctx.beginPath();ctx.arc(p[0],p[1],size>200?3:1.5,0,Math.PI*2);ctx.fill()}));
+}
+
+// Init
+renderAgents();
+renderBuildings();
+drawMap(document.getElementById('mainMap'),400);
+drawMap(document.getElementById('miniMap'),100);
+
+// Keyboard shortcuts
+document.addEventListener('keydown',e=>{
+  if(e.metaKey||e.ctrlKey){const views=['universe','agents','buildings','observatory','history','build','settings','export'];
+  const n=parseInt(e.key);if(n>=1&&n<=8){e.preventDefault();switchView(views[n-1])}}
+});
+
+// Initial toast
+setTimeout(()=>showToast('🌸 Welcome to Sunrise Valley — Day 47'),500);
+</script>
+</body>
+</html>

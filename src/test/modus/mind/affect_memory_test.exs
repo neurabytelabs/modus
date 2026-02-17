@@ -3,8 +3,12 @@ defmodule Modus.Mind.AffectMemoryTest do
 
   alias Modus.Mind.AffectMemory
 
-  setup do
+  setup_all do
     AffectMemory.init()
+    :ok
+  end
+
+  setup do
     agent_id = "test-agent-#{:rand.uniform(100_000)}"
     on_exit(fn -> AffectMemory.clear(agent_id) end)
     %{agent_id: agent_id}

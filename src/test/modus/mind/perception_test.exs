@@ -7,7 +7,9 @@ defmodule Modus.Mind.PerceptionTest do
     # Ensure SocialNetwork ETS exists
     Modus.Mind.Cerebro.SocialNetwork.init()
     # Start Registry for agent lookups
-    start_supervised!({Registry, keys: :unique, name: Modus.AgentRegistry})
+    if Process.whereis(Modus.AgentRegistry) == nil do
+      start_supervised!({Registry, keys: :unique, name: Modus.AgentRegistry})
+    end
     :ok
   end
 

@@ -6,6 +6,7 @@ defmodule Modus.Mind.Cerebro.AgentConversationTest do
   setup do
     SocialNetwork.init()
     AgentConversation.init()
+    Modus.Mind.AffectMemory.init()
     :ets.delete_all_objects(:social_network)
     :ets.delete_all_objects(:conversation_cooldowns)
     :ok
@@ -50,7 +51,7 @@ defmodule Modus.Mind.Cerebro.AgentConversationTest do
     a2 = make_agent(%{name: "B"})
     rel = %{type: :friend, strength: 0.6, last_interaction: 0, convo_count: 5}
     prompt = AgentConversation.build_conversation_prompt(a1, a2, rel)
-    assert prompt =~ "Arkadaş"
+    assert prompt =~ "friends"
   end
 
   test "cooldown prevents spam" do

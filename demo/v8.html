@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MODUS — Chronicle of Sunrise Valley</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400;1,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--gold:#d4a574;--bg:#1a1510;--bg2:#141008;--panel:#1e1914;--text:#c8b89a;--dim:#7a6e5d;--accent:#e8c97a;--danger:#c45c4a;--success:#6a9a5b}
+body{font-family:'Inter',sans-serif;background:var(--bg2);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;user-select:none}
+/* TOP BAR */
+.top-bar{height:42px;background:#0f0c08;border-bottom:1px solid #2a2418;display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0}
+.top-bar .world-name{font-family:'Lora',serif;color:var(--gold);font-size:15px;font-weight:600;letter-spacing:1px}
+.top-bar .meta{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--dim)}
+.top-bar .meta span{display:flex;align-items:center;gap:4px}
+.speed-controls{display:flex;gap:2px}
+.speed-controls button{background:none;border:1px solid #2a2418;color:var(--dim);padding:2px 8px;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;border-radius:3px;transition:.2s}
+.speed-controls button.active,.speed-controls button:hover{color:var(--gold);border-color:var(--gold)}
+.god-toggle{font-size:11px;cursor:pointer;padding:3px 8px;border:1px solid #2a2418;border-radius:3px;background:none;color:var(--dim);transition:.2s}
+.god-toggle.active{color:var(--accent);border-color:var(--accent)}
+/* MAIN */
+.main{flex:1;display:flex;overflow:hidden}
+/* LEFT — MAP */
+.map-panel{width:55%;position:relative;background:#0a0806;overflow:hidden}
+.map-panel canvas{width:100%;height:100%;display:block}
+.map-vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 50%,rgba(10,8,6,.85) 100%)}
+.minimap{position:absolute;bottom:12px;right:12px;width:100px;height:100px;border:1px solid #2a2418;border-radius:4px;overflow:hidden;opacity:.7}
+.minimap canvas{width:100%;height:100%}
+.build-bar{position:absolute;bottom:12px;left:12px;display:none;gap:4px;background:rgba(15,12,8,.9);padding:6px 8px;border-radius:6px;border:1px solid #2a2418}
+.build-bar.show{display:flex}
+.build-bar button{width:32px;height:32px;border:1px solid #2a2418;background:none;border-radius:4px;cursor:pointer;font-size:16px;transition:.2s}
+.build-bar button:hover{border-color:var(--gold)}
+/* RIGHT — CHRONICLE */
+.chronicle-panel{width:45%;background:var(--bg);border-left:1px solid #2a2418;display:flex;flex-direction:column;position:relative}
+.chronicle-panel::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23n)' opacity='.03'/%3E%3C/svg%3E");pointer-events:none;opacity:.5}
+.chronicle-header{padding:20px 28px 12px;border-bottom:1px solid #2a2418;flex-shrink:0;position:relative}
+.chronicle-header h1{font-family:'Lora',serif;color:var(--gold);font-size:20px;font-weight:700;letter-spacing:.5px}
+.chronicle-header .era{font-family:'Lora',serif;color:var(--dim);font-size:12px;margin-top:4px;font-style:italic}
+.chronicle-scroll{flex:1;overflow-y:auto;padding:20px 28px 80px;position:relative;scroll-behavior:smooth}
+.chronicle-scroll::-webkit-scrollbar{width:6px}
+.chronicle-scroll::-webkit-scrollbar-track{background:transparent}
+.chronicle-scroll::-webkit-scrollbar-thumb{background:#2a2418;border-radius:3px}
+.era-divider{text-align:center;color:var(--dim);font-family:'Lora',serif;font-size:13px;padding:16px 0;letter-spacing:3px;opacity:.7}
+.entry{font-family:'Lora',serif;font-size:14.5px;line-height:1.85;color:var(--text);margin-bottom:14px;animation:fadeIn .6s ease;position:relative}
+.entry.day-header{color:var(--gold);font-weight:600;font-size:15px;margin-top:20px;margin-bottom:8px}
+.entry .agent-name{color:var(--gold);cursor:pointer;border-bottom:1px dotted rgba(212,165,116,.3);transition:.2s}
+.entry .agent-name:hover{color:var(--accent);border-bottom-color:var(--accent)}
+.entry .stat-inline{color:var(--dim);font-style:italic;font-size:13px}
+.entry .warning{color:var(--danger)}
+.entry .dialogue{font-style:italic;color:var(--accent)}
+.entry .quote-mark{color:var(--gold);font-size:18px}
+.chat-inline{display:none;margin:8px 0 12px;padding:8px 12px;background:rgba(30,25,20,.8);border:1px solid #2a2418;border-radius:6px}
+.chat-inline.show{display:flex;align-items:center;gap:8px}
+.chat-inline input{flex:1;background:none;border:none;color:var(--text);font-family:'Lora',serif;font-size:13px;outline:none}
+.chat-inline input::placeholder{color:var(--dim)}
+.chat-inline button{background:none;border:none;color:var(--gold);cursor:pointer;font-size:14px}
+/* AGENT OVERLAY */
+.agent-overlay{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1e1914;border:1px solid var(--gold);border-radius:10px;padding:24px;width:340px;display:none;z-index:100;box-shadow:0 20px 60px rgba(0,0,0,.7)}
+.agent-overlay.show{display:block;animation:fadeIn .3s ease}
+.agent-overlay .close{position:absolute;top:10px;right:14px;background:none;border:none;color:var(--dim);font-size:18px;cursor:pointer}
+.agent-overlay h2{font-family:'Lora',serif;color:var(--gold);font-size:18px;margin-bottom:4px}
+.agent-overlay .role{color:var(--dim);font-size:12px;margin-bottom:12px}
+.agent-overlay .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:12px}
+.agent-overlay .stats div{padding:6px 8px;background:rgba(10,8,6,.5);border-radius:4px}
+.agent-overlay .stats label{color:var(--dim);display:block;font-size:10px;margin-bottom:2px}
+.agent-overlay .goals{font-size:12px;margin-bottom:10px}
+.agent-overlay .goals div{padding:3px 0;color:var(--text)}
+.agent-overlay .rels{font-size:12px;color:var(--dim)}
+.agent-overlay .inventory{font-size:13px;margin-bottom:10px}
+.agent-overlay .memories{font-size:11px;color:var(--dim);font-style:italic;margin-top:8px;border-top:1px solid #2a2418;padding-top:8px}
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99;display:none}
+.backdrop.show{display:block}
+/* BOTTOM BAR */
+.bottom-bar{height:36px;background:#0f0c08;border-top:1px solid #2a2418;display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0}
+.bottom-bar .actions{display:flex;gap:6px}
+.bottom-bar button{background:none;border:1px solid #2a2418;color:var(--dim);padding:3px 10px;font-size:11px;cursor:pointer;border-radius:3px;font-family:'Inter',sans-serif;transition:.2s}
+.bottom-bar button:hover{color:var(--gold);border-color:var(--gold)}
+.bottom-bar .right-info{font-size:11px;color:var(--dim);display:flex;gap:12px}
+.bottom-bar .kbd{font-size:10px;color:#4a4035;padding:1px 5px;border:1px solid #2a2418;border-radius:2px;margin-left:2px}
+/* TOAST */
+.toast-container{position:fixed;top:52px;right:16px;z-index:200;display:flex;flex-direction:column;gap:6px}
+.toast{background:#1e1914;border:1px solid #2a2418;color:var(--text);padding:8px 14px;border-radius:6px;font-size:12px;animation:slideIn .3s ease,fadeOut .3s ease 2.7s;opacity:0;animation-fill-mode:forwards}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+@keyframes fadeOut{to{opacity:0}}
+</style>
+</head>
+<body>
+<!-- TOP BAR -->
+<div class="top-bar">
+ <div class="world-name">☀️ Sunrise Valley</div>
+ <div class="meta">
+  <span>🌸 Spring</span><span>☀️ Afternoon</span><span>Day 47</span><span>👥 18</span>
+  <div class="speed-controls">
+   <button onclick="setSpeed(0)">⏸</button>
+   <button class="active" onclick="setSpeed(1)">1×</button>
+   <button onclick="setSpeed(5)">5×</button>
+   <button onclick="setSpeed(10)">10×</button>
+  </div>
+  <button class="god-toggle" onclick="toggleGod(this)">👁 God</button>
+  <button class="god-toggle" onclick="toggleBuild()" id="buildBtn">🔨 Build</button>
+ </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+ <!-- MAP -->
+ <div class="map-panel">
+  <canvas id="mapCanvas"></canvas>
+  <div class="map-vignette"></div>
+  <div class="minimap"><canvas id="miniCanvas"></canvas></div>
+  <div class="build-bar" id="buildBar">
+   <button title="Grass">🌿</button><button title="Tree">🌳</button><button title="Stone">🪨</button>
+   <button title="Water">💧</button><button title="Path">🟫</button><button title="House">🏠</button>
+  </div>
+ </div>
+
+ <!-- CHRONICLE -->
+ <div class="chronicle-panel">
+  <div class="chronicle-header">
+   <h1>📜 The Chronicle of Sunrise Valley</h1>
+   <div class="era">Being a faithful record of the Golden Age — Day 47, Spring</div>
+  </div>
+  <div class="chronicle-scroll" id="chronicle"></div>
+ </div>
+</div>
+
+<!-- BOTTOM BAR -->
+<div class="bottom-bar">
+ <div class="actions">
+  <button onclick="toast('💾 World saved')">💾 Save</button>
+  <button onclick="toast('📂 Load world...')">📂 Load</button>
+  <button onclick="toast('📤 Exported!')">📤 Export</button>
+  <button>🌐 Gallery</button>
+  <button onclick="toast('⚙️ Settings opened')">⚙️ Settings</button>
+ </div>
+ <div class="right-info">
+  <span><span class="kbd">Space</span> Pause</span>
+  <span><span class="kbd">M</span> Map</span>
+  <span><span class="kbd">C</span> Chronicle</span>
+  <span><span class="kbd">B</span> Build</span>
+  <span>🪵142 🪨89 🥩23 🐟67 🌾156 🌿45</span>
+ </div>
+</div>
+
+<!-- AGENT OVERLAY -->
+<div class="backdrop" id="backdrop" onclick="closeOverlay()"></div>
+<div class="agent-overlay" id="agentOverlay">
+ <button class="close" onclick="closeOverlay()">✕</button>
+ <h2 id="aoName"></h2>
+ <div class="role" id="aoRole"></div>
+ <div class="stats" id="aoStats"></div>
+ <div class="inventory" id="aoInv"></div>
+ <div class="goals" id="aoGoals"></div>
+ <div class="rels" id="aoRels"></div>
+ <div class="memories" id="aoMem"></div>
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+// DATA
+const agents=[
+{name:"Maya",job:"Explorer",mood:"Happy 😊",energy:78,x:12,y:8,action:"Exploring",color:"#e8c97a",personality:'O:0.9 C:0.4 E:0.8 A:0.7 N:0.2 — "curious free spirit"',inv:"🪵5 🪨3 🥩2 🐟4 🌿1",goals:["✅ Build Home","🔄 Make 3 Friends (2/3)","◻️ Explore Map (64%)"],rels:"Kai (close friend), Zoe (friend), Rio (acquaintance)",catchphrase:"The horizon calls!",memories:["Survived the wolf attack of Day 23","Helped Kai build the market"]},
+{name:"Kai",job:"Builder",mood:"Happy 😊",energy:65,x:25,y:24,action:"Building house",color:"#c49a6c"},
+{name:"Luna",job:"Healer",mood:"Sad 😢",energy:42,x:35,y:18,action:"Gathering herbs",color:"#a8b4d4"},
+{name:"Zoe",job:"Farmer",mood:"Happy 😊",energy:81,x:28,y:30,action:"Harvesting",color:"#9ac46a"},
+{name:"Rio",job:"Hunter",mood:"Eager 🔥",energy:70,x:14,y:6,action:"Stalking deer",color:"#d4785a"},
+{name:"Ash",job:"Merchant",mood:"Happy 😊",energy:55,x:26,y:22,action:"Trading",color:"#c4a84a"},
+{name:"Noor",job:"Guard",mood:"Calm 😐",energy:60,x:18,y:14,action:"Patrolling",color:"#7a8a9a"},
+{name:"Eira",job:"Scholar",mood:"Happy 😊",energy:73,x:27,y:23,action:"Reading",color:"#b4a0d4"},
+{name:"Jax",job:"Fisher",mood:"Calm 😐",energy:68,x:8,y:30,action:"Fishing",color:"#5a9ac4"},
+{name:"Sage",job:"Artist",mood:"Happy 😊",energy:77,x:24,y:25,action:"Painting",color:"#d4a4c4"},
+{name:"Ember",job:"Blacksmith",mood:"Eager 🔥",energy:85,x:23,y:26,action:"Crafting",color:"#d46a3a"},
+{name:"Willow",job:"Herbalist",mood:"Calm 😐",energy:50,x:36,y:20,action:"Collecting",color:"#7ac47a"},
+{name:"Flint",job:"Miner",mood:"Scared 😨",energy:35,x:40,y:5,action:"Hiding from wolf",color:"#8a8a7a"},
+{name:"Brook",job:"Caretaker",mood:"Happy 😊",energy:90,x:25,y:28,action:"Tending child",color:"#d4b4a4"},
+{name:"Reed",job:"Scout",mood:"Eager 🔥",energy:62,x:30,y:10,action:"Scouting",color:"#a4c4a4"},
+{name:"Dawn",job:"Elder",mood:"Sad 😢",energy:28,x:22,y:25,action:"Resting",color:"#c4b49a"},
+{name:"Moss",job:"Woodcutter",mood:"Calm 😐",energy:71,x:10,y:15,action:"Chopping tree",color:"#5a7a4a"},
+{name:"Pip",job:"Child",mood:"Happy 😊",energy:95,x:24,y:24,action:"Playing",color:"#e8d44a"}
+];
+const wildlife=[
+{type:"🦌",x:15,y:5},{type:"🦌",x:13,y:7},{type:"🦌",x:38,y:32},{type:"🦌",x:10,y:34},
+{type:"🐇",x:20,y:15},{type:"🐇",x:32,y:22},{type:"🐇",x:28,y:35},{type:"🐇",x:15,y:28},{type:"🐇",x:40,y:18},{type:"🐇",x:5,y:20},
+{type:"🐺",x:16,y:10},{type:"🐺",x:19,y:12},
+{type:"🐦",x:22,y:8},{type:"🐦",x:30,y:15},{type:"🐦",x:18,y:30},{type:"🐦",x:35,y:25},{type:"🐦",x:10,y:10},{type:"🐦",x:40,y:35},{type:"🐦",x:25,y:5},{type:"🐦",x:8,y:22}
+];
+const buildings=[
+{name:"House",x:24,y:23},{name:"House",x:26,y:24},{name:"House",x:25,y:26},
+{name:"Market",x:26,y:22},{name:"Well",x:25,y:24},
+{name:"Hut",x:16,y:13},{name:"Hut",x:17,y:15},{name:"Watchtower",x:18,y:14},
+{name:"Hut",x:9,y:29},{name:"Hut",x:8,y:31},{name:"Farm",x:10,y:32},
+{name:"Hut",x:38,y:8},{name:"Farm",x:28,y:30}
+];
+
+// MAP RENDERING
+const GS=50,TS=10;
+const mapC=document.getElementById('mapCanvas');
+const ctx=mapC.getContext('2d');
+const miniC=document.getElementById('miniCanvas');
+const mctx=miniC.getContext('2d');
+
+function terrain(x,y){
+ if(y<10&&x>30)return'#5a5a5a'; // mountain
+ if(y<12&&x<20)return'#1a3a1a'; // dense forest
+ if(x>=7&&x<=10&&y>=20)return'#2a4a6a'; // river
+ if(y>=33&&x>=15&&x<=35)return'#3a5a7a'; // lake
+ if(y>=34&&x>=20&&x<=30)return'#c4b090'; // beach
+ if(x>=33&&x<=40&&y>=15&&y<=25)return'#3a4a2a'; // meadow
+ if(x>=22&&x<=28&&y>=21&&y<=29)return'#3a2a1a'; // village
+ if(x>=27&&x<=32&&y>=28&&y<=33)return'#5a4a1a'; // farms
+ return'#2a3a1a'; // grass
+}
+
+function drawMap(cvs,c,s){
+ cvs.width=cvs.offsetWidth*2;cvs.height=cvs.offsetHeight*2;
+ c.scale(2,2);
+ const w=cvs.offsetWidth,h=cvs.offsetHeight;
+ const tw=w/GS,th=h/GS;
+ for(let x=0;x<GS;x++)for(let y=0;y<GS;y++){
+  c.fillStyle=terrain(x,y);
+  c.fillRect(x*tw,y*th,tw+1,th+1);
+ }
+ if(s>4){
+  // buildings
+  buildings.forEach(b=>{
+   c.fillStyle='#4a3a2a';c.fillRect(b.x*tw-2,b.y*th-2,tw+4,th+4);
+   c.fillStyle='#6a5a3a';c.fillRect(b.x*tw,b.y*th,tw,th);
+  });
+  // wildlife
+  wildlife.forEach(w=>{
+   c.font=`${s>8?10:7}px serif`;
+   c.fillText(w.type,w.x*tw,w.y*th+th);
+  });
+  // agents
+  agents.forEach(a=>{
+   c.beginPath();c.arc(a.x*tw+tw/2,a.y*th+th/2,s>8?5:3,0,Math.PI*2);
+   c.fillStyle=a.color;c.fill();
+   c.strokeStyle='#0a0806';c.lineWidth=1;c.stroke();
+   if(s>8){c.font='9px Inter';c.fillStyle='#fff';c.fillText(a.name,a.x*tw+tw/2+7,a.y*th+th/2+3);}
+  });
+ }
+}
+
+function render(){drawMap(mapC,ctx,12);drawMap(miniC,mctx,5);}
+window.addEventListener('resize',render);
+setTimeout(render,50);
+
+// MAP CLICK
+mapC.addEventListener('click',e=>{
+ const r=mapC.getBoundingClientRect();
+ const sx=(e.clientX-r.left)/r.width*GS,sy=(e.clientY-r.top)/r.height*GS;
+ let closest=null,dist=999;
+ agents.forEach(a=>{const d=Math.hypot(a.x-sx,a.y-sy);if(d<dist){dist=d;closest=a;}});
+ if(dist<3)showAgent(closest.name);
+});
+
+// CHRONICLE
+const chron=document.getElementById('chronicle');
+const chronicle=[
+{type:'era',text:'═══ The Founding ═══'},
+{type:'entry',text:'<span class="day-header">Day 1 — The Founding</span>'},
+{type:'entry',text:'They came from the east, eighteen souls drawn by rumor of fertile land beyond the mountains. <span class="agent-name" onclick="showAgent(\'Maya\')">Maya</span> was the first to crest the ridge, and what she saw took her breath away: a valley bathed in golden light, a river threading through its heart like a silver ribbon.'},
+{type:'entry',text:'<span class="dialogue"><span class="agent-name" onclick="showAgent(\'Maya\')">Maya</span> whispered: <span class="quote-mark">"</span>The horizon calls!<span class="quote-mark">"</span></span>'},
+{type:'era',text:'═══ Age of Exploration ═══'},
+{type:'entry',text:'<span class="day-header">Days 11–20 — The Unknown Beckons</span>'},
+{type:'entry',text:'<span class="agent-name" onclick="showAgent(\'Reed\')">Reed</span> scaled the northern hilltop and returned breathless, his map now covered in scrawled annotations. <span class="agent-name" onclick="showAgent(\'Eira\')">Eira</span> spent long hours in the makeshift library, cross-referencing his findings with old texts.'},
+{type:'entry',text:'<span class="agent-name" onclick="showAgent(\'Jax\')">Jax</span> discovered the river teemed with fish — twelve species, by his count — and set up camp at its bend. The smell of roasting trout became the village\'s evening anthem.'},
+{type:'era',text:'═══ The Wolf Crisis ═══'},
+{type:'entry',text:'<span class="day-header">Days 21–30 — Shadows in the Forest</span>'},
+{type:'entry',text:'<span class="warning">⚠️ The wolves came on Day 23.</span> Two agents were injured in the attack. <span class="agent-name" onclick="showAgent(\'Maya\')">Maya</span> survived — barely — a scar across her forearm now a reminder. <span class="agent-name" onclick="showAgent(\'Flint\')">Flint</span> never quite recovered his nerve; even now, he flinches at sounds in the dark.'},
+{type:'entry',text:'<span class="agent-name" onclick="showAgent(\'Noor\')">Noor</span> took charge, organizing the first night patrols. The watchtower rose in three days, stone by stone, <span class="agent-name" onclick="showAgent(\'Kai\')">Kai</span> barely sleeping until it stood tall against the treeline.'},
+{type:'era',text:'═══ Era of Building ═══'},
+{type:'entry',text:'<span class="day-header">Days 31–41 — Hammers and Hope</span>'},
+{type:'entry',text:'The village took shape. <span class="agent-name" onclick="showAgent(\'Kai\')">Kai</span> built three houses and the market square, <span class="agent-name" onclick="showAgent(\'Ember\')">Ember</span> forging the nails and hinges at a pace that left even <span class="agent-name" onclick="showAgent(\'Ash\')">Ash</span> impressed. <span class="agent-name" onclick="showAgent(\'Brook\')">Brook</span> established the nursery, and for the first time, laughter echoed through Sunrise Quarter.'},
+{type:'entry',text:'<span class="agent-name" onclick="showAgent(\'Sage\')">Sage</span> painted the first mural on the market wall: a sunrise over the valley, rendered in pigments <span class="agent-name" onclick="showAgent(\'Willow\')">Willow</span> had mixed from meadow flowers.'},
+{type:'era',text:'═══ The Golden Age ═══'},
+{type:'entry',text:'<span class="day-header">Day 42 — A New Era Dawns</span>'},
+{type:'entry',text:'<span class="stat-inline">The village prospered: 72% happiness, 34 trades completed, 3 births and only 1 loss.</span> Average happiness crossed 70% and <span class="agent-name" onclick="showAgent(\'Dawn\')">Dawn</span>, the eldest among them, declared it — the Golden Age.'},
+{type:'entry',text:'<span class="day-header">Day 44 — Campfire Stories</span>'},
+{type:'entry',text:'<span class="agent-name" onclick="showAgent(\'Zoe\')">Zoe</span> and <span class="agent-name" onclick="showAgent(\'Ash\')">Ash</span> became friends at the campfire, swapping stories of failed harvests and bold trades. <span class="agent-name" onclick="showAgent(\'Pip\')">Pip</span> listened wide-eyed, a stick-sword forgotten in hand.'},
+{type:'entry',text:'<span class="day-header">Day 45 — Spring Arrives</span>'},
+{type:'entry',text:'🌸 Spring crept into the valley overnight. Blossoms erupted along the river, and <span class="agent-name" onclick="showAgent(\'Luna\')">Luna</span> — who had been quiet since the wolf attack — smiled for the first time in weeks. She gathered rare herbs from the meadow, her basket overflowing.'},
+{type:'entry',text:'<span class="day-header">Day 46 — Vigilance</span>'},
+{type:'entry',text:'<span class="warning">⚠️ A wolf was spotted near Sunrise Quarter.</span> <span class="agent-name" onclick="showAgent(\'Noor\')">Noor</span> doubled the watch. <span class="agent-name" onclick="showAgent(\'Flint\')">Flint</span>, deep in the mountain cave, pressed himself against the stone wall, his pickaxe trembling.'},
+{type:'entry',text:'<span class="day-header">Day 47 — The Golden Age continues…</span>'},
+{type:'entry',text:'<span class="agent-name" onclick="showAgent(\'Maya\')">Maya</span> set out at dawn, her eyes scanning the northern horizon. The forest ahead was dense, but her curiosity — that relentless pull she\'d felt since the founding — drove her onward. She has now charted 64% of the known world.'},
+{type:'entry',text:'Meanwhile, at the village center, <span class="agent-name" onclick="showAgent(\'Kai\')">Kai</span> wiped sweat from his brow. The stone house was nearly complete — his finest work yet. <span class="agent-name" onclick="showAgent(\'Ember\')">Ember</span>, energy at 85%, hammered at the forge nearby, sparks dancing like fireflies.'},
+{type:'entry',text:'A commotion near the market: <span class="agent-name" onclick="showAgent(\'Rio\')">Rio</span> returned from the hunt, a deer slung over his shoulder. <span class="agent-name" onclick="showAgent(\'Ash\')">Ash</span> rushed to inspect the leather, already calculating trades. <span class="agent-name" onclick="showAgent(\'Zoe\')">Zoe</span> looked up from her wheat and nodded — there would be a feast tonight.'},
+{type:'entry',text:'<span class="warning">⚠️ <span class="agent-name" onclick="showAgent(\'Noor\')">Noor</span>, atop the watchtower, narrowed his eyes. Movement in the shadows — wolves, circling closer than yesterday.</span> He gripped his spear. Two wolves had been prowling the forest edge since dawn.'},
+{type:'entry',text:'In the nursery, <span class="agent-name" onclick="showAgent(\'Brook\')">Brook</span> hummed a lullaby. Energy at 90%, she was tireless. <span class="agent-name" onclick="showAgent(\'Pip\')">Pip</span> — energy a blazing 95% — chased butterflies outside, laughing with abandon.'},
+{type:'entry',text:'<span class="agent-name" onclick="showAgent(\'Moss\')">Moss</span> swung his axe in the western forest, counting rings. <span class="agent-name" onclick="showAgent(\'Jax\')">Jax</span> sat at the river bank, line in the water, patience infinite.'},
+{type:'entry',text:'<span class="agent-name" onclick="showAgent(\'Dawn\')">Dawn</span> rested at home, her energy waning at 28%. She watched the village through her window and whispered to no one: <span class="dialogue">"We built something good."</span>'},
+{type:'entry',text:'<span class="stat-inline">Resources: 🪵142 🪨89 🥩23 🐟67 🌾156 🌿45 — Trades: 34 — Population: 18 — Happiness: 72%</span>'},
+];
+
+// Chat state
+let chatAgent=null;
+
+function renderChronicle(){
+ chron.innerHTML='';
+ chronicle.forEach((c,i)=>{
+  const d=document.createElement('div');
+  if(c.type==='era'){d.className='era-divider';d.textContent=c.text;}
+  else{d.className='entry';d.innerHTML=c.text;d.style.animationDelay=(i*0.04)+'s';}
+  chron.appendChild(d);
+ });
+}
+renderChronicle();
+
+// AGENT OVERLAY
+function showAgent(name){
+ const a=agents.find(ag=>ag.name===name);if(!a)return;
+ document.getElementById('aoName').textContent=a.name+' — '+a.mood;
+ document.getElementById('aoRole').textContent=a.job+' · '+a.action;
+ document.getElementById('aoStats').innerHTML=`
+  <div><label>Energy</label><div style="background:#2a2418;border-radius:3px;height:6px;margin-top:3px"><div style="width:${a.energy}%;height:100%;background:${a.energy>60?'var(--success)':a.energy>30?'var(--gold)':'var(--danger)'};border-radius:3px"></div></div>${a.energy}%</div>
+  <div><label>Mood</label>${a.mood}</div>
+  <div><label>Position</label>${a.x}, ${a.y}</div>
+  <div><label>Action</label>${a.action}</div>`;
+ document.getElementById('aoInv').textContent=a.inv||'—';
+ document.getElementById('aoGoals').innerHTML=a.goals?a.goals.map(g=>'<div>'+g+'</div>').join(''):'';
+ document.getElementById('aoRels').textContent=a.rels||'';
+ document.getElementById('aoMem').innerHTML=a.memories?a.memories.map(m=>'<div>• '+m+'</div>').join(''):(a.personality||'');
+ document.getElementById('agentOverlay').classList.add('show');
+ document.getElementById('backdrop').classList.add('show');
+ // highlight in chronicle
+ document.querySelectorAll('.agent-name').forEach(el=>{
+  el.style.textDecoration=el.textContent===name?'underline':'none';
+ });
+ // show inline chat
+ if(chatAgent!==name){
+  document.querySelectorAll('.chat-inline').forEach(c=>c.remove());
+  const entries=[...chron.querySelectorAll('.entry')];
+  for(let i=entries.length-1;i>=0;i--){
+   if(entries[i].textContent.includes(name)){
+    const ci=document.createElement('div');ci.className='chat-inline show';
+    ci.innerHTML=`<input placeholder="Speak to ${name}..." onkeydown="if(event.key==='Enter'){toast('📨 You told ${name}: '+this.value);this.value=''}"><button onclick="toast('📨 Message sent to ${name}')">↵</button>`;
+    entries[i].after(ci);break;
+   }
+  }
+  chatAgent=name;
+ }
+}
+
+function closeOverlay(){
+ document.getElementById('agentOverlay').classList.remove('show');
+ document.getElementById('backdrop').classList.remove('show');
+ document.querySelectorAll('.agent-name').forEach(el=>el.style.textDecoration='none');
+}
+
+// SPEED
+function setSpeed(s){
+ document.querySelectorAll('.speed-controls button').forEach(b=>b.classList.remove('active'));
+ event.target.classList.add('active');
+ toast(s===0?'⏸ Paused':'▶ Speed: '+s+'×');
+}
+
+function toggleGod(el){el.classList.toggle('active');toast(el.classList.contains('active')?'👁 God Mode ON':'God Mode OFF');}
+
+let buildMode=false;
+function toggleBuild(){
+ buildMode=!buildMode;
+ document.getElementById('buildBtn').classList.toggle('active');
+ document.getElementById('buildBar').classList.toggle('show');
+ if(buildMode){
+  const d=document.createElement('div');d.className='entry';d.innerHTML='<em style="color:var(--gold)">You begin to shape the land…</em>';d.id='buildEntry';
+  chron.appendChild(d);chron.scrollTop=chron.scrollHeight;
+ } else {const be=document.getElementById('buildEntry');if(be)be.remove();}
+}
+
+// TOAST
+function toast(msg){
+ const t=document.createElement('div');t.className='toast';t.textContent=msg;
+ document.getElementById('toasts').appendChild(t);
+ setTimeout(()=>t.remove(),3000);
+}
+
+// KEYBOARD
+document.addEventListener('keydown',e=>{
+ if(e.code==='Space'){e.preventDefault();setSpeed(0);}
+ if(e.code==='KeyB')toggleBuild();
+});
+
+// Animate birds on map
+let birdFrame=0;
+setInterval(()=>{
+ birdFrame++;
+ wildlife.filter(w=>w.type==='🐦').forEach(b=>{b.x=(b.x+0.05)%GS;b.y+=Math.sin(birdFrame*0.1)*0.02;});
+ render();
+},200);
+</script>
+</body>
+</html>

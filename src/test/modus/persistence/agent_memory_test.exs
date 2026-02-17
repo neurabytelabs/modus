@@ -73,7 +73,7 @@ defmodule Modus.Persistence.AgentMemoryTest do
   describe "format_for_context/2" do
     test "returns default text when no memories" do
       result = AgentMemory.format_for_context("nonexistent_agent")
-      assert result =~ "kayda değer"
+      assert result =~ "No notable"
     end
 
     test "formats memories for LLM context" do
@@ -81,8 +81,8 @@ defmodule Modus.Persistence.AgentMemoryTest do
       AgentMemory.record(@agent_id, @agent_name, :friendship, "Arkadaş oldu", importance: 0.8)
 
       result = AgentMemory.format_for_context(@agent_id)
-      assert result =~ "Ölüm"
-      assert result =~ "Arkadaşlık"
+      assert result =~ "Death"
+      assert result =~ "Friendship"
     end
   end
 

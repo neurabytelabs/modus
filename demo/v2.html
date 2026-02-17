@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MODUS — Mission Control</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0e14;--panel:#0d1117;--border:#1e2630;--cyan:#06B6D4;--amber:#fbbf24;--green:#22c55e;--red:#ef4444;--text:#c9d1d9;--dim:#484f58;--mono:'SF Mono',Consolas,'Courier New',monospace;--sans:-apple-system,system-ui,sans-serif}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font:11px var(--mono)}
+.app{display:grid;grid-template-rows:32px 1fr 15%;grid-template-columns:20% 1fr 22%;height:100vh;gap:0}
+/* TOP BAR */
+.topbar{grid-column:1/-1;background:#0d1117;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 10px;gap:12px;font-size:10px;overflow:hidden}
+.topbar .brand{color:var(--cyan);font:bold 13px var(--sans);letter-spacing:2px;margin-right:8px}
+.topbar .sep{color:var(--border);margin:0 2px}
+.tb-item{display:flex;align-items:center;gap:3px;white-space:nowrap}
+.tb-label{color:var(--dim);font-size:9px;text-transform:uppercase}
+.tb-val{color:var(--text)}
+.tb-val.cyan{color:var(--cyan)}.tb-val.green{color:var(--green)}.tb-val.amber{color:var(--amber)}
+.speed-btn{background:none;border:1px solid var(--border);color:var(--dim);font:9px var(--mono);padding:1px 5px;cursor:pointer;border-radius:2px}
+.speed-btn.active{color:var(--cyan);border-color:var(--cyan)}
+.speed-btn:hover{border-color:var(--cyan)}
+.topbar-right{margin-left:auto;display:flex;gap:6px;align-items:center}
+.tb-btn{background:none;border:1px solid var(--border);color:var(--dim);font:9px var(--mono);padding:2px 6px;cursor:pointer;border-radius:2px}
+.tb-btn:hover{color:var(--cyan);border-color:var(--cyan)}
+.tb-btn.god{color:var(--amber);border-color:var(--amber)}
+.kbd{background:#161b22;color:var(--dim);font-size:8px;padding:0 3px;border-radius:2px;border:1px solid var(--border);margin-left:2px}
+/* LEFT PANEL - AGENTS */
+.left{grid-row:2;grid-column:1;border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.panel-head{padding:5px 8px;font:bold 10px var(--sans);color:var(--dim);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:#0d1117;position:sticky;top:0;z-index:1}
+.agent-row{display:grid;grid-template-columns:8px 1fr 60px;align-items:center;padding:4px 8px;gap:6px;cursor:pointer;border-bottom:1px solid #131920}
+.agent-row:hover{background:#161b22}
+.agent-row.sel{background:#0d2847;border-left:2px solid var(--cyan)}
+.mood-dot{width:7px;height:7px;border-radius:50%}
+.mood-happy{background:var(--green)}.mood-sad{background:#6366f1}.mood-eager{background:var(--amber)}.mood-calm{background:#64748b}.mood-scared{background:var(--red)}
+.agent-info{overflow:hidden}
+.agent-name{font-size:11px;color:#e6edf3;font-weight:600}
+.agent-occ{font-size:9px;color:var(--dim)}
+.energy-bar{width:100%;height:4px;background:#21262d;border-radius:2px;overflow:hidden}
+.energy-fill{height:100%;border-radius:2px;transition:width .3s}
+/* CENTER - MAP */
+.center{grid-row:2;grid-column:2;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.map-container{flex:1;position:relative;overflow:hidden}
+.map-canvas{position:absolute;top:0;left:0}
+.minimap{position:absolute;bottom:8px;right:8px;width:100px;height:100px;border:1px solid var(--border);background:#0a0e14;opacity:.85}
+.minimap canvas{width:100%;height:100%}
+.chat-bar{height:28px;border-top:1px solid var(--border);display:flex;align-items:center;padding:0 6px;background:#0d1117}
+.chat-bar input{flex:1;background:none;border:1px solid var(--border);color:var(--text);font:10px var(--mono);padding:3px 8px;border-radius:3px;outline:none}
+.chat-bar input:focus{border-color:var(--cyan)}
+.chat-bar input::placeholder{color:var(--dim)}
+/* RIGHT - DETAIL */
+.right{grid-row:2;grid-column:3;border-left:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.detail-section{padding:6px 8px;border-bottom:1px solid var(--border)}
+.detail-section h3{font:bold 9px var(--sans);color:var(--dim);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px}
+.detail-name{font:bold 16px var(--sans);color:#e6edf3}
+.detail-occ{color:var(--cyan);font-size:10px}
+.detail-action{color:var(--amber);font-size:9px;margin-top:2px}
+.radar{width:120px;height:120px;margin:4px auto}
+.inv-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:3px}
+.inv-item{background:#161b22;border:1px solid var(--border);border-radius:3px;padding:3px;text-align:center;font-size:11px}
+.inv-count{font-size:8px;color:var(--dim)}
+.goal-row{display:flex;align-items:center;gap:4px;margin-bottom:3px;font-size:10px}
+.goal-bar{flex:1;height:4px;background:#21262d;border-radius:2px;overflow:hidden}
+.goal-fill{height:100%;border-radius:2px}
+.rel-row{display:flex;align-items:center;gap:4px;font-size:10px;margin-bottom:2px}
+.rel-dot{width:5px;height:5px;border-radius:50%;background:var(--cyan)}
+.memory-item{font-size:9px;color:var(--dim);padding:2px 0;border-left:2px solid var(--border);padding-left:6px;margin-bottom:3px}
+/* BOTTOM */
+.bottom{grid-column:1/-1;border-top:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.tab-bar{display:flex;background:#0d1117;border-bottom:1px solid var(--border)}
+.tab{padding:4px 12px;font:10px var(--sans);color:var(--dim);cursor:pointer;border-bottom:2px solid transparent}
+.tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+.tab:hover{color:var(--text)}
+.tab-content{flex:1;overflow-y:auto;padding:6px 10px;font-size:10px}
+.log-entry{padding:2px 0;border-bottom:1px solid #131920;display:flex;gap:8px}
+.log-day{color:var(--dim);min-width:40px}
+.log-msg{color:var(--text)}
+.log-msg.warn{color:var(--amber)}
+.stats-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;padding:4px 0}
+.stat-card{background:#161b22;border:1px solid var(--border);border-radius:4px;padding:8px;text-align:center}
+.stat-val{font:bold 18px var(--sans);color:var(--cyan)}
+.stat-label{font-size:8px;color:var(--dim);text-transform:uppercase;margin-top:2px}
+.timeline-row{display:flex;align-items:center;gap:8px;padding:3px 0}
+.timeline-dot{width:8px;height:8px;border-radius:50%;border:2px solid var(--cyan);flex-shrink:0}
+.timeline-dot.current{background:var(--cyan)}
+.timeline-line{width:1px;height:12px;background:var(--border);margin-left:3.5px}
+.build-palette{display:flex;gap:4px;flex-wrap:wrap;padding:4px 0}
+.build-tile{width:24px;height:24px;border:1px solid var(--border);border-radius:3px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px}
+.build-tile:hover{border-color:var(--cyan)}
+/* TOAST */
+.toast{position:fixed;top:40px;right:12px;background:#161b22;border:1px solid var(--cyan);color:var(--text);padding:8px 14px;border-radius:4px;font-size:10px;z-index:999;animation:fadeIn .3s}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+/* scrollbar */
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+<div class="app">
+<!-- TOP BAR -->
+<div class="topbar">
+<span class="brand">MODUS</span>
+<span class="sep">│</span>
+<div class="tb-item"><span class="tb-label">World</span><span class="tb-val cyan">Sunrise Valley</span></div>
+<span class="sep">│</span>
+<div class="tb-item"><span class="tb-val">🌸 Spring</span></div>
+<div class="tb-item"><span class="tb-val">☀️ Day 47</span></div>
+<span class="sep">│</span>
+<div class="tb-item"><span class="tb-label">Pop</span><span class="tb-val">18</span></div>
+<div class="tb-item"><span class="tb-label">Bldg</span><span class="tb-val">12</span></div>
+<div class="tb-item"><span class="tb-label">Wildlife</span><span class="tb-val">32</span></div>
+<span class="sep">│</span>
+<div class="tb-item"><span class="tb-label">Era</span><span class="tb-val amber">Golden Age</span></div>
+<span class="sep">│</span>
+<div class="tb-item"><span class="tb-label">LLM</span><span class="tb-val green">● Online</span></div>
+<div class="tb-item"><span class="tb-label">Rules</span><span class="tb-val">Balanced</span></div>
+<span class="sep">│</span>
+<div class="tb-item" style="gap:2px">
+<button class="speed-btn" onclick="setSpeed(this)" data-s="⏸">⏸</button>
+<button class="speed-btn active" onclick="setSpeed(this)" data-s="1x">1x</button>
+<button class="speed-btn" onclick="setSpeed(this)" data-s="5x">5x</button>
+<button class="speed-btn" onclick="setSpeed(this)" data-s="10x">10x</button>
+</div>
+<div class="topbar-right">
+<button class="tb-btn" onclick="toast('Build mode activated')">🔨 Build<span class="kbd">B</span></button>
+<button class="tb-btn god" onclick="this.classList.toggle('active');toast(this.classList.contains('active')?'God Mode ON':'God Mode OFF')">⚡ God<span class="kbd">G</span></button>
+<button class="tb-btn" onclick="toast('Settings opened')">⚙️<span class="kbd">S</span></button>
+<button class="tb-btn" onclick="toast('Saved!')">💾</button>
+<button class="tb-btn" onclick="toast('Exported!')">📤</button>
+<button class="tb-btn" onclick="toast('Universe Gallery')">🌌</button>
+</div>
+</div>
+
+<!-- LEFT: AGENT LIST -->
+<div class="left">
+<div class="panel-head">Agents <span style="color:var(--cyan)">18</span> <span class="kbd">↑↓</span></div>
+<div id="agentList"></div>
+</div>
+
+<!-- CENTER: MAP -->
+<div class="center">
+<div class="panel-head">World Map — Sunrise Valley <span><span class="kbd">WASD</span> move <span class="kbd">+−</span> zoom</span></div>
+<div class="map-container">
+<canvas id="mapCanvas" class="map-canvas"></canvas>
+<div class="minimap"><canvas id="miniCanvas"></canvas></div>
+</div>
+<div class="chat-bar">
+<input type="text" placeholder="💬 Talk to Maya... (Enter to send)" id="chatInput">
+</div>
+</div>
+
+<!-- RIGHT: DETAIL -->
+<div class="right" id="detailPanel"></div>
+
+<!-- BOTTOM -->
+<div class="bottom">
+<div class="tab-bar">
+<div class="tab active" onclick="switchTab(this,'events')">Event Log<span class="kbd">E</span></div>
+<div class="tab" onclick="switchTab(this,'timeline')">Timeline<span class="kbd">T</span></div>
+<div class="tab" onclick="switchTab(this,'stats')">Stats<span class="kbd">1</span></div>
+<div class="tab" onclick="switchTab(this,'observatory')">Observatory<span class="kbd">O</span></div>
+<div class="tab" onclick="switchTab(this,'build')">Build Tools<span class="kbd">B</span></div>
+</div>
+<div class="tab-content" id="tabContent"></div>
+</div>
+</div>
+
+<script>
+// DATA
+const agents=[
+{name:"Maya",occ:"Explorer",mood:"happy",energy:78,pos:[12,8],action:"Exploring",emoji:"😊",personality:{O:.9,C:.4,E:.8,A:.7,N:.2},pLabel:"curious free spirit",inv:[["🪵",5],["🪨",3],["🥩",2],["🐟",4],["🌿",1]],goals:[["Build Home",100,"done"],["Make 3 Friends",67,"progress"],["Explore Map",64,"progress"]],rels:[["Kai","close friend"],["Zoe","friend"],["Rio","acquaintance"]],culture:'The horizon calls!',memories:["Survived the wolf attack of Day 23","Helped Kai build the market"]},
+{name:"Kai",occ:"Builder",mood:"happy",energy:65,pos:[25,25],action:"Building house",emoji:"😊"},
+{name:"Luna",occ:"Healer",mood:"sad",energy:42,pos:[35,20],action:"Gathering herbs",emoji:"😢"},
+{name:"Zoe",occ:"Farmer",mood:"happy",energy:81,pos:[28,30],action:"Harvesting",emoji:"😊"},
+{name:"Rio",occ:"Hunter",mood:"eager",energy:70,pos:[15,5],action:"Stalking deer",emoji:"🔥"},
+{name:"Ash",occ:"Merchant",mood:"happy",energy:55,pos:[26,26],action:"Trading",emoji:"😊"},
+{name:"Noor",occ:"Guard",mood:"calm",energy:60,pos:[20,12],action:"Patrolling",emoji:"😐"},
+{name:"Eira",occ:"Scholar",mood:"happy",energy:73,pos:[24,24],action:"Reading",emoji:"😊"},
+{name:"Jax",occ:"Fisher",mood:"calm",energy:68,pos:[10,30],action:"Fishing",emoji:"😐"},
+{name:"Sage",occ:"Artist",mood:"happy",energy:77,pos:[25,27],action:"Painting",emoji:"😊"},
+{name:"Ember",occ:"Blacksmith",mood:"eager",energy:85,pos:[23,25],action:"Crafting",emoji:"🔥"},
+{name:"Willow",occ:"Herbalist",mood:"calm",energy:50,pos:[36,18],action:"Collecting",emoji:"😐"},
+{name:"Flint",occ:"Miner",mood:"scared",energy:35,pos:[8,3],action:"Hiding from wolf",emoji:"😨"},
+{name:"Brook",occ:"Caretaker",mood:"happy",energy:90,pos:[26,28],action:"Tending child",emoji:"😊"},
+{name:"Reed",occ:"Scout",mood:"eager",energy:62,pos:[30,10],action:"Scouting",emoji:"🔥"},
+{name:"Dawn",occ:"Elder",mood:"sad",energy:28,pos:[24,26],action:"Resting",emoji:"😢"},
+{name:"Moss",occ:"Woodcutter",mood:"calm",energy:71,pos:[18,10],action:"Chopping tree",emoji:"😐"},
+{name:"Pip",occ:"Child",mood:"happy",energy:95,pos:[25,26],action:"Playing",emoji:"😊"}
+];
+const wildlife=[{e:"🦌",n:"Deer",c:4,pos:[[14,4],[16,5],[12,32],[40,35]]},{e:"🐇",n:"Rabbit",c:6,pos:[[20,15],[30,20],[35,25],[22,35],[40,10],[10,40]]},{e:"🐺",n:"Wolf",c:2,pos:[[18,7],[22,9]]},{e:"🐦",n:"Bird",c:8,pos:[[5,5],[10,10],[20,20],[30,30],[40,40],[15,35],[35,15],[25,5]]},{e:"🐟",n:"Fish",c:12,pos:[[8,25],[8,30],[8,35],[9,28],[9,33],[9,38],[42,42],[43,43],[44,44],[45,45],[41,41],[40,40]]}];
+const events=[
+{day:47,msg:"Rio hunted a deer in the northern forest"},{day:47,msg:"Kai finished building a stone house!"},{day:46,msg:"⚠️ Wolf spotted near Sunrise Quarter",warn:true},{day:46,msg:"Luna gathered rare herbs"},{day:45,msg:"🌸 Spring has arrived!"},{day:44,msg:"Zoe and Ash became friends at the campfire"},{day:43,msg:"Maya reached 64% map exploration"},{day:42,msg:"Golden Age begins — average happiness above 70%"}
+];
+const timeline=[{d:"1-10",n:"The Founding",desc:"First settlers arrive"},{d:"11-20",n:"Age of Exploration",desc:"Map discovered"},{d:"21-30",n:"The Wolf Crisis",desc:"Wolf attacks, 2 agents injured"},{d:"31-41",n:"Era of Building",desc:"Village constructed"},{d:"42+",n:"Golden Age",desc:"Prosperity, culture emerging",current:true}];
+
+let selectedAgent=0;
+
+// AGENT LIST
+function renderAgents(){
+const el=document.getElementById('agentList');
+el.innerHTML=agents.map((a,i)=>`<div class="agent-row${i===selectedAgent?' sel':''}" onclick="selectAgent(${i})"><div class="mood-dot mood-${a.mood}"></div><div class="agent-info"><div class="agent-name">${a.emoji} ${a.name}</div><div class="agent-occ">${a.occ} · ${a.action}</div></div><div><div class="energy-bar"><div class="energy-fill" style="width:${a.energy}%;background:${a.energy>60?'var(--green)':a.energy>35?'var(--amber)':'var(--red)'}"></div></div><div style="font-size:8px;color:var(--dim);text-align:right">${a.energy}%</div></div></div>`).join('');
+}
+
+function selectAgent(i){selectedAgent=i;renderAgents();renderDetail();document.getElementById('chatInput').placeholder=`💬 Talk to ${agents[i].name}... (Enter to send)`}
+
+// DETAIL PANEL
+function renderDetail(){
+const a=agents[selectedAgent];const p=a.personality||{O:.5,C:.5,E:.5,A:.5,N:.5};
+const inv=a.inv||[["🪵",0],["🪨",0],["🥩",0],["🐟",0],["🌿",0]];
+const goals=a.goals||[["Survive",100,"done"]];
+const rels=a.rels||[];
+const mem=a.memories||["No memories yet"];
+const culture=a.culture||"...";
+document.getElementById('detailPanel').innerHTML=`
+<div class="detail-section"><div class="detail-name">${a.emoji} ${a.name}</div><div class="detail-occ">${a.occ}</div><div class="detail-action">▸ ${a.action}</div></div>
+<div class="detail-section"><h3>Personality</h3><div class="radar"><canvas id="radarC" width="120" height="120"></canvas></div><div style="font-size:9px;color:var(--dim);text-align:center">"${a.pLabel||'balanced'}"</div></div>
+<div class="detail-section"><h3>Mood & Energy</h3><div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">${a.emoji}</span><span style="text-transform:capitalize">${a.mood}</span></div><div style="margin-top:4px"><div class="energy-bar" style="height:6px"><div class="energy-fill" style="width:${a.energy}%;background:${a.energy>60?'var(--green)':a.energy>35?'var(--amber)':'var(--red)'}"></div></div><div style="font-size:9px;color:var(--dim)">${a.energy}% energy</div></div></div>
+<div class="detail-section"><h3>Inventory</h3><div class="inv-grid">${inv.map(([e,c])=>`<div class="inv-item">${e}<div class="inv-count">×${c}</div></div>`).join('')}</div></div>
+<div class="detail-section"><h3>Goals</h3>${goals.map(([n,pct,s])=>`<div class="goal-row"><span style="color:${s==='done'?'var(--green)':'var(--cyan)'}">${s==='done'?'✅':'🔄'}</span><span>${n}</span><div class="goal-bar"><div class="goal-fill" style="width:${pct}%;background:${s==='done'?'var(--green)':'var(--cyan)'}"></div></div><span style="color:var(--dim)">${pct}%</span></div>`).join('')}</div>
+<div class="detail-section"><h3>Relationships</h3>${rels.map(([n,r])=>`<div class="rel-row"><div class="rel-dot"></div><span style="color:#e6edf3">${n}</span><span style="color:var(--dim)">— ${r}</span></div>`).join('')||'<div style="color:var(--dim);font-size:9px">No relationships</div>'}</div>
+<div class="detail-section"><h3>Culture</h3><div style="font-style:italic;color:var(--amber);font-size:10px">"${culture}"</div></div>
+<div class="detail-section"><h3>Memories</h3>${mem.map(m=>`<div class="memory-item">${m}</div>`).join('')}</div>`;
+drawRadar(p);
+}
+
+function drawRadar(p){
+const c=document.getElementById('radarC');if(!c)return;const ctx=c.getContext('2d');
+const cx=60,cy=60,r=45,traits=['O','C','E','A','N'];
+ctx.clearRect(0,0,120,120);
+for(let l=1;l<=3;l++){ctx.beginPath();for(let i=0;i<5;i++){const a=-Math.PI/2+i*2*Math.PI/5;ctx.lineTo(cx+r*l/3*Math.cos(a),cy+r*l/3*Math.sin(a))}ctx.closePath();ctx.strokeStyle='#1e2630';ctx.stroke()}
+ctx.beginPath();for(let i=0;i<5;i++){const a=-Math.PI/2+i*2*Math.PI/5;const v=p[traits[i]];ctx.lineTo(cx+r*v*Math.cos(a),cy+r*v*Math.sin(a))}ctx.closePath();ctx.fillStyle='rgba(6,182,212,0.15)';ctx.fill();ctx.strokeStyle='#06B6D4';ctx.lineWidth=1.5;ctx.stroke();
+traits.forEach((t,i)=>{const a=-Math.PI/2+i*2*Math.PI/5;ctx.fillStyle='#484f58';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText(t,cx+(r+12)*Math.cos(a),cy+(r+12)*Math.sin(a)+3)});
+}
+
+// MAP
+function drawMap(){
+const canvas=document.getElementById('mapCanvas');const cont=canvas.parentElement;
+const W=cont.clientWidth,H=cont.clientHeight;canvas.width=W;canvas.height=H;
+const ctx=canvas.getContext('2d');const gs=Math.min(W,H)/50;
+const colors={mount:'#374151',dforest:'#14532d',lforest:'#166534',village:'#78350f',farm:'#a16207',meadow:'#7c3aed',river:'#1d4ed8',lake:'#2563eb',sand:'#d97706',grass:'#15803d'};
+// terrain
+for(let y=0;y<50;y++)for(let x=0;x<50;x++){
+let c=colors.grass;
+if(y<8&&x<15)c=colors.mount;else if(y<12&&x<25)c=colors.dforest;
+else if(x>=8&&x<=12&&y>=20)c=colors.river;
+else if(y>40&&x>35)c=colors.lake;else if(y>42&&x>33)c=colors.sand;
+else if(x>=22&&x<=30&&y>=22&&y<=32)c=colors.village;
+else if(x>=27&&x<=33&&y>=28&&y<=35)c=colors.farm;
+else if(x>=33&&x<=40&&y>=15&&y<=25)c=colors.meadow;
+else if(x>=15&&x<=22&&y>=8&&y<=15)c=colors.lforest;
+ctx.fillStyle=c;ctx.fillRect(x*gs,y*gs,gs+.5,gs+.5);
+}
+// buildings
+const bldgs=[{x:24,y:24,e:'🏠'},{x:25,y:23,e:'🏠'},{x:26,y:24,e:'🏠'},{x:25,y:25,e:'🏪'},{x:26,y:25,e:'🪨'},{x:19,y:11,e:'🛖'},{x:20,y:11,e:'🛖'},{x:20,y:12,e:'🗼'},{x:9,y:30,e:'🛖'},{x:10,y:31,e:'🛖'},{x:11,y:30,e:'🌾'},{x:7,y:3,e:'🛖'},{x:8,y:4,e:'🌾'}];
+bldgs.forEach(b=>{ctx.font=`${gs*.8}px serif`;ctx.fillText(b.e,b.x*gs,b.y*gs+gs*.8)});
+// wildlife
+wildlife.forEach(w=>{w.pos.forEach(([x,y])=>{ctx.font=`${gs*.7}px serif`;ctx.fillText(w.e,x*gs,y*gs+gs*.7)})});
+// agents
+agents.forEach((a,i)=>{const [x,y]=a.pos;ctx.fillStyle=i===selectedAgent?'#06B6D4':'#e6edf3';ctx.beginPath();ctx.arc(x*gs+gs/2,y*gs+gs/2,gs*.4,0,Math.PI*2);ctx.fill();if(i===selectedAgent){ctx.strokeStyle='#06B6D4';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x*gs+gs/2,y*gs+gs/2,gs*.6,0,Math.PI*2);ctx.stroke()}});
+// minimap
+const mc=document.getElementById('miniCanvas');mc.width=100;mc.height=100;const mctx=mc.getContext('2d');mctx.drawImage(canvas,0,0,100,100);
+}
+
+// TABS
+function switchTab(el,tab){
+document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');
+const tc=document.getElementById('tabContent');
+if(tab==='events')tc.innerHTML=events.map(e=>`<div class="log-entry"><span class="log-day">Day ${e.day}</span><span class="log-msg${e.warn?' warn':''}">${e.msg}</span></div>`).join('');
+else if(tab==='timeline')tc.innerHTML=timeline.map((t,i)=>`${i?'<div class="timeline-line"></div>':''}<div class="timeline-row"><div class="timeline-dot${t.current?' current':''}"></div><div><span style="color:var(--cyan)">Day ${t.d}</span> <b>${t.n}</b> <span style="color:var(--dim)">— ${t.desc}</span></div></div>`).join('');
+else if(tab==='stats')tc.innerHTML=`<div class="stats-grid"><div class="stat-card"><div class="stat-val">18</div><div class="stat-label">Population</div></div><div class="stat-card"><div class="stat-val">72%</div><div class="stat-label">Avg Happiness</div></div><div class="stat-card"><div class="stat-val">34</div><div class="stat-label">Trades</div></div><div class="stat-card"><div class="stat-val">3</div><div class="stat-label">Births</div></div><div class="stat-card"><div class="stat-val">1</div><div class="stat-label">Deaths</div></div><div class="stat-card"><div class="stat-val">522</div><div class="stat-label">Resources</div></div></div><div style="margin-top:6px;color:var(--dim)">Resources: 🪵142 🪨89 🥩23 🐟67 🌾156 🌿45</div>`;
+else if(tab==='observatory')tc.innerHTML=`<div style="padding:8px"><div style="color:var(--cyan);font:bold 12px var(--sans);margin-bottom:6px">🔭 Observatory — World Insights</div><div style="color:var(--dim);font-size:10px;line-height:1.6">▸ Most active agent: <span style="color:var(--text)">Pip (95% energy)</span><br>▸ Lowest energy: <span style="color:var(--red)">Dawn (28%)</span><br>▸ Most connected: <span style="color:var(--text)">Maya (3 relationships)</span><br>▸ Active threats: <span style="color:var(--amber)">2 wolves near forest</span><br>▸ Exploration: <span style="color:var(--text)">64% mapped</span><br>▸ Cultural phrases emerging: <span style="color:var(--amber)">"The horizon calls!"</span></div></div>`;
+else if(tab==='build')tc.innerHTML=`<div style="padding:4px"><div style="color:var(--dim);font-size:9px;margin-bottom:4px">TERRAIN</div><div class="build-palette"><div class="build-tile" style="background:#15803d">🌿</div><div class="build-tile" style="background:#14532d">🌲</div><div class="build-tile" style="background:#374151">⛰️</div><div class="build-tile" style="background:#1d4ed8">💧</div><div class="build-tile" style="background:#d97706">🏖️</div><div class="build-tile" style="background:#a16207">🌾</div></div><div style="color:var(--dim);font-size:9px;margin:4px 0">STRUCTURES</div><div class="build-palette"><div class="build-tile">🏠</div><div class="build-tile">🛖</div><div class="build-tile">🗼</div><div class="build-tile">🏪</div><div class="build-tile">🪨</div><div class="build-tile">🌾</div></div><div style="color:var(--dim);font-size:9px;margin:4px 0">RESOURCES</div><div class="build-palette"><div class="build-tile">🪵</div><div class="build-tile">🪨</div><div class="build-tile">🥩</div><div class="build-tile">🐟</div><div class="build-tile">🌿</div><div class="build-tile">🦌</div></div></div>`;
+}
+
+// TOAST
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2500)}
+
+// SPEED
+function setSpeed(el){document.querySelectorAll('.speed-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');toast('Speed: '+el.dataset.s)}
+
+// KEYBOARD
+document.addEventListener('keydown',e=>{
+if(e.target.tagName==='INPUT')return;
+if(e.key==='e')document.querySelector('.tab').click();
+if(e.key==='t')document.querySelectorAll('.tab')[1].click();
+if(e.key==='1')document.querySelectorAll('.tab')[2].click();
+if(e.key==='o')document.querySelectorAll('.tab')[3].click();
+if(e.key==='b')document.querySelectorAll('.tab')[4].click();
+if(e.key==='ArrowDown'){selectAgent(Math.min(selectedAgent+1,agents.length-1));e.preventDefault()}
+if(e.key==='ArrowUp'){selectAgent(Math.max(selectedAgent-1,0));e.preventDefault()}
+});
+
+// CHAT
+document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.value){toast(`Sent to ${agents[selectedAgent].name}: "${e.target.value}"`);e.target.value=''}});
+
+// INIT
+renderAgents();renderDetail();drawMap();switchTab(document.querySelector('.tab'),'events');
+window.addEventListener('resize',drawMap);
+// Welcome toast
+setTimeout(()=>toast('Mission Control online — Day 47, Golden Age'),500);
+</script>
+</body>
+</html>
