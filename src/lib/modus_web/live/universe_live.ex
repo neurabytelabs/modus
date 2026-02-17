@@ -1,7 +1,7 @@
 defmodule ModusWeb.UniverseLive do
   @moduledoc """
   Main LiveView — MODUS universe dashboard with 2D renderer.
-  v1.7.0 Nexus — Multi-Universe Dashboard, Agent Designer, World Builder, Terrain Painter, Nature Resource System.
+  v2.0.0 Infinitum — Custom World Rules Engine, Multi-Universe Dashboard, Agent Designer, World Builder.
   """
   use ModusWeb, :live_view
   # JS alias available if needed
@@ -90,6 +90,11 @@ defmodule ModusWeb.UniverseLive do
        chronicle_md: "",
        stats_open: false,
        population_history: [],
+       # Agent Designer
+       # Rules Engine
+       rules_open: false,
+       rules: Modus.Simulation.RulesEngine.serialize(),
+       rules_presets: Modus.Simulation.RulesEngine.preset_names(),
        # Agent Designer
        agent_designer_open: false,
        agent_designer_mode: :agent,
@@ -475,6 +480,59 @@ defmodule ModusWeb.UniverseLive do
 
     {:noreply, assign(socket, settings_testing: true, settings_test_result: nil)}
   end
+
+  # ── Rules Engine ──────────────────────────────────────────────
+
+  def handle_event("open_rules", _params, socket) do
+    rules = Modus.Simulation.RulesEngine.serialize()
+    {:noreply, assign(socket, rules_open: true, rules: rules)}
+  end
+
+  def handle_event("close_rules", _params, socket) do
+    {:noreply, assign(socket, rules_open: false)}
+  end
+
+  def handle_event("rules_change", params, socket) do
+    changes = %{}
+    changes = if params["time_speed"], do: Map.put(changes, :time_speed, parse_float(params["time_speed"], 1.0)), else: changes
+    changes = if params["social_tendency"], do: Map.put(changes, :social_tendency, parse_float(params["social_tendency"], 0.5)), else: changes
+    changes = if params["birth_rate"], do: Map.put(changes, :birth_rate, parse_float(params["birth_rate"], 1.0)), else: changes
+    changes = if params["building_speed"], do: Map.put(changes, :building_speed, parse_float(params["building_speed"], 1.0)), else: changes
+    changes = if params["mutation_rate"], do: Map.put(changes, :mutation_rate, parse_float(params["mutation_rate"], 0.3)), else: changes
+    changes = if params["resource_abundance"], do: Map.put(changes, :resource_abundance, String.to_existing_atom(params["resource_abundance"])), else: changes
+    changes = if params["danger_level"], do: Map.put(changes, :danger_level, String.to_existing_atom(params["danger_level"])), else: changes
+
+    if changes != %{} do
+      Modus.Simulation.RulesEngine.update(changes)
+    end
+
+    rules = Modus.Simulation.RulesEngine.serialize()
+    {:noreply, assign(socket, rules: rules)}
+  end
+
+  def handle_event("apply_rules_preset", %{"preset" => preset_name}, socket) do
+    case Modus.Simulation.RulesEngine.apply_preset(preset_name) do
+      {:ok, _} ->
+        rules = Modus.Simulation.RulesEngine.serialize()
+        {:noreply, assign(socket, rules: rules)}
+      {:error, _} ->
+        {:noreply, socket}
+    end
+  end
+
+  defp parse_float(val, default) when is_binary(val) do
+    case Float.parse(val) do
+      {f, _} -> f
+      :error ->
+        case Integer.parse(val) do
+          {i, _} -> i / 1
+          :error -> default
+        end
+    end
+  end
+  defp parse_float(val, _default) when is_float(val), do: val
+  defp parse_float(val, _default) when is_integer(val), do: val / 1
+  defp parse_float(_, default), do: default
 
   # ── Save / Load ───────────────────────────────────────────────
 
@@ -879,7 +937,7 @@ defmodule ModusWeb.UniverseLive do
           <h1 class="text-5xl md:text-6xl font-bold tracking-tighter mb-2">
             MODUS<span class="text-purple-400">_</span>
           </h1>
-          <p class="text-sm text-slate-500">v1.7.0 Nexus · You're not limited to one world — create many.</p>
+          <p class="text-sm text-slate-500">v2.0.0 Infinitum · You're not limited to one world — create many.</p>
         </div>
 
         <%!-- Sort Controls --%>
@@ -1002,8 +1060,9 @@ defmodule ModusWeb.UniverseLive do
           <span class="px-2 py-1 bg-white/5 rounded border border-white/10">👁️ God Mode</span>
           <span class="px-2 py-1 bg-white/5 rounded border border-white/10">🔨 World Builder</span>
           <span class="px-2 py-1 bg-white/5 rounded border border-white/10">🌿 Nature Resources</span>
+          <span class="px-2 py-1 bg-white/5 rounded border border-white/10">🎛️ Custom Rules Engine</span>
         </div>
-        <p class="text-xs text-slate-600 mb-6">v1.7.0 Nexus · 29+ modules · Elixir/BEAM · Pixi.js</p>
+        <p class="text-xs text-slate-600 mb-6">v2.0.0 Infinitum · 30+ modules · Elixir/BEAM · Pixi.js</p>
       </div>
 
       <%!-- Create World Section --%>
@@ -1141,7 +1200,12 @@ defmodule ModusWeb.UniverseLive do
           <span class="text-xl font-bold tracking-tighter">
             MODUS<span class="text-purple-400">_</span>
           </span>
-          <span class="text-xs text-slate-600 hidden sm:inline">v1.7.0 · Nexus</span>
+          <span class="text-xs text-slate-600 hidden sm:inline">v2.0.0 · Infinitum</span>
+          <%= if @rules["preset"] && @rules["preset"] != "Custom" do %>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 hidden sm:inline">
+              🎛️ <%= @rules["preset"] %>
+            </span>
+          <% end %>
         </div>
 
         <div class="flex items-center gap-3 md:gap-6">
@@ -1248,6 +1312,11 @@ defmodule ModusWeb.UniverseLive do
           <%!-- Save/Load --%>
           <button phx-click="open_save_load" class="ctrl-btn" title="Save / Load World">
             💾
+          </button>
+
+          <%!-- Rules Engine --%>
+          <button phx-click="open_rules" class={"ctrl-btn #{if @rules_open, do: "ctrl-btn-active"}"} title="World Rules">
+            🎛️
           </button>
 
           <%!-- LLM indicator + Settings --%>
@@ -1929,6 +1998,127 @@ defmodule ModusWeb.UniverseLive do
                 <button type="submit" class="ctrl-btn ctrl-btn-primary flex-1 text-center">💾 Save</button>
               </div>
             </form>
+          </div>
+        </div>
+      <% end %>
+
+      <%!-- Rules Engine Modal --%>
+      <%= if @rules_open do %>
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div class="bg-[#0A0A0F] border border-white/10 rounded-xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl" phx-click-away="close_rules">
+            <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
+              <span class="font-bold text-slate-100">🎛️ World Rules</span>
+              <button phx-click="close_rules" class="text-slate-600 hover:text-slate-400">✕</button>
+            </div>
+            <div class="p-4 space-y-4 overflow-y-auto">
+              <%!-- Presets --%>
+              <div>
+                <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">Presets</h3>
+                <div class="flex flex-wrap gap-1.5">
+                  <%= for preset <- @rules_presets do %>
+                    <button phx-click="apply_rules_preset" phx-value-preset={preset}
+                      class={"px-3 py-1.5 text-[10px] rounded-lg border transition-all " <>
+                        if(@rules["preset"] == preset,
+                          do: "border-amber-500/50 bg-amber-500/10 text-amber-300",
+                          else: "border-white/10 bg-white/3 text-slate-500 hover:border-white/20")}>
+                      <%= preset %>
+                    </button>
+                  <% end %>
+                </div>
+              </div>
+
+              <form phx-change="rules_change">
+                <%!-- Time Speed --%>
+                <div class="mb-3">
+                  <div class="flex justify-between text-[10px] mb-1">
+                    <span class="text-slate-500">⏱️ Time Speed</span>
+                    <span class="text-cyan-400 tabular-nums"><%= @rules["time_speed"] %>x</span>
+                  </div>
+                  <input type="range" name="time_speed" min="0.5" max="3.0" step="0.1" value={@rules["time_speed"]}
+                    class="w-full accent-purple-500 h-1" />
+                  <div class="flex justify-between text-[9px] text-slate-600 mt-0.5">
+                    <span>0.5x</span><span>1x</span><span>3x</span>
+                  </div>
+                </div>
+
+                <%!-- Resource Abundance --%>
+                <div class="mb-3">
+                  <div class="text-[10px] text-slate-500 mb-1">🌾 Resource Abundance</div>
+                  <div class="flex gap-1.5">
+                    <%= for {val, label} <- [{"scarce", "Scarce"}, {"normal", "Normal"}, {"abundant", "Abundant"}] do %>
+                      <button type="button" phx-click="rules_change" phx-value-resource_abundance={val}
+                        class={"flex-1 py-1.5 text-[10px] rounded-lg border text-center transition-all " <>
+                          if(@rules["resource_abundance"] == val,
+                            do: "border-purple-500 bg-purple-500/10 text-purple-300",
+                            else: "border-white/10 bg-white/5 text-slate-500 hover:border-white/20")}>
+                        <%= label %>
+                      </button>
+                    <% end %>
+                  </div>
+                </div>
+
+                <%!-- Danger Level --%>
+                <div class="mb-3">
+                  <div class="text-[10px] text-slate-500 mb-1">⚠️ Danger Level</div>
+                  <div class="flex gap-1.5">
+                    <%= for {val, label} <- [{"peaceful", "🕊️"}, {"moderate", "⚖️"}, {"harsh", "💀"}, {"extreme", "☠️"}] do %>
+                      <button type="button" phx-click="rules_change" phx-value-danger_level={val}
+                        class={"flex-1 py-1.5 text-[10px] rounded-lg border text-center transition-all " <>
+                          if(@rules["danger_level"] == val,
+                            do: "border-red-500 bg-red-500/10 text-red-300",
+                            else: "border-white/10 bg-white/5 text-slate-500 hover:border-white/20")}>
+                        <%= label %>
+                      </button>
+                    <% end %>
+                  </div>
+                </div>
+
+                <%!-- Social Tendency --%>
+                <div class="mb-3">
+                  <div class="flex justify-between text-[10px] mb-1">
+                    <span class="text-slate-500">💬 Social Tendency</span>
+                    <span class="text-cyan-400 tabular-nums"><%= @rules["social_tendency"] %></span>
+                  </div>
+                  <input type="range" name="social_tendency" min="0.0" max="1.0" step="0.1" value={@rules["social_tendency"]}
+                    class="w-full accent-purple-500 h-1" />
+                </div>
+
+                <%!-- Birth Rate --%>
+                <div class="mb-3">
+                  <div class="flex justify-between text-[10px] mb-1">
+                    <span class="text-slate-500">👶 Birth Rate</span>
+                    <span class="text-cyan-400 tabular-nums"><%= @rules["birth_rate"] %>x</span>
+                  </div>
+                  <input type="range" name="birth_rate" min="0.0" max="2.0" step="0.1" value={@rules["birth_rate"]}
+                    class="w-full accent-purple-500 h-1" />
+                </div>
+
+                <%!-- Building Speed --%>
+                <div class="mb-3">
+                  <div class="flex justify-between text-[10px] mb-1">
+                    <span class="text-slate-500">🏗️ Building Speed</span>
+                    <span class="text-cyan-400 tabular-nums"><%= @rules["building_speed"] %>x</span>
+                  </div>
+                  <input type="range" name="building_speed" min="0.5" max="3.0" step="0.1" value={@rules["building_speed"]}
+                    class="w-full accent-purple-500 h-1" />
+                </div>
+
+                <%!-- Mutation Rate --%>
+                <div class="mb-3">
+                  <div class="flex justify-between text-[10px] mb-1">
+                    <span class="text-slate-500">🧬 Mutation Rate</span>
+                    <span class="text-cyan-400 tabular-nums"><%= @rules["mutation_rate"] %></span>
+                  </div>
+                  <input type="range" name="mutation_rate" min="0.0" max="1.0" step="0.1" value={@rules["mutation_rate"]}
+                    class="w-full accent-purple-500 h-1" />
+                </div>
+              </form>
+
+              <div class="text-[9px] text-slate-600 leading-relaxed">
+                Rules apply immediately. Changes are saved with the world state.
+                <br/>Current: <span class="text-amber-400"><%= @rules["preset"] || "Custom" %></span>
+              </div>
+            </div>
           </div>
         </div>
       <% end %>

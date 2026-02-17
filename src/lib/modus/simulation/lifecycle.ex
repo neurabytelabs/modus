@@ -10,7 +10,7 @@ defmodule Modus.Simulation.Lifecycle do
   @birth_radius 4
   @min_pop 8
   @max_pop 15
-  @birth_check_interval 50
+  @base_birth_check_interval 50
 
   # ── State (ETS-based) ───────────────────────────────────────
 
@@ -46,7 +46,10 @@ defmodule Modus.Simulation.Lifecycle do
   @doc "Process lifecycle tick — check for births."
   @spec tick(non_neg_integer()) :: :ok
   def tick(tick_number) do
-    if rem(tick_number, @birth_check_interval) == 0 do
+    # Higher birth_rate → more frequent checks
+    birth_rate = try do Modus.Simulation.RulesEngine.birth_rate() catch _, _ -> 1.0 end
+    check_interval = max(10, round(@base_birth_check_interval / birth_rate))
+    if rem(tick_number, check_interval) == 0 do
       maybe_spawn_birth(tick_number)
     end
     :ok
@@ -116,7 +119,38 @@ defmodule Modus.Simulation.Lifecycle do
 
     name = Enum.random(names)
     occupation = Enum.random([:farmer, :builder, :explorer, :healer, :trader])
-    child = Modus.Simulation.Agent.new(name, child_pos, occupation)
+
+    # Apply mutation_rate from RulesEngine for personality variance
+    mutation_rate = try do Modus.Simulation.RulesEngine.mutation_rate() catch _, _ -> 0.3 end
+    child = if mutation_rate > 0 and function_exported?(Modus.Simulation.Agent, :new_custom, 5) do
+      parent_p = try do
+        state = Modus.Simulation.Agent.get_state(parent_a.id)
+        state.personality
+      catch
+        _, _ -> nil
+      end
+
+      if parent_p do
+        mutate = fn val ->
+          drift = (:rand.uniform() - 0.5) * mutation_rate
+          max(0.0, min(1.0, val + drift))
+        end
+
+        personality = %{
+          openness: mutate.(parent_p.openness),
+          conscientiousness: mutate.(parent_p.conscientiousness),
+          extraversion: mutate.(parent_p.extraversion),
+          agreeableness: mutate.(parent_p.agreeableness),
+          neuroticism: mutate.(parent_p.neuroticism)
+        }
+
+        Modus.Simulation.Agent.new_custom(name, child_pos, occupation, personality, :calm)
+      else
+        Modus.Simulation.Agent.new(name, child_pos, occupation)
+      end
+    else
+      Modus.Simulation.Agent.new(name, child_pos, occupation)
+    end
 
     case Modus.Simulation.AgentSupervisor.spawn_agent(child) do
       {:ok, _pid} ->

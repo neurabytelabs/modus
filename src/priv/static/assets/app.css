@@ -1199,6 +1199,19 @@ video {
   border-color: rgb(51 65 85 / 0.5);
 }
 
+.border-amber-500\/30 {
+  border-color: rgb(245 158 11 / 0.3);
+}
+
+.border-amber-500\/50 {
+  border-color: rgb(245 158 11 / 0.5);
+}
+
+.border-red-500 {
+  --tw-border-opacity: 1;
+  border-color: rgb(239 68 68 / var(--tw-border-opacity, 1));
+}
+
 .border-t-purple-500 {
   --tw-border-opacity: 1;
   border-top-color: rgb(168 85 247 / var(--tw-border-opacity, 1));
@@ -1343,6 +1356,10 @@ video {
 
 .bg-slate-800\/60 {
   background-color: rgb(30 41 59 / 0.6);
+}
+
+.bg-amber-500\/10 {
+  background-color: rgb(245 158 11 / 0.1);
 }
 
 .bg-gradient-to-r {

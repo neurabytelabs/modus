@@ -14,6 +14,7 @@ defmodule Modus.Application do
     Modus.Simulation.Economy.init()
     Modus.Simulation.Lifecycle.init()
     Modus.Mind.Learning.init()
+    Modus.Simulation.RulesEngine.init()
 
     children = [
       Modus.Repo,

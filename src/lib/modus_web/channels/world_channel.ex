@@ -20,6 +20,7 @@ defmodule ModusWeb.WorldChannel do
     Ticker.subscribe()
     Phoenix.PubSub.subscribe(Modus.PubSub, "world_events")
     Phoenix.PubSub.subscribe(Modus.PubSub, "modus:seasons")
+    Phoenix.PubSub.subscribe(Modus.PubSub, "modus:rules")
     state = build_full_state()
     {:ok, state, assign(socket, :selected_agent_id, nil)}
   end
@@ -449,6 +450,41 @@ defmodule ModusWeb.WorldChannel do
     {:reply, {:ok, %{events: events}}, socket}
   end
 
+  # ── Rules Engine ────────────────────────────────────────────
+
+  def handle_in("get_rules", _payload, socket) do
+    rules = Modus.Simulation.RulesEngine.serialize()
+    presets = Modus.Simulation.RulesEngine.preset_names()
+    {:reply, {:ok, %{rules: rules, presets: presets}}, socket}
+  end
+
+  def handle_in("update_rules", %{"rules" => rules_params}, socket) do
+    changes = %{}
+    changes = if rules_params["time_speed"], do: Map.put(changes, :time_speed, ensure_float(rules_params["time_speed"])), else: changes
+    changes = if rules_params["resource_abundance"], do: Map.put(changes, :resource_abundance, String.to_existing_atom(rules_params["resource_abundance"])), else: changes
+    changes = if rules_params["danger_level"], do: Map.put(changes, :danger_level, String.to_existing_atom(rules_params["danger_level"])), else: changes
+    changes = if rules_params["social_tendency"], do: Map.put(changes, :social_tendency, ensure_float(rules_params["social_tendency"])), else: changes
+    changes = if rules_params["birth_rate"], do: Map.put(changes, :birth_rate, ensure_float(rules_params["birth_rate"])), else: changes
+    changes = if rules_params["building_speed"], do: Map.put(changes, :building_speed, ensure_float(rules_params["building_speed"])), else: changes
+    changes = if rules_params["mutation_rate"], do: Map.put(changes, :mutation_rate, ensure_float(rules_params["mutation_rate"])), else: changes
+
+    Modus.Simulation.RulesEngine.update(changes)
+    rules = Modus.Simulation.RulesEngine.serialize()
+    broadcast!(socket, "rules_changed", %{rules: rules})
+    {:reply, {:ok, %{rules: rules}}, socket}
+  end
+
+  def handle_in("apply_preset", %{"preset" => preset_name}, socket) do
+    case Modus.Simulation.RulesEngine.apply_preset(preset_name) do
+      {:ok, _rules} ->
+        rules = Modus.Simulation.RulesEngine.serialize()
+        broadcast!(socket, "rules_changed", %{rules: rules})
+        {:reply, {:ok, %{rules: rules}}, socket}
+      {:error, :unknown_preset} ->
+        {:reply, {:error, %{reason: "unknown_preset"}}, socket}
+    end
+  end
+
   defp find_walkable({max_x, max_y}, table) do
     x = :rand.uniform(max_x) - 1
     y = :rand.uniform(max_y) - 1
@@ -519,7 +555,8 @@ defmodule ModusWeb.WorldChannel do
       ambient_color: Map.get(env, :ambient_color, 0x000000),
       ambient_alpha: Float.round(ensure_float(Map.get(env, :ambient_alpha, 0.0)), 4),
       day_phase: to_string(Map.get(env, :day_phase, :day)),
-      season: seasons
+      season: seasons,
+      rules: try do Modus.Simulation.RulesEngine.serialize() catch _, _ -> %{} end
     }
 
     push(socket, "delta", delta)
@@ -560,6 +597,11 @@ defmodule ModusWeb.WorldChannel do
       terrain_shift: config.terrain_shift |> Enum.map(fn {k, v} -> {Atom.to_string(k), v} end) |> Enum.into(%{}),
       growth_modifier: config.growth_modifier
     })
+    {:noreply, socket}
+  end
+
+  def handle_info({:rules_changed, _rules}, socket) do
+    push(socket, "rules_changed", %{rules: Modus.Simulation.RulesEngine.serialize()})
     {:noreply, socket}
   end
 
@@ -620,6 +662,8 @@ defmodule ModusWeb.WorldChannel do
       _, _ -> %{season: "spring", season_name: "Spring", emoji: "🌸", year: 1, progress: 0.0, tint: 0x88DD88, tint_alpha: 0.08, terrain_shift: %{}, growth_modifier: 1.0}
     end
 
+    rules = try do Modus.Simulation.RulesEngine.serialize() catch _, _ -> %{} end
+
     %{
       grid: grid,
       agents: agents,
@@ -636,7 +680,8 @@ defmodule ModusWeb.WorldChannel do
       ambient_color: Map.get(env, :ambient_color, 0x000000),
       ambient_alpha: Float.round(ensure_float(Map.get(env, :ambient_alpha, 0.0)), 4),
       day_phase: to_string(Map.get(env, :day_phase, :day)),
-      season: seasons
+      season: seasons,
+      rules: rules
     }
   end
 

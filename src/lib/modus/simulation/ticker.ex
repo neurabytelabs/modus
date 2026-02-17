@@ -175,5 +175,14 @@ defmodule Modus.Simulation.Ticker do
 
   # ── Internal ────────────────────────────────────────────────
 
-  defp schedule_tick(ms), do: Process.send_after(self(), :tick, ms)
+  defp schedule_tick(ms) do
+    # Apply RulesEngine time_speed multiplier (higher = faster = shorter interval)
+    time_speed = try do
+      Modus.Simulation.RulesEngine.time_speed()
+    catch
+      _, _ -> 1.0
+    end
+    adjusted_ms = max(10, round(ms / time_speed))
+    Process.send_after(self(), :tick, adjusted_ms)
+  end
 end

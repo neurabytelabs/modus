@@ -6,6 +6,42 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v2.0.0 · **Infinitum** — _Custom World Rules Engine_
+_17 Şubat 2026_
+
+### ✨ Features
+- **Custom World Rules Engine** — 🎛️ ETS-backed configurable world parameters that affect simulation behavior in real-time
+  - ⏱️ **Time Speed** (0.5x–3.0x) — Controls tick interval; higher = faster simulation
+  - 🌾 **Resource Abundance** (Scarce/Normal/Abundant) — Affects resource availability
+  - ⚠️ **Danger Level** (Peaceful/Moderate/Harsh/Extreme) — World hostility
+  - 💬 **Social Tendency** (0.0–1.0) — How social agents are
+  - 👶 **Birth Rate** (0.0–2.0x) — Population growth multiplier
+  - 🏗️ **Building Speed** (0.5–3.0x) — Construction rate multiplier
+  - 🧬 **Mutation Rate** (0.0–1.0) — Personality variance on birth (children inherit + mutate parent traits)
+- **5 Presets** — Quick configuration bundles:
+  - 🕊️ Peaceful Paradise — Abundant resources, high birth rate, fast building
+  - 💀 Harsh Survival — Scarce resources, extreme danger, low birth rate
+  - 🌪️ Chaotic — Fast time, high mutation, harsh environment
+  - ✨ Utopia — Abundant, peaceful, highly social, zero mutation
+  - 🧪 Evolution Lab — Max speed, high birth & mutation rates
+- **Rules Panel** — Modal with sliders/dropdowns, accessible via 🎛️ top bar button
+- **Preset Display** — Active preset name shown in top bar (amber badge)
+- **Instant Apply** — All rule changes take effect immediately, no restart needed
+- **Save with World** — Rules state included in world save/load via WorldChannel
+
+### 🏗️ Architecture
+- New module: `Modus.Simulation.RulesEngine` — ETS table `:modus_rules_engine`, PubSub broadcast on change
+- `Ticker` — `schedule_tick/1` applies `time_speed` multiplier to tick interval
+- `Lifecycle` — Birth check interval scaled by `birth_rate`; children inherit parent personality with `mutation_rate` variance via `Agent.new_custom/5`
+- `WorldChannel` — `get_rules`, `update_rules`, `apply_preset` handlers; rules in full_state + delta; PubSub subscription for `modus:rules`
+- `UniverseLive` — Rules modal UI, preset buttons, slider controls, top bar preset badge
+- `Application` — `RulesEngine.init()` called at startup
+
+### 🧪 Tests
+- 7 new tests: init defaults, update, apply_preset, unknown preset, accessors, serialize, preset_names
+
+---
+
 ## v1.9.1 · **Tempus** — _Seasons & Day/Night_
 _17 Şubat 2026_
 
