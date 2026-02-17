@@ -2,6 +2,7 @@ defmodule Modus.Mind.ReasoningEngine do
   @moduledoc "LLM-driven reasoning cycle — triggered when agents experience persistent sadness."
 
   alias Modus.Mind.AffectMemory
+  alias Modus.Mind.EpisodicMemory
   require Logger
 
   defp ensure_float(val) when is_float(val), do: val
@@ -25,7 +26,9 @@ defmodule Modus.Mind.ReasoningEngine do
   end
 
   def reason(agent) do
-    memories = AffectMemory.memories_for_llm_context(agent.id, 5)
+    affect_memories = AffectMemory.memories_for_llm_context(agent.id, 5)
+    episodic_memories = EpisodicMemory.recall_for_context(agent.id, 5)
+    memories = affect_memories ++ episodic_memories
     prompt = build_reasoning_prompt(agent, memories)
 
     # Try LLM non-blocking, fallback if unavailable
@@ -55,7 +58,7 @@ defmodule Modus.Mind.ReasoningEngine do
     Current state: feeling #{agent.affect_state}, conatus energy #{Float.round(ensure_float(agent.conatus_energy), 2)}.
     Position: #{inspect(agent.position)}
 
-    Recent emotional memories:
+    Recent memories (emotional & episodic):
     #{memory_lines}
 
     You have been sad for a while. What should you do to feel better?
