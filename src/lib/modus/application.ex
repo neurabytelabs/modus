@@ -31,6 +31,7 @@ defmodule Modus.Application do
       Modus.Simulation.WorldSystems,
       Modus.Simulation.StoryEngine,
       Modus.Simulation.WorldEvents,
+      Modus.Simulation.Seasons,
       ModusWeb.Endpoint
     ]
 

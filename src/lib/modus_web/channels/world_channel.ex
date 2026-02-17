@@ -19,6 +19,7 @@ defmodule ModusWeb.WorldChannel do
   def join("world:lobby", _payload, socket) do
     Ticker.subscribe()
     Phoenix.PubSub.subscribe(Modus.PubSub, "world_events")
+    Phoenix.PubSub.subscribe(Modus.PubSub, "modus:seasons")
     state = build_full_state()
     {:ok, state, assign(socket, :selected_agent_id, nil)}
   end
@@ -500,6 +501,12 @@ defmodule ModusWeb.WorldChannel do
       _, _ -> []
     end
 
+    seasons = try do
+      Modus.Simulation.Seasons.serialize()
+    catch
+      _, _ -> %{season: "spring", season_name: "Spring", emoji: "🌸", year: 1, progress: 0.0, tint: 0x88DD88, tint_alpha: 0.08, terrain_shift: %{}, growth_modifier: 1.0}
+    end
+
     delta = %{
       tick: tick_number,
       agent_count: length(Enum.filter(agents, & &1.alive)),
@@ -508,7 +515,11 @@ defmodule ModusWeb.WorldChannel do
       neighborhoods: neighborhoods,
       world_events: world_events,
       time_of_day: to_string(env.time_of_day),
-      cycle_progress: Float.round(ensure_float(env.cycle_progress), 4)
+      cycle_progress: Float.round(ensure_float(env.cycle_progress), 4),
+      ambient_color: Map.get(env, :ambient_color, 0x000000),
+      ambient_alpha: Float.round(ensure_float(Map.get(env, :ambient_alpha, 0.0)), 4),
+      day_phase: to_string(Map.get(env, :day_phase, :day)),
+      season: seasons
     }
 
     push(socket, "delta", delta)
@@ -536,6 +547,19 @@ defmodule ModusWeb.WorldChannel do
 
   def handle_info({:event_ended, event_data}, socket) do
     push(socket, "world_event_ended", event_data)
+    {:noreply, socket}
+  end
+
+  def handle_info({:season_change, season, config}, socket) do
+    push(socket, "season_change", %{
+      season: to_string(season),
+      season_name: config.name,
+      emoji: config.emoji,
+      tint: config.tint,
+      tint_alpha: config.tint_alpha,
+      terrain_shift: config.terrain_shift |> Enum.map(fn {k, v} -> {Atom.to_string(k), v} end) |> Enum.into(%{}),
+      growth_modifier: config.growth_modifier
+    })
     {:noreply, socket}
   end
 
@@ -590,6 +614,12 @@ defmodule ModusWeb.WorldChannel do
       _, _ -> []
     end
 
+    seasons = try do
+      Modus.Simulation.Seasons.serialize()
+    catch
+      _, _ -> %{season: "spring", season_name: "Spring", emoji: "🌸", year: 1, progress: 0.0, tint: 0x88DD88, tint_alpha: 0.08, terrain_shift: %{}, growth_modifier: 1.0}
+    end
+
     %{
       grid: grid,
       agents: agents,
@@ -602,7 +632,11 @@ defmodule ModusWeb.WorldChannel do
       grid_width: gw,
       grid_height: gh,
       time_of_day: to_string(env.time_of_day),
-      cycle_progress: Float.round(ensure_float(env.cycle_progress), 4)
+      cycle_progress: Float.round(ensure_float(env.cycle_progress), 4),
+      ambient_color: Map.get(env, :ambient_color, 0x000000),
+      ambient_alpha: Float.round(ensure_float(Map.get(env, :ambient_alpha, 0.0)), 4),
+      day_phase: to_string(Map.get(env, :day_phase, :day)),
+      season: seasons
     }
   end
 

@@ -82,6 +82,8 @@ Hooks.WorldCanvas = {
           if (state.world_events) this.renderer.updateWorldEvents(state.world_events)
           // Environment
           if (state.time_of_day) this.renderer.updateEnvironment(state)
+          // Seasons
+          if (state.season) this.renderer.updateSeason(state.season)
         }
         if (state.agents) this.lastAgents = state.agents
         this.pushEvent("world_state", {
@@ -108,12 +110,18 @@ Hooks.WorldCanvas = {
         if (this.rendererReady && delta.cycle_progress != null) {
           this.renderer.updateEnvironment(delta)
         }
+        // Season update from delta
+        if (this.rendererReady && delta.season) {
+          this.renderer.updateSeason(delta.season)
+        }
         if (delta.agents) this.lastAgents = delta.agents
         if (delta.tick != null) {
           this.pushEvent("tick_update", {
             tick: delta.tick,
             agent_count: delta.agent_count || 0,
             time_of_day: delta.time_of_day || "day",
+            day_phase: delta.day_phase || "day",
+            season: delta.season || null,
           })
         }
 
@@ -329,6 +337,17 @@ Hooks.WorldCanvas = {
         if (this.rendererReady && this.renderer) {
           this.renderer.removeWorldEvent(data.id)
         }
+      }
+      this.worldSocket.onSeasonChange = (data) => {
+        // Update renderer season
+        if (this.rendererReady && this.renderer) {
+          this.renderer.updateSeason(data)
+        }
+        // Show toast
+        this.pushEvent("season_change_toast", {
+          emoji: data.emoji,
+          season_name: data.season_name,
+        })
       }
     }
   },

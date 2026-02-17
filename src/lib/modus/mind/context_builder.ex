@@ -3,6 +3,7 @@ defmodule Modus.Mind.ContextBuilder do
 
   alias Modus.Mind.{Perception, Cerebro.SocialInsight}
   alias Modus.Persistence.AgentMemory
+  alias Modus.Simulation.Seasons
 
   defp ensure_float(val) when is_float(val), do: val
   defp ensure_float(val) when is_integer(val), do: val / 1
@@ -25,6 +26,8 @@ defmodule Modus.Mind.ContextBuilder do
 
     #{nearby_context(perception.nearby_agents)}
     #{social}
+
+    #{season_context()}
 
     #{memory_context(agent.id)}
 
@@ -187,6 +190,31 @@ defmodule Modus.Mind.ContextBuilder do
         "There's tension between them — be guarded, maybe sarcastic."
       true ->
         "They don't know each other well — be curious but cautious, feel each other out."
+    end
+  end
+
+  defp season_context do
+    try do
+      state = Seasons.get_state()
+      config = state.config
+      season_name = config.name
+      tod = try do
+        Modus.Simulation.Environment.time_of_day()
+      catch
+        _, _ -> :day
+      end
+      time_str = if tod == :night, do: "night", else: "daytime"
+
+      "It's #{season_name} (#{time_str}). " <>
+        case state.season do
+          :spring -> "The world is blooming — fresh green everywhere, new growth."
+          :summer -> "It's hot and bright — the sun beats down, energy drains faster."
+          :autumn -> "Leaves are falling, the air is crisp. Harvest time."
+          :winter -> "It's cold and barren — resources are scarce, survival is harder."
+          _ -> ""
+        end
+    catch
+      _, _ -> ""
     end
   end
 

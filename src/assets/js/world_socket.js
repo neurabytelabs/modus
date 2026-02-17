@@ -18,6 +18,7 @@ export default class WorldSocket {
     this.onResourcePlaced = opts.onResourcePlaced || (() => {})
     this.onWorldEvent = opts.onWorldEvent || (() => {})
     this.onWorldEventEnded = opts.onWorldEventEnded || (() => {})
+    this.onSeasonChange = opts.onSeasonChange || (() => {})
     this.channel = null
     this.socket = null
   }
@@ -68,6 +69,10 @@ export default class WorldSocket {
 
     this.channel.on("world_event_ended", (payload) => {
       this.onWorldEventEnded(payload)
+    })
+
+    this.channel.on("season_change", (payload) => {
+      this.onSeasonChange(payload)
     })
 
     this.channel

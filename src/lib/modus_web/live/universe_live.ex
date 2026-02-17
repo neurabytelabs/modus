@@ -65,6 +65,11 @@ defmodule ModusWeb.UniverseLive do
        save_load_status: nil,
        # UI
        mind_view_active: false,
+       # Seasons
+       season_name: "Spring",
+       season_emoji: "🌸",
+       season_year: 1,
+       day_phase: "day",
        # Deus — God Mode & Cinematic Camera
        god_mode: false,
        cinematic_mode: false,
@@ -334,14 +339,27 @@ defmodule ModusWeb.UniverseLive do
     eco = try do Modus.Simulation.Economy.stats() catch _, _ -> %{trades: 0} end
     life = try do Modus.Simulation.Lifecycle.stats() catch _, _ -> %{births: 0, deaths: 0} end
 
+    season_data = params["season"]
+    season_assigns = if season_data do
+      [
+        season_name: season_data["season_name"] || "Spring",
+        season_emoji: season_data["emoji"] || "🌸",
+        season_year: season_data["year"] || 1,
+        day_phase: params["day_phase"] || "day"
+      ]
+    else
+      []
+    end
+
     {:noreply,
      assign(socket,
-       tick: params["tick"] || socket.assigns.tick,
-       agent_count: params["agent_count"] || socket.assigns.agent_count,
-       time_of_day: params["time_of_day"] || socket.assigns.time_of_day,
-       trades_count: eco.trades,
-       births_count: life.births,
-       deaths_count: life.deaths
+       [{:tick, params["tick"] || socket.assigns.tick},
+        {:agent_count, params["agent_count"] || socket.assigns.agent_count},
+        {:time_of_day, params["time_of_day"] || socket.assigns.time_of_day},
+        {:trades_count, eco.trades},
+        {:births_count, life.births},
+        {:deaths_count, life.deaths}
+        | season_assigns]
      )}
   end
 
@@ -754,6 +772,18 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, toasts: toasts)}
   end
 
+  def handle_event("season_change_toast", %{"emoji" => emoji, "season_name" => name}, socket) do
+    toast = %{
+      id: System.unique_integer([:positive]) |> to_string(),
+      emoji: emoji,
+      text: "#{name} has arrived!",
+      tick: socket.assigns.tick
+    }
+    toasts = Enum.take([toast | socket.assigns.toasts], 5)
+    Process.send_after(self(), {:dismiss_toast, toast.id}, 10_000)
+    {:noreply, assign(socket, toasts: toasts, season_name: name, season_emoji: emoji)}
+  end
+
   # ── PubSub Events ───────────────────────────────────────────
 
   @impl true
@@ -1117,6 +1147,12 @@ defmodule ModusWeb.UniverseLive do
         <div class="flex items-center gap-3 md:gap-6">
           <%!-- Stats --%>
           <div class="flex items-center gap-3 md:gap-4 text-xs text-slate-500">
+            <%!-- Season indicator --%>
+            <div class="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/50">
+              <span class="text-sm"><%= @season_emoji %></span>
+              <span class="text-slate-300 font-medium text-[10px] uppercase tracking-wider"><%= @season_name %></span>
+              <span class="text-slate-600 text-[9px]">Y<%= @season_year %></span>
+            </div>
             <div class="flex items-center gap-1.5">
               <span class="text-sm"><%= if @time_of_day == "night", do: "🌙", else: "☀️" %></span>
               <span class="text-slate-600 hidden sm:inline">TICK</span>

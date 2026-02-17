@@ -1195,6 +1195,10 @@ video {
   border-color: rgb(255 255 255 / 0.05);
 }
 
+.border-slate-700\/50 {
+  border-color: rgb(51 65 85 / 0.5);
+}
+
 .border-t-purple-500 {
   --tw-border-opacity: 1;
   border-top-color: rgb(168 85 247 / var(--tw-border-opacity, 1));
@@ -1335,6 +1339,10 @@ video {
 .bg-yellow-500 {
   --tw-bg-opacity: 1;
   background-color: rgb(234 179 8 / var(--tw-bg-opacity, 1));
+}
+
+.bg-slate-800\/60 {
+  background-color: rgb(30 41 59 / 0.6);
 }
 
 .bg-gradient-to-r {

@@ -71,6 +71,14 @@ export default class Renderer {
     // Mind View toggle
     this.mindViewActive = false
 
+    // Seasons
+    this.currentSeason = null // { season, terrain_shift, tint, tint_alpha }
+    this.seasonTintOverlay = null
+
+    // Day/night ambient
+    this.ambientColor = 0x000000
+    this.ambientAlpha = 0.0
+
     // Mini-map
     this.minimapContainer = null
     this.minimapBg = null
@@ -230,7 +238,8 @@ export default class Renderer {
     for (let x = minTX; x <= maxTX; x++) {
       for (let y = minTY; y <= maxTY; y++) {
         const terrain = this._terrainMap.get(`${x},${y}`) || "grass"
-        const color = TERRAIN_COLORS[terrain] || 0x333333
+        const seasonShift = this.currentSeason?.terrain_shift
+        const color = (seasonShift && seasonShift[terrain]) || TERRAIN_COLORS[terrain] || 0x333333
         gfx.rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
         gfx.fill(color)
       }
@@ -558,21 +567,45 @@ export default class Renderer {
     if (data.cycle_progress != null) this.cycleProgress = data.cycle_progress
     if (data.time_of_day) this.timeOfDay = data.time_of_day
 
-    // Update night overlay alpha
+    // Use server-provided ambient color/alpha for day/night overlay
+    const ambientColor = data.ambient_color != null ? data.ambient_color : 0x0a1030
+    const ambientAlpha = data.ambient_alpha != null ? data.ambient_alpha : 0.0
+
     if (this.nightOverlay) {
-      const p = this.cycleProgress
-      // 0-0.5 = day (alpha 0), 0.5-1.0 = night (ramp up to 0.5 then down)
-      let nightAlpha = 0
-      if (p >= 0.5) {
-        const nightProgress = (p - 0.5) * 2 // 0 to 1 within night
-        nightAlpha = nightProgress < 0.5
-          ? nightProgress * 2 * 0.5   // ramp up to 0.5
-          : (1 - nightProgress) * 2 * 0.5  // ramp down
-        nightAlpha = Math.max(0, Math.min(0.5, nightAlpha))
-      }
       this.nightOverlay.clear()
       this.nightOverlay.rect(0, 0, GRID_W * TILE_SIZE, GRID_H * TILE_SIZE)
-      this.nightOverlay.fill({ color: 0x0a1030, alpha: nightAlpha })
+      this.nightOverlay.fill({ color: ambientColor, alpha: ambientAlpha })
+    }
+  }
+
+  // ── Seasons ──────────────────────────────────────────────
+
+  updateSeason(seasonData) {
+    if (!seasonData) return
+    const oldSeason = this.currentSeason?.season
+    this.currentSeason = seasonData
+
+    // Create season tint overlay if not exists
+    if (!this.seasonTintOverlay && this.worldContainer) {
+      this.seasonTintOverlay = new Graphics()
+      // Insert above terrain, below night overlay
+      const idx = this.nightOverlay
+        ? this.worldContainer.getChildIndex(this.nightOverlay)
+        : this.worldContainer.children.length
+      this.worldContainer.addChildAt(this.seasonTintOverlay, idx)
+    }
+
+    // Update season tint
+    if (this.seasonTintOverlay) {
+      this.seasonTintOverlay.clear()
+      this.seasonTintOverlay.rect(0, 0, GRID_W * TILE_SIZE, GRID_H * TILE_SIZE)
+      this.seasonTintOverlay.fill({ color: seasonData.tint || 0x000000, alpha: seasonData.tint_alpha || 0 })
+    }
+
+    // Re-render terrain with new season colors if season changed
+    if (oldSeason !== seasonData.season && this._terrainMap) {
+      this._renderVisibleChunks()
+      this._drawMinimapTerrain()
     }
   }
 

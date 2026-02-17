@@ -6,6 +6,35 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v1.9.1 · **Tempus** — _Seasons & Day/Night_
+_17 Şubat 2026_
+
+### ✨ Features
+- **Four Seasons Cycle** — Spring→Summer→Autumn→Winter, ~1000 ticks each (full year = 4000 ticks)
+  - 🌸 Spring: +50% growth, green tint, joy boost
+  - ☀️ Summer: agents tire faster (+30% hunger/rest drain), gold tint
+  - 🍂 Autumn: harvest season, orange tint, slight melancholy
+  - ❄️ Winter: scarce resources (+50% hunger drain), blue-white tint, survival mode
+- **Season Indicator** — Top bar shows current season emoji + name + year counter (Y1, Y2...)
+- **Terrain Color Shifts** — Flat tile colors change per season (grass goes green→green→gold→frosty white, etc.)
+- **Season Tint Overlay** — Subtle flat 2D color overlay per season (no 3D effects)
+- **Day/Night Ambient Phases** — 5 phases: dawn (amber), day (bright), dusk (purple), night (dark blue), pre-dawn
+  - Server-driven ambient color + alpha for smooth transitions
+- **Season Change Toast** — "🌸 Spring has arrived!" notification on season transitions
+- **Season Story Events** — Timeline narrative entries with Spinoza-flavored prose for each season change
+- **Agents Reference Seasons** — LLM context builder injects current season + time of day into agent prompts
+
+### 🏗️ Architecture
+- `Seasons` — New GenServer: season lifecycle, PubSub broadcast, serialization for client
+- `Environment` — Enhanced with 5 day phases + server-computed ambient color/alpha
+- `ContextBuilder` — `season_context/0` injects season + time info into agent chat prompts
+- `StoryEngine` — `:season_change` narrative generation
+- `WorldChannel` — Season data in delta + full_state, season_change push event
+- `Renderer` — Season tint overlay layer, terrain_shift color map, ambient color from server
+- `WorldSocket` — `onSeasonChange` callback for live season transitions
+
+---
+
 ## v1.9.0 · **Tempus** — _World Events Engine_
 _17 Şubat 2026_
 

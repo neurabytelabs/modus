@@ -3,12 +3,30 @@ defmodule Modus.Simulation.Environment do
   Environment — Day/night cycle and world environment state.
 
   500 ticks per full cycle: ticks 0-249 = day, ticks 250-499 = night.
+  Now includes season-aware ambient colors for the day/night transitions.
+
+  Day phases (by cycle_progress):
+    0.00-0.15 dawn (amber)
+    0.15-0.45 day (bright)
+    0.45-0.55 dusk (purple)
+    0.55-0.95 night (dark blue)
+    0.95-1.00 pre-dawn (deep blue → amber)
+
   Broadcasts changes on "modus:environment" topic.
   """
   use GenServer
 
   @cycle_length 500
   @day_length 250
+
+  # Ambient overlay colors for day phases
+  @phase_colors %{
+    dawn:     %{color: 0xDD8833, alpha: 0.10},
+    day:      %{color: 0xFFFFCC, alpha: 0.0},
+    dusk:     %{color: 0x8844AA, alpha: 0.12},
+    night:    %{color: 0x0A1030, alpha: 0.40},
+    predawn:  %{color: 0x1A1840, alpha: 0.30}
+  }
 
   defstruct cycle_tick: 0, time_of_day: :day
 
@@ -48,10 +66,17 @@ defmodule Modus.Simulation.Environment do
 
   @impl true
   def handle_call(:get_state, _from, state) do
+    progress = state.cycle_tick / @cycle_length
+    phase = day_phase(progress)
+    phase_config = Map.fetch!(@phase_colors, phase)
+
     {:reply, %{
       time_of_day: state.time_of_day,
       cycle_tick: state.cycle_tick,
-      cycle_progress: state.cycle_tick / @cycle_length
+      cycle_progress: progress,
+      day_phase: phase,
+      ambient_color: phase_config.color,
+      ambient_alpha: phase_config.alpha
     }, state}
   end
 
@@ -75,11 +100,18 @@ defmodule Modus.Simulation.Environment do
 
     new_state = %{state | cycle_tick: new_tick, time_of_day: new_tod}
 
+    progress = new_tick / @cycle_length
+    phase = day_phase(progress)
+    phase_config = Map.fetch!(@phase_colors, phase)
+
     # Broadcast on every tick (for smooth transitions)
     Phoenix.PubSub.broadcast(Modus.PubSub, "modus:environment", {:environment_update, %{
       time_of_day: new_tod,
       cycle_tick: new_tick,
-      cycle_progress: new_tick / @cycle_length
+      cycle_progress: progress,
+      day_phase: phase,
+      ambient_color: phase_config.color,
+      ambient_alpha: phase_config.alpha
     }})
 
     # Log transition
@@ -91,4 +123,12 @@ defmodule Modus.Simulation.Environment do
   end
 
   def handle_info(_msg, state), do: {:noreply, state}
+
+  # ── Helpers ─────────────────────────────────────────────────
+
+  defp day_phase(progress) when progress < 0.15, do: :dawn
+  defp day_phase(progress) when progress < 0.45, do: :day
+  defp day_phase(progress) when progress < 0.55, do: :dusk
+  defp day_phase(progress) when progress < 0.95, do: :night
+  defp day_phase(_), do: :predawn
 end

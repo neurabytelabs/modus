@@ -197,6 +197,18 @@ defmodule Modus.Simulation.StoryEngine do
         size = event.data[:size] || 3
         "#{hood_name} emerged — #{size} buildings clustered together, forming a neighborhood. Community takes root."
 
+      :season_change ->
+        season = event.data[:season] || :spring
+        emoji = event.data[:emoji] || "🌸"
+        year = event.data[:year] || 1
+        case season do
+          :spring -> "#{emoji} Year #{year} — Spring arrives. The world awakens, green shoots push through the soil. Growth accelerates."
+          :summer -> "#{emoji} Summer blazes across the land. The sun hangs high, agents tire under its weight."
+          :autumn -> "#{emoji} Autumn descends. Leaves turn gold and crimson. The harvest season — abundance before the cold."
+          :winter -> "#{emoji} Winter grips the world. Snow and frost, scarce resources, survival at its hardest."
+          _ -> "#{emoji} The seasons turn — #{event.data[:name]} begins."
+        end
+
       :world_event ->
         evt_type = event.data[:type] || :unknown
         severity = event.data[:severity] || 1
@@ -232,7 +244,7 @@ defmodule Modus.Simulation.StoryEngine do
   end
 
   defp is_notable?(event) do
-    event.type in [:birth, :death, :disaster, :migration, :conflict, :trade, :world_event]
+    event.type in [:birth, :death, :disaster, :migration, :conflict, :trade, :world_event, :season_change]
   end
 
   defp event_emoji(:birth), do: "👶"
@@ -246,6 +258,7 @@ defmodule Modus.Simulation.StoryEngine do
   defp event_emoji(:trade), do: "🤝"
   defp event_emoji(:building_upgrade), do: "⬆️"
   defp event_emoji(:neighborhood_formed), do: "🏘️"
+  defp event_emoji(:season_change), do: "🍃"
   defp event_emoji(:world_event), do: "🌍"
   defp event_emoji(_), do: "⚡"
 
