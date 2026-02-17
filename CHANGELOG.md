@@ -6,6 +6,29 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v1.7.1 · **Nexus** — _Universe Templates Gallery_
+_17 Şubat 2026_
+
+### ✨ Features
+- **11 World Templates** — Expanded from 4 to 11: Village 🏘️, Island 🏝️, Desert 🏜️, Space 🚀, Underwater 🌊, Medieval 🏰, Cyberpunk 🌃, Jungle 🌴, Arctic ❄️, Volcanic 🌋, Cloud City ☁️
+- **Data-Driven Templates** — New `WorldTemplates` module defines terrain distribution, resource density, danger level, default occupations, wildlife types, and difficulty per template
+- **8×8 Terrain Preview** — Each template card shows a hand-crafted 8×8 color grid thumbnail (upgraded from 5×5)
+- **Difficulty Badge** — Easy/Medium/Hard/Extreme label with color coding on each card
+- **Scrollable Gallery** — 3-column responsive grid with scroll for 11+ templates
+- **Template API** — `WorldTemplates.all/0`, `get/1`, `get!/1`, `thumb_color/2`, `difficulty_badge/1`
+
+### 🧠 Architecture
+- New `Modus.Simulation.WorldTemplates` module — single source of truth for all template data
+- Removed hardcoded `@templates` and `terrain_thumb_color/2` from LiveView
+- Dashboard thumbnails upgraded to 8×8 grid using `WorldTemplates.thumb_color/2`
+- Template cards now show preview grid + emoji + name + description + difficulty
+
+### 🧪 Files Modified
+- `world_templates.ex` — NEW: data-driven template definitions (11 templates)
+- `universe_live.ex` — Refactored to use WorldTemplates module, 8×8 previews, scrollable gallery
+
+---
+
 ## v1.7.0 · **Nexus** — _Multi-Universe Dashboard_
 _17 Şubat 2026_
 

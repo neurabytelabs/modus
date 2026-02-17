@@ -6,12 +6,7 @@ defmodule ModusWeb.UniverseLive do
   use ModusWeb, :live_view
   # JS alias available if needed
 
-  @templates [
-    %{id: "village", name: "Village", emoji: "🏘️", desc: "Peaceful plains with forests"},
-    %{id: "island", name: "Island", emoji: "🏝️", desc: "Surrounded by water, limited land"},
-    %{id: "desert", name: "Desert", emoji: "🏜️", desc: "Harsh terrain, scarce resources"},
-    %{id: "space", name: "Space", emoji: "🚀", desc: "Alien world, high danger"}
-  ]
+  alias Modus.Simulation.WorldTemplates
 
   @impl true
   def mount(_params, _session, socket) do
@@ -78,7 +73,7 @@ defmodule ModusWeb.UniverseLive do
        build_type: "terrain",
        mobile_panel: nil,
        event_feed: [],
-       templates: @templates,
+       templates: WorldTemplates.all(),
        trades_count: 0,
        births_count: 0,
        deaths_count: 0,
@@ -868,10 +863,9 @@ defmodule ModusWeb.UniverseLive do
               <div class="p-4">
                 <%!-- 5x5 Terrain Thumbnail --%>
                 <div class="flex justify-center mb-3">
-                  <div class="grid grid-cols-5 gap-px w-16 h-16 rounded-lg overflow-hidden border border-white/10">
-                    <%= for i <- 0..24 do %>
-                      <% color = terrain_thumb_color(world.template, i) %>
-                      <div class={"w-full h-full #{color}"} />
+                  <div class="grid grid-cols-8 gap-px w-16 h-16 rounded-lg overflow-hidden border border-white/10">
+                    <%= for i <- 0..63 do %>
+                      <div class={"w-full h-full #{WorldTemplates.thumb_color(world.template, i)}"} />
                     <% end %>
                   </div>
                 </div>
@@ -948,16 +942,25 @@ defmodule ModusWeb.UniverseLive do
         <%!-- Step 1: Template --%>
         <div class="mb-6">
           <h3 class="text-[10px] uppercase tracking-wider text-slate-500 mb-3">Choose a World Template</h3>
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[420px] overflow-y-auto pr-1">
             <%= for t <- @templates do %>
+              <% {diff_label, diff_color} = WorldTemplates.difficulty_badge(t) %>
               <button
                 phx-click="select_template"
                 phx-value-id={t.id}
-                class={"p-4 rounded-xl border text-left transition-all #{if @template == t.id, do: "border-purple-500 bg-purple-500/10 shadow-lg shadow-purple-500/10", else: "border-white/10 bg-white/5 hover:border-white/20"}"}
+                class={"p-3 rounded-xl border text-left transition-all #{if @template == t.id, do: "border-purple-500 bg-purple-500/10 shadow-lg shadow-purple-500/10", else: "border-white/10 bg-white/5 hover:border-white/20"}"}
               >
-                <div class="text-2xl mb-1"><%= t.emoji %></div>
-                <div class="font-bold text-sm"><%= t.name %></div>
-                <div class="text-[10px] text-slate-500 mt-0.5"><%= t.desc %></div>
+                <%!-- 8x8 Mini Terrain Preview --%>
+                <div class="flex justify-center mb-2">
+                  <div class="grid grid-cols-8 gap-px w-16 h-16 rounded-lg overflow-hidden border border-white/10">
+                    <%= for i <- 0..63 do %>
+                      <div class={"w-full h-full #{WorldTemplates.thumb_color(t.id, i)}"} />
+                    <% end %>
+                  </div>
+                </div>
+                <div class="text-lg text-center mb-0.5"><%= t.emoji %> <%= t.name %></div>
+                <div class="text-[10px] text-slate-500 text-center"><%= t.desc %></div>
+                <div class={"text-[9px] text-center mt-1 #{diff_color}"}><%= diff_label %></div>
               </button>
             <% end %>
           </div>
@@ -2117,24 +2120,7 @@ defmodule ModusWeb.UniverseLive do
   end
   defp conversation_events(_), do: []
 
-  # Deterministic 5x5 terrain color grid based on template type and cell index
-  defp terrain_thumb_color("village", i) when i in [0, 1, 5, 6], do: "bg-green-800"  # forest cluster
-  defp terrain_thumb_color("village", i) when i in [12, 17], do: "bg-amber-700"       # farm
-  defp terrain_thumb_color("village", _), do: "bg-green-600"                           # grass
-
-  defp terrain_thumb_color("island", i) when i in [0, 1, 4, 5, 9, 15, 19, 20, 21, 24], do: "bg-blue-600" # water border
-  defp terrain_thumb_color("island", i) when i in [7, 12, 17], do: "bg-green-800"      # forest
-  defp terrain_thumb_color("island", _), do: "bg-green-600"                             # land
-
-  defp terrain_thumb_color("desert", i) when i in [6, 12, 18], do: "bg-gray-500"       # mountain
-  defp terrain_thumb_color("desert", i) when i in [11], do: "bg-blue-500"              # oasis
-  defp terrain_thumb_color("desert", _), do: "bg-yellow-600"                            # sand
-
-  defp terrain_thumb_color("space", i) when i in [6, 12, 18], do: "bg-purple-800"      # alien terrain
-  defp terrain_thumb_color("space", i) when i in [3, 11, 23], do: "bg-cyan-700"        # crystal
-  defp terrain_thumb_color("space", _), do: "bg-gray-800"                               # void
-
-  defp terrain_thumb_color(_, i), do: terrain_thumb_color("village", i)                 # fallback
+  # Terrain thumbnail colors now served by WorldTemplates.thumb_color/2
 
   defp event_emoji("birth"), do: "👶"
   defp event_emoji("death"), do: "💀"

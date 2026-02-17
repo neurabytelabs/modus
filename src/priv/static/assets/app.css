@@ -830,6 +830,10 @@ video {
   max-height: 80vh;
 }
 
+.max-h-\[420px\] {
+  max-height: 420px;
+}
+
 .min-h-0 {
   min-height: 0px;
 }
@@ -966,6 +970,10 @@ video {
 
 .grid-cols-5 {
   grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.grid-cols-8 {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
 }
 
 .flex-col {
@@ -1461,6 +1469,10 @@ video {
   padding-top: 4rem;
 }
 
+.pr-1 {
+  padding-right: 0.25rem;
+}
+
 .text-left {
   text-align: left;
 }
@@ -1859,6 +1871,10 @@ video {
 
   .sm\:grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sm\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
