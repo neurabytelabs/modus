@@ -15,6 +15,7 @@ defmodule Modus.Application do
     Modus.Simulation.Lifecycle.init()
     Modus.Mind.Learning.init()
     Modus.Simulation.RulesEngine.init()
+    Modus.Mind.Goals.init()
 
     children = [
       Modus.Repo,

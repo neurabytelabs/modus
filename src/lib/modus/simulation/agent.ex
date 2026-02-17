@@ -38,7 +38,8 @@ defmodule Modus.Simulation.Agent do
     explore_ticks: 0,
     conversing_with: nil,
     group_id: nil,
-    inventory: %{}
+    inventory: %{},
+    goals_initialized: false
   ]
 
   @type t :: %__MODULE__{

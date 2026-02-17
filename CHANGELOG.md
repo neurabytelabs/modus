@@ -6,6 +6,36 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v2.0.1 · **Infinitum** — _Agent Goals_
+_17 Şubat 2026_
+
+### ✨ Features
+- **Agent Goals System** — 🎯 User-defined objectives that drive agent behavior and give purpose
+  - 🏠 **Build Home** — Agent strives to build a house or hut
+  - 🤝 **Make Friends** — Reach a target number of friendships
+  - 🗺️ **Explore Map** — Visit a percentage of the world
+  - 📦 **Gather Resources** — Accumulate a target resource amount
+  - ❄️ **Survive Winter** — Endure through a full winter season
+- **Goal Assignment UI** — "Add Goal" button in Agent Detail panel with dropdown selector
+- **Progress Bars** — Real-time progress tracking with purple bars (green on completion)
+- **Goal Rewards** — Completing a goal grants joy affect + conatus +0.1 + story event log
+- **Auto-Goals by Personality** — Agents auto-assign goals based on Big Five traits:
+  - High openness → Explore Map
+  - High extraversion → Make Friends
+  - High conscientiousness → Build Home
+  - High neuroticism → Gather Resources
+- **LLM Goal Awareness** — Agents naturally mention their goals in chat conversations
+- **Goal Management** — Add/remove goals via UI or WebSocket channel
+
+### 🔧 Technical
+- New module: `Modus.Mind.Goals` — ETS-backed goal storage with progress calculation
+- MindEngine integration: auto-assign on first tick, progress check every 50 ticks
+- ContextBuilder enrichment: active goals injected into LLM system prompts
+- WorldChannel: `add_goal` / `remove_goal` message handlers + goals in agent detail serialization
+- Goal completion triggers EventLog `:goal_completed` entries
+
+---
+
 ## v2.0.0 · **Infinitum** — _Custom World Rules Engine_
 _17 Şubat 2026_
 

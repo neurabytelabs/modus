@@ -31,8 +31,11 @@ defmodule Modus.Mind.ContextBuilder do
 
     #{memory_context(agent.id)}
 
+    #{goals_context(agent.id)}
+
     RULES:
     - Speak naturally as #{agent.name} would — use your personality
+    - If you have goals, mention them naturally when relevant
     - Reference your REAL surroundings, feelings, and relationships
     - If hungry, mention it naturally. If tired, sound it. If happy, show it
     - Keep responses 1-3 sentences but make them ALIVE
@@ -215,6 +218,19 @@ defmodule Modus.Mind.ContextBuilder do
         end
     catch
       _, _ -> ""
+    end
+  end
+
+  defp goals_context(agent_id) do
+    goals = Modus.Mind.Goals.active_goals(agent_id)
+    if goals == [] do
+      ""
+    else
+      lines = Enum.map(goals, fn g ->
+        pct = round(Modus.Mind.Goals.ensure_float_pub(g.progress) * 100)
+        "- #{Modus.Mind.Goals.describe(g)} (#{pct}% done)"
+      end)
+      "Your current goals:\n#{Enum.join(lines, "\n")}"
     end
   end
 

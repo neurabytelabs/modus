@@ -506,6 +506,20 @@ defmodule ModusWeb.WorldChannel do
     end
   end
 
+  def handle_in("add_goal", %{"agent_id" => agent_id, "type" => type_str} = payload, socket) do
+    type = String.to_existing_atom(type_str)
+    target = payload["target"]
+    goal = Modus.Mind.Goals.add_goal(agent_id, type, target)
+    {:reply, {:ok, %{goal: hd(Modus.Mind.Goals.serialize(agent_id) |> Enum.filter(&(&1.id == goal.id)))}}, socket}
+  rescue
+    _ -> {:reply, {:error, %{reason: "invalid_goal_type"}}, socket}
+  end
+
+  def handle_in("remove_goal", %{"agent_id" => agent_id, "goal_id" => goal_id}, socket) do
+    Modus.Mind.Goals.remove_goal(agent_id, goal_id)
+    {:reply, {:ok, %{}}, socket}
+  end
+
   # ── handle_info ─────────────────────────────────────────────
 
   @impl true
@@ -803,7 +817,8 @@ defmodule ModusWeb.WorldChannel do
         end,
       last_reasoning: state.last_reasoning,
       skills: Modus.Mind.Learning.to_map(state.id),
-      inventory: state.inventory || %{}
+      inventory: state.inventory || %{},
+      goals: Modus.Mind.Goals.serialize(state.id)
     }
   end
 

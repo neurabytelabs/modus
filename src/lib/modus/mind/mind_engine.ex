@@ -1,7 +1,7 @@
 defmodule Modus.Mind.MindEngine do
   @moduledoc "Orchestrates conatus + affect processing each tick"
 
-  alias Modus.Mind.{Conatus, Affect, AffectMemory, ReasoningEngine}
+  alias Modus.Mind.{Conatus, Affect, AffectMemory, ReasoningEngine, Goals}
 
   @max_history 20
 
@@ -72,7 +72,37 @@ defmodule Modus.Mind.MindEngine do
       conatus_history: conatus_history
     }
 
-    # 9. LLM reasoning every 100 ticks for persistently sad agents
+    # 9. Auto-assign goals on first tick
+    updated_agent = if not updated_agent.goals_initialized do
+      Goals.auto_assign(updated_agent.id, updated_agent.personality, tick)
+      %{updated_agent | goals_initialized: true}
+    else
+      updated_agent
+    end
+
+    # 10. Check goal progress every 50 ticks
+    updated_agent = if rem(tick, 50) == 0 do
+      {_updated_goals, completed} = Goals.check_progress(updated_agent.id, updated_agent, tick)
+
+      Enum.reduce(completed, updated_agent, fn goal, acc ->
+        # Reward: joy + conatus boost + event log
+        Modus.Simulation.EventLog.log(:goal_completed, tick, [acc.id], %{
+          name: acc.name,
+          goal: to_string(goal.type),
+          description: Goals.describe(goal)
+        })
+
+        %{acc |
+          conatus_energy: Conatus.clamp(acc.conatus_energy + 0.1),
+          affect_state: :joy,
+          affect_history: Enum.take([%{tick: tick, from: acc.affect_state, to: :joy, reason: "completed goal: #{Goals.describe(goal)}"} | acc.affect_history], @max_history)
+        }
+      end)
+    else
+      updated_agent
+    end
+
+    # 11. LLM reasoning every 100 ticks for persistently sad agents
     if rem(tick, 100) == 0 and ReasoningEngine.should_reason?(updated_agent) do
       # Fire reasoning async, apply result
       agent_ref = updated_agent

@@ -46,6 +46,7 @@ defmodule ModusWeb.UniverseLive do
        speed: 1,
        time_of_day: "day",
        selected_agent: nil,
+       show_add_goal: false,
        chat_open: false,
        chat_messages: [],
        chat_loading: false,
@@ -304,6 +305,28 @@ defmodule ModusWeb.UniverseLive do
      socket
      |> assign(selected_agent: nil, chat_open: false, chat_messages: [], mobile_panel: nil)
      |> push_event("deselect_agent", %{})}
+  end
+
+  def handle_event("toggle_add_goal", _params, socket) do
+    {:noreply, assign(socket, show_add_goal: !socket.assigns.show_add_goal)}
+  end
+
+  def handle_event("add_goal", %{"type" => type}, socket) do
+    agent_id = socket.assigns.selected_agent["id"]
+    if agent_id do
+      Modus.Mind.Goals.add_goal(agent_id, String.to_existing_atom(type))
+      {:noreply, assign(socket, show_add_goal: false)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("remove_goal", %{"goal-id" => goal_id}, socket) do
+    agent_id = socket.assigns.selected_agent["id"]
+    if agent_id do
+      Modus.Mind.Goals.remove_goal(agent_id, goal_id)
+    end
+    {:noreply, socket}
   end
 
   def handle_event("open_chat", _params, socket), do: {:noreply, assign(socket, chat_open: true)}
@@ -1895,6 +1918,47 @@ defmodule ModusWeb.UniverseLive do
                 </div>
               <% end %>
 
+              <%!-- Goals --%>
+              <div class="mb-4">
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-[10px] uppercase tracking-wider text-slate-600">🎯 Goals</h3>
+                  <button phx-click="toggle_add_goal" class="text-[10px] text-purple-400 hover:text-purple-300 transition-colors">+ Add</button>
+                </div>
+                <%= if @show_add_goal do %>
+                  <div class="mb-2 p-2 rounded bg-white/3 border border-purple-500/20 space-y-1.5">
+                    <%= for {type, label, emoji} <- [{"build_home", "Build a Home", "🏠"}, {"make_friends", "Make Friends", "🤝"}, {"explore_map", "Explore Map", "🗺️"}, {"gather_resources", "Gather Resources", "📦"}, {"survive_winter", "Survive Winter", "❄️"}] do %>
+                      <button phx-click="add_goal" phx-value-type={type} class="w-full text-left px-2 py-1 rounded text-[10px] text-slate-400 hover:bg-white/5 hover:text-slate-200 transition-colors">
+                        <%= emoji %> <%= label %>
+                      </button>
+                    <% end %>
+                  </div>
+                <% end %>
+                <%= if @selected_agent["goals"] && @selected_agent["goals"] != [] do %>
+                  <div class="space-y-2">
+                    <%= for goal <- @selected_agent["goals"] do %>
+                      <div class="p-2 rounded bg-white/3 border border-white/5">
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="text-[10px] text-slate-300">
+                            <%= goal_emoji(goal["type"]) %> <%= goal_label(goal["type"], goal["target"]) %>
+                          </span>
+                          <%= if goal["status"] == "completed" do %>
+                            <span class="text-[9px] text-green-400">✓ Done</span>
+                          <% else %>
+                            <button phx-click="remove_goal" phx-value-goal-id={goal["id"]} class="text-[9px] text-red-400/50 hover:text-red-400">✕</button>
+                          <% end %>
+                        </div>
+                        <div class="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                          <div class={"h-full rounded-full transition-all duration-700 #{if goal["status"] == "completed", do: "bg-green-500", else: "bg-purple-500/70"}"} style={"width: #{(goal["progress"] || 0) * 100}%"} />
+                        </div>
+                        <span class="text-[9px] text-slate-600 tabular-nums"><%= round((goal["progress"] || 0) * 100) %>%</span>
+                      </div>
+                    <% end %>
+                  </div>
+                <% else %>
+                  <p class="text-xs text-slate-600 italic">No goals yet</p>
+                <% end %>
+              </div>
+
               <%!-- Chat Button --%>
               <button phx-click="open_chat" class="w-full ctrl-btn ctrl-btn-primary text-center">
                 💬 Chat with <%= @selected_agent["name"] %>
@@ -2418,6 +2482,20 @@ defmodule ModusWeb.UniverseLive do
     end
   end
   defp resolve_agent_name(_), do: "?"
+
+  defp goal_emoji("build_home"), do: "🏠"
+  defp goal_emoji("make_friends"), do: "🤝"
+  defp goal_emoji("explore_map"), do: "🗺️"
+  defp goal_emoji("gather_resources"), do: "📦"
+  defp goal_emoji("survive_winter"), do: "❄️"
+  defp goal_emoji(_), do: "🎯"
+
+  defp goal_label("build_home", _), do: "Build a Home"
+  defp goal_label("make_friends", t), do: "Make #{t || 3} Friends"
+  defp goal_label("explore_map", t), do: "Explore #{t || 30}% Map"
+  defp goal_label("gather_resources", t), do: "Gather #{t || 20} Resources"
+  defp goal_label("survive_winter", _), do: "Survive Winter"
+  defp goal_label(type, _), do: type
 
   defp rel_type_emoji("close_friend"), do: "💛"
   defp rel_type_emoji("friend"), do: "💚"
