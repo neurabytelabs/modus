@@ -1,93 +1,135 @@
-# MODUS v2.3.0 — Amor
+<p align="center">
+  <h1 align="center">MODUS</h1>
+  <p align="center"><strong>Create Worlds. Watch Them Live.</strong></p>
+  <p align="center">
+    An AI universe simulation where autonomous agents develop emotions, build civilizations, and write their own history.
+  </p>
+  <p align="center">
+    <img src="https://img.shields.io/badge/version-v2.3.0_Amor-purple" alt="Version" />
+    <img src="https://img.shields.io/badge/Elixir-1.17+-4B275F?logo=elixir" alt="Elixir" />
+    <img src="https://img.shields.io/badge/license-MIT-blue" alt="License" />
+    <img src="https://img.shields.io/badge/modules-62-green" alt="Modules" />
+    <img src="https://img.shields.io/badge/tests-130+-brightgreen" alt="Tests" />
+  </p>
+</p>
 
-> *"Deus sive Natura"* — God, or Nature — Spinoza
+<p align="center"><em>"Deus sive Natura" — God, or Nature</em> — Baruch Spinoza</p>
 
-**MODUS** is an AI-powered universe simulation platform built on Elixir/BEAM. Autonomous agents with emotions, memory, relationships, and free will live in a procedurally generated world — powered by Spinoza's philosophy of *conatus* (the drive to persist in being).
+---
 
-## ✨ Features
+<p align="center">[screenshot coming soon]</p>
 
-### 🧠 Mind Engine (Spinoza-inspired)
-- **Conatus Engine** — Each agent has a drive to persist, with energy that fluctuates based on experiences
-- **Affect System** — Joy, sadness, desire, fear — emotions that influence decision-making
-- **Affect Memory** — Agents remember emotional transitions and learn from them
-- **Perception** — Spatial awareness of nearby agents, resources, and terrain
-- **Reasoning Engine** — LLM-powered decision making with personality context
+---
 
-### 💬 Social Systems
-- **Agent Conversations** — Natural language dialogue between agents via LLM
-- **Social Network** — Friendship bonds with strength levels (acquaintance → close friend)
-- **Group Dynamics** — Agents form groups with leaders and collective behavior
-- **Social Insight** — Agents develop understanding of each other's personalities
+## Why MODUS?
 
-### 🌍 World Simulation
-- **Dynamic Environment** — Day/night cycles, biomes (forest, mountain, water, desert)
-- **Resource System** — Renewable resources that deplete and regrow
-- **Economy** — Basic trading/bartering between agents
-- **Lifecycle** — Birth (happy agents reproduce) and death, population balance
-- **World Seed** — Deterministic world generation from seeds
+MODUS is not a game. It's a universe creation platform built on Spinoza's philosophy. You design worlds with custom physics, paint terrain, and populate them with AI agents who have genuine emotions, personality, memory, and free will. They don't follow scripts — they form friendships, build homes, develop culture, survive winters, and write history you never planned. The simulation is their reality.
 
-### 📚 Agent Intelligence
-- **Behavior Trees** — Structured decision-making with fallback behaviors
-- **Learning System** — Skills (farming, building, social, exploration) that improve with practice
-- **Culture Transfer** — Newborn agents inherit skills from parents
-- **Long-term Memory** — SQLite-backed persistent memories across save/load
+Built on Elixir/BEAM (one process per agent mind), Phoenix LiveView, and Pixi.js 2D rendering. Every agent is a living concurrent process.
 
-### 📜 Storytelling
-- **Story Engine** — Automatic narrative generation from significant events
-- **Timeline View** — Chronological world history with emoji markers
-- **Chronicle Export** — Export world history as markdown
-- **Population Stats** — Visual population graphs and economy metrics
-- **Toast Notifications** — Real-time event alerts
+---
 
-### 👁️ God Mode (v1.5.0 Deus)
-- **God Mode Toggle** — See all agent internals: conatus, affects, memory, relationships at once
-- **Cinematic Camera** — Auto-follows interesting events (conversations, high affect changes, groups)
-- **Screenshot Export** — One-click PNG download of the current canvas state
-- **Landing Page** — Beautiful info page with feature overview before entering simulation
+## Features
 
-### 🎮 Interface
-- **Pixi.js 2D Renderer** — Smooth 60fps with sprite pooling and chunk-based rendering
-- **Mini-map** — Overview of the entire world with viewport indicator
-- **Tooltips** — Hover over agents for quick info
-- **Agent Detail Panel** — Click any agent to inspect their full mental state
-- **Chat with Agents** — Direct LLM-powered conversation with any agent
-- **Keyboard Shortcuts** — Space, 1/5/0, G, C, P, M, B, Esc
-- **Event Injection** — Trigger disasters, migrants, resource bonuses
-- **Save/Load** — Persist and restore world states via SQLite
-- **LLM Settings** — Switch between Ollama (local) and Antigravity gateway (multi-model)
+### 🌍 Create Your World
 
-## 🏗️ Architecture
+**World Builder** — Paint terrain tile by tile, place resources, design custom agents with Big Five personality sliders, and spawn wildlife. Your world, your rules.
 
-```
-28+ Elixir modules across:
-├── Mind        — Conatus, Affect, Perception, Reasoning, Learning
-├── Intelligence — LLM providers (Ollama, Antigravity, Gemini)
-├── Simulation  — World, Agent, Ticker, Economy, Lifecycle, Environment
-├── Protocol    — Intent parsing, Command execution, Bridge
-├── Persistence — SQLite-backed world and memory storage
-├── Cerebro     — Social Network, Groups, Spatial Memory
-└── Web         — Phoenix LiveView + Pixi.js renderer
-```
+**11 Universe Templates** — Start from curated worlds: Village 🏘️ · Island 🏝️ · Desert 🏜️ · Space 🚀 · Underwater 🌊 · Medieval 🏰 · Cyberpunk 🌃 · Jungle 🌴 · Arctic ❄️ · Volcanic 🌋 · Cloud City ☁️ — or roll 🎲 Random.
 
-## 🚀 Quick Start
+**Rules Engine** — Tune world physics in real-time:
+- ⏱️ Time speed (0.5x–3x) · 🌾 Resource abundance · ⚠️ Danger level · 💬 Social tendency · 👶 Birth rate · 🏗️ Build speed · 🧬 Mutation rate
+- **Presets:** 🕊️ Peaceful Paradise · 💀 Harsh Survival · 🌪️ Chaotic · ✨ Utopia · 🧪 Evolution Lab
 
-### Prerequisites
-- Docker & Docker Compose
+**Multi-Universe Dashboard** — Create, manage, and switch between multiple worlds. Sort by age, population, or creation date.
 
-### Run
+---
+
+### 🧠 Living Minds
+
+The **Spinoza Mind Engine** gives each agent a genuine inner life:
+
+- **Conatus** — The drive to persist in being. Energy rises with success, falls with hardship.
+- **Affects** — Joy, sadness, desire, fear — real emotional states that shape every decision.
+- **Memory** — Episodic memories with salience scoring. Strong emotions persist; mundane fades.
+- **Reasoning** — LLM-powered thinking triggered by emotional states. A persistently sad agent asks itself: *"Why am I sad?"*
+- **Personality** — Big Five traits (openness, conscientiousness, extraversion, agreeableness, neuroticism) that make every agent unique.
+- **Goals** — Build home, make friends, explore the map, gather resources, survive winter. Auto-assigned by personality, trackable with progress bars.
+
+---
+
+### 🦌 Nature & Ecosystem
+
+**Wildlife** — Deer 🦌, rabbits 🐇, wolves 🐺, birds 🐦, fish 🐟 — each with their own behaviors. Agents hunt, gather, and flee.
+
+**Seasons** — Spring 🌸 (+50% growth) → Summer ☀️ (heat drain) → Autumn 🍂 (harvest) → Winter ❄️ (scarce resources, survival mode). Terrain colors shift. Agents reference seasons in conversation.
+
+**World Events** — 🌩️ Storm · 🌍 Earthquake · ☄️ Meteor Shower · 🦠 Plague · ✨ Golden Age · 🌊 Flood · 🔥 Fire — spawn naturally or trigger manually. Events damage buildings, shift moods, and mutate terrain.
+
+**Resources** — Renewable resources that deplete and regrow. Wood, stone, food — the raw materials of civilization.
+
+---
+
+### 🏠 Civilization
+
+**Building System** — Agents gather resources and build: Hut 🛋 → House 🏠 → Mansion 🏛. Farms 🌾, Markets 🏪, Wells 🪣, Watchtowers 🗼. Buildings provide area bonuses and decay without owners.
+
+**Neighborhoods** — When 3+ buildings cluster, a named neighborhood emerges organically: *"Green Hill"*, *"Oak Meadow"*. Residents get social bonuses. Agents prefer building near friends.
+
+**Cultural Evolution** — Catchphrases emerge from lived experience and spread through conversation. Traditions form: Harvest Festival, Mourning Circle, Dawn Greeting, Winter Vigil. Phrases mutate over generations — cultural drift in action.
+
+**World History** — Automatic era detection: The Founding → Expansion → Great Famine → Golden Age → Renaissance. Key figures tracked by achievements. Full chronicle exportable as markdown.
+
+**Economy** — Proximity-based bartering. Trade volume tracked. Markets boost local exchange.
+
+---
+
+### 👁️ Observe & Interact
+
+**Observatory** — Population graphs, happiness index, trade volume, building breakdown, agent leaderboards (Most Social, Wealthiest, Happiest, Oldest), and a relationship network visualization.
+
+**Chat with Agents** — Talk to any agent in natural language. They respond with real personality, real memories, real emotions. They know their goals, their friends, their history.
+
+**God Mode (G)** — See all internals: conatus, affects, memory, relationships. Cinematic camera auto-follows interesting events. Trigger world events manually. Place buildings and agents anywhere.
+
+**Export & Share** — JSON export/import, compressed share codes (paste to recreate any world), chronicle markdown download, screenshot with overlay branding.
+
+---
+
+### 🎮 Multiple Modes
+
+| Key | Mode | Description |
+|-----|------|-------------|
+| — | **Normal** | Full UI with all panels and controls |
+| `T` | **Text Mode** | Pure unicode/emoji grid — works over SSH |
+| `Z` | **Zen Mode** | Hide all UI. Just watch the world breathe. |
+| `G` | **God Mode** | Full omniscience. See everything, control everything. |
+
+---
+
+### 🤖 Multi-LLM Support
+
+- **Ollama** — Run models locally, fully offline
+- **Antigravity Gateway** — 60+ models through a single proxy
+- **Gemini** — Direct Google AI fallback
+- Switch providers at runtime from the settings panel
+
+---
+
+## Quick Start
+
 ```bash
 docker compose up -d
 # Open http://localhost:4000
 ```
 
-### With Antigravity Gateway (multi-LLM)
+With Antigravity Gateway (multi-LLM):
 ```bash
-# Set your Antigravity API key
 export ANTIGRAVITY_API_KEY=sk-your-key
 docker compose up -d
 ```
 
-### Development
+Development:
 ```bash
 cd src
 mix deps.get
@@ -96,37 +138,141 @@ mix phx.server
 # Open http://localhost:4000
 ```
 
-## 🧪 Tests
+Run tests:
 ```bash
 cd src
-mix test          # 130+ tests
+mix test  # 130+ tests
 ```
 
-## 📖 Version History
+---
 
-| Version | Name | Theme |
-|---------|------|-------|
-| v0.5.0 | Genesis | Initial simulation |
-| v0.6.0 | Imperium | Multi-step commands |
-| v0.7.0 | Societas | Group dynamics |
-| v0.8.0 | Memoria | Persistent memory |
-| v0.9.0 | Natura | Dynamic environment |
-| v1.0.0 | Substantia | Economy + lifecycle |
-| v1.1.0 | Harmonia | UI/UX + performance |
-| v1.2.0 | Infinitas | Large worlds + biomes |
-| v1.3.0 | Sapientia | Learning + culture |
-| v1.4.0 | Potentia | Storytelling + timeline |
-| **v1.5.0** | **Deus** | **God Mode, Cinematic Camera, Final Polish** |
+## Architecture
 
-## 🔬 Philosophy
+```
+62 Elixir modules · 34 test files · 85 commits
 
-MODUS is built on Baruch Spinoza's *Ethics*:
+├── Mind
+│   ├── Conatus          — Drive to persist
+│   ├── Affect           — Emotional state machine
+│   ├── Perception       — Spatial awareness
+│   ├── Reasoning        — LLM-powered thinking
+│   ├── Learning         — Skill progression
+│   ├── Goals            — Objective tracking
+│   └── Culture          — Catchphrases & traditions
+│
+├── Intelligence
+│   ├── Ollama           — Local LLM
+│   ├── Antigravity      — Multi-model gateway
+│   └── Gemini           — Google AI direct
+│
+├── Simulation
+│   ├── World            — Terrain, resources, biomes
+│   ├── Agent            — Per-process agent lifecycle
+│   ├── Ticker           — PubSub tick broadcast
+│   ├── Economy          — Barter & trade
+│   ├── Lifecycle        — Birth & death
+│   ├── Building         — Construction & neighborhoods
+│   ├── Seasons          — Four-season cycle
+│   ├── WorldEvents      — Disasters & miracles
+│   ├── WorldHistory     — Era detection & chronicle
+│   ├── RulesEngine      — Custom world physics
+│   ├── Observatory      — Analytics aggregation
+│   └── WorldTemplates   — 11 universe presets
+│
+├── Cerebro
+│   ├── SocialNetwork    — Relationship graph
+│   ├── SpatialMemory    — Location-emotion mapping
+│   └── SocialInsight    — Personality understanding
+│
+├── Protocol
+│   ├── IntentParser     — Message classification
+│   ├── ContextBuilder   — Dynamic LLM prompts
+│   └── Bridge           — Orchestration layer
+│
+├── Persistence
+│   ├── WorldPersistence — SQLite save/load
+│   └── WorldExport      — JSON export/import/share
+│
+└── Web
+    ├── UniverseLive     — Phoenix LiveView UI
+    ├── WorldChannel     — WebSocket state sync
+    └── Pixi.js Renderer — 2D top-down rendering
+```
 
-- **Conatus** — Every being strives to persist in its own existence
-- **Affects** — Emotions are transitions between states of power
-- **Substance** — Everything is one interconnected system
-- **Deus sive Natura** — The simulation IS the reality for its inhabitants
+---
 
-## 📄 License
+## Version History
 
-MIT — NeuraByte Labs 2026
+Every release is named after a concept in Spinoza's philosophy.
+
+| Version | Codename | Theme |
+|---------|----------|-------|
+| **v2.3.0** | **Amor** | Landing page, Text Mode, Zen Mode, final polish |
+| v2.2.1 | Speculum | Export, import, share codes |
+| v2.2.0 | Speculum | Observatory dashboard |
+| v2.1.1 | Lingua | World history & era detection |
+| v2.1.0 | Lingua | Cultural evolution |
+| v2.0.1 | Infinitum | Agent goals system |
+| v2.0.0 | Infinitum | Custom rules engine |
+| v1.9.1 | Tempus | Seasons & day/night |
+| v1.9.0 | Tempus | World events engine |
+| v1.8.1 | Architectus | Neighborhoods & upgrades |
+| v1.8.0 | Architectus | Building system |
+| v1.7.1 | Nexus | 11 universe templates |
+| v1.7.0 | Nexus | Multi-universe dashboard |
+| v1.6.1 | Creator | Agent designer & Big Five |
+| v1.5.0 | Deus | God Mode & cinematic camera |
+| v1.4.0 | Potentia | Story engine & timeline |
+| v1.1.0 | Harmonia | Mini-map, tooltips, shortcuts |
+| v1.0.0 | Substantia | Economy & lifecycle |
+| v0.5.0 | Libertas | Protocol bridge & perception |
+| v0.4.0 | Cerebro | Social network & conversations |
+| v0.3.0 | Affectus | Conatus, affects, memory |
+| v0.2.0 | Conatus | Multi-LLM & chat |
+| v0.1.0 | Genesis | The world was born |
+
+---
+
+## Design Philosophy
+
+MODUS is always 2D. Top-down. Flat. No isometric, no 3D, no perspective tricks.
+
+The complexity lives in the minds, not the pixels. A colored circle with a name label carries more meaning than a 3D-rendered character — because behind that dot is a concurrent BEAM process with emotions, memories, relationships, goals, and the drive to persist.
+
+> *If a 5-year-old can't understand what they're looking at in 3 seconds, it's too complex. Simplify.*
+
+Three rendering levels exist: **Text Mode** (pure unicode — works over SSH), **Tile Mode** (colored squares + emoji — current default), and a future **Sprite Mode** (16×16 pixel art — still 2D, still top-down). Deep minds in simple dots.
+
+---
+
+## The Spinoza Connection
+
+MODUS is built on Baruch Spinoza's *Ethics* (1677):
+
+**Conatus** — *"Each thing, as far as it lies in itself, strives to persevere in its being."* Every agent has this drive. It rises when they succeed, falls when they suffer, and when it reaches zero, they cease to exist.
+
+**Affects** — *"By affect I understand the modifications of the body by which the body's power of acting is increased or diminished."* Joy, sadness, desire, fear — not decorative labels but the engine of decision-making.
+
+**Substance** — *"Whatever is, is in God, and nothing can be or be conceived without God."* The simulation is a single interconnected system. Every agent, every resource, every relationship is a mode of one substance.
+
+**Deus sive Natura** — *God, or Nature.* The simulation doesn't represent reality. For its inhabitants, it *is* reality. And you are the one who created it.
+
+---
+
+## Contributing
+
+Contributions welcome. MODUS is built with Elixir, Phoenix LiveView, and Pixi.js.
+
+```bash
+cd src
+mix deps.get
+mix test
+```
+
+Please keep it 2D.
+
+---
+
+## License
+
+MIT — [NeuraByte Labs](https://github.com/neurabytelabs) · 2026
