@@ -37,7 +37,8 @@ defmodule Modus.Simulation.Agent do
     explore_target: nil,
     explore_ticks: 0,
     conversing_with: nil,
-    group_id: nil
+    group_id: nil,
+    inventory: %{}
   ]
 
   @type t :: %__MODULE__{
@@ -84,7 +85,8 @@ defmodule Modus.Simulation.Agent do
       conatus_energy: 0.7,
       affect_state: :neutral,
       affect_history: [],
-      conatus_history: []
+      conatus_history: [],
+      inventory: %{}
     }
   end
 
@@ -273,9 +275,23 @@ defmodule Modus.Simulation.Agent do
   end
 
   defp apply_action(agent, :gather, params) do
-    # Actually gather from ResourceSystem
+    # Determine what to gather based on terrain
+    terrain = get_terrain_at(agent.position)
+    resource_types = Modus.Simulation.Resource.terrain_resources(terrain)
+    resource_type = if resource_types == [], do: :food, else: List.first(resource_types)
+
+    # Map resource_type to ResourceSystem types
+    gather_type = case resource_type do
+      :fish -> :fish
+      :fresh_water -> :fish  # water tiles have fish
+      :crops -> :food
+      :wild_berries -> :food
+      :herbs -> :food  # fallback
+      other -> other
+    end
+
     gathered = try do
-      case Modus.Simulation.ResourceSystem.gather(agent.position, :food, 2.0) do
+      case Modus.Simulation.ResourceSystem.gather(agent.position, gather_type, 2.0) do
         {:ok, amount} -> amount
         _ -> 0.0
       end
@@ -283,10 +299,17 @@ defmodule Modus.Simulation.Agent do
       :exit, _ -> 0.0
     end
 
-    hunger_relief = if gathered > 0, do: 5.0, else: 1.0
+    # Add to inventory
+    inventory = Map.update(agent.inventory, resource_type, gathered, &(&1 + gathered))
+
+    # Food-like resources reduce hunger
+    hunger_relief = case resource_type do
+      t when t in [:food, :fish, :crops, :wild_berries] -> if gathered > 0, do: 5.0, else: 1.0
+      _ -> 1.0
+    end
     needs = %{agent.needs | hunger: max(agent.needs.hunger - hunger_relief, 0.0)}
-    Modus.Simulation.EventLog.log(:resource_gathered, Map.get(params, :tick, 0), [agent.id], %{name: agent.name, amount: gathered})
-    %{agent | needs: needs, current_action: :gathering}
+    Modus.Simulation.EventLog.log(:resource_gathered, Map.get(params, :tick, 0), [agent.id], %{name: agent.name, amount: gathered, resource: resource_type})
+    %{agent | needs: needs, current_action: :gathering, inventory: inventory}
   end
 
   defp apply_action(agent, :sleep, _params) do

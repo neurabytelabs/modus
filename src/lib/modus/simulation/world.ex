@@ -100,6 +100,26 @@ defmodule Modus.Simulation.World do
     GenServer.call(server, :status)
   end
 
+  @doc "Paint terrain at a position, resetting resources to defaults for new terrain type."
+  def paint_terrain({x, y}, terrain_atom) do
+    resources = default_resources(terrain_atom)
+    set_cell(__MODULE__, {x, y}, %{terrain: terrain_atom, resources: resources})
+  end
+
+  @doc "Place a resource node at a position, adding its resources to the cell."
+  def place_resource_node({x, y}, node_type) do
+    node_resources = Modus.Simulation.Resource.node_resources(node_type)
+    case get_cell(__MODULE__, {x, y}) do
+      {:ok, cell} ->
+        merged = Map.merge(cell.resources, node_resources, fn _k, v1, v2 -> v1 + v2 end)
+        # Store node markers for rendering
+        nodes = Map.get(cell, :resource_nodes, [])
+        new_nodes = [node_type | nodes] |> Enum.uniq()
+        set_cell(__MODULE__, {x, y}, %{resources: merged, resource_nodes: new_nodes})
+      _ -> {:error, :out_of_bounds}
+    end
+  end
+
   @doc "Get the full world state."
   @spec get_state(pid() | atom()) :: t()
   def get_state(server \\ __MODULE__) do
@@ -432,8 +452,13 @@ defmodule Modus.Simulation.World do
   defp ensure_float(val) when is_integer(val), do: val / 1
   defp ensure_float(_), do: 0.0
 
-  defp default_resources(:grass), do: %{food: 3}
-  defp default_resources(:forest), do: %{food: 5, wood: 8}
-  defp default_resources(:water), do: %{fish: 6}
-  defp default_resources(:mountain), do: %{stone: 10, ore: 4}
+  def default_resources(:grass), do: %{food: 3, wild_berries: 2}
+  def default_resources(:forest), do: %{food: 5, wood: 8}
+  def default_resources(:water), do: %{fish: 6, fresh_water: 10}
+  def default_resources(:mountain), do: %{stone: 10, ore: 4}
+  def default_resources(:farm), do: %{crops: 12, food: 8}
+  def default_resources(:flowers), do: %{herbs: 6, food: 2}
+  def default_resources(:sand), do: %{}
+  def default_resources(:desert), do: %{}
+  def default_resources(_), do: %{}
 end

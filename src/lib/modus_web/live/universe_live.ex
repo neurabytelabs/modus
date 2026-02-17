@@ -1,7 +1,7 @@
 defmodule ModusWeb.UniverseLive do
   @moduledoc """
   Main LiveView — MODUS universe dashboard with 2D renderer.
-  v1.5.0 Deus — God Mode, Cinematic Camera, Screenshot Export, Landing Page.
+  v1.6.0 Creator — World Builder, Terrain Painter, Nature Resource System.
   """
   use ModusWeb, :live_view
   # JS alias available if needed
@@ -59,6 +59,9 @@ defmodule ModusWeb.UniverseLive do
        # Deus — God Mode & Cinematic Camera
        god_mode: false,
        cinematic_mode: false,
+       build_mode: false,
+       build_brush: "grass",
+       build_type: "terrain",
        mobile_panel: nil,
        event_feed: [],
        templates: @templates,
@@ -487,6 +490,23 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, mobile_panel: new_panel)}
   end
 
+  # ── Creator: Build Mode ──────────────────────────────────────
+
+  def handle_event("toggle_build_mode", _params, socket) do
+    new_val = !socket.assigns.build_mode
+    {:noreply,
+     socket
+     |> assign(build_mode: new_val)
+     |> push_event("toggle_build_mode", %{active: new_val})}
+  end
+
+  def handle_event("set_build_brush", %{"brush" => brush, "type" => type}, socket) do
+    {:noreply,
+     socket
+     |> assign(build_brush: brush, build_type: type)
+     |> push_event("set_build_brush", %{brush: brush, type: type})}
+  end
+
   # ── Deus: God Mode, Cinematic Camera, Screenshot ─────────────
 
   def handle_event("toggle_god_mode", _params, socket) do
@@ -648,8 +668,10 @@ defmodule ModusWeb.UniverseLive do
           <span class="px-2 py-1 bg-white/5 rounded border border-white/10">📚 Agent Learning</span>
           <span class="px-2 py-1 bg-white/5 rounded border border-white/10">📜 Story Generation</span>
           <span class="px-2 py-1 bg-white/5 rounded border border-white/10">👁️ God Mode</span>
+          <span class="px-2 py-1 bg-white/5 rounded border border-white/10">🔨 World Builder</span>
+          <span class="px-2 py-1 bg-white/5 rounded border border-white/10">🌿 Nature Resources</span>
         </div>
-        <p class="text-xs text-slate-600 mb-6">v1.5.0 Deus · 28+ modules · Elixir/BEAM · Pixi.js</p>
+        <p class="text-xs text-slate-600 mb-6">v1.6.0 Creator · 29+ modules · Elixir/BEAM · Pixi.js</p>
       </div>
 
       <%!-- Create World Section --%>
@@ -772,7 +794,7 @@ defmodule ModusWeb.UniverseLive do
           <span class="text-xl font-bold tracking-tighter">
             MODUS<span class="text-purple-400">_</span>
           </span>
-          <span class="text-xs text-slate-600 hidden sm:inline">v1.5.0 · Deus</span>
+          <span class="text-xs text-slate-600 hidden sm:inline">v1.6.0 · Creator</span>
         </div>
 
         <div class="flex items-center gap-3 md:gap-6">
@@ -819,6 +841,11 @@ defmodule ModusWeb.UniverseLive do
             <% end %>
             <button phx-click="reset" class="ctrl-btn">↻</button>
           </div>
+
+          <%!-- Build Mode --%>
+          <button phx-click="toggle_build_mode" class={"ctrl-btn #{if @build_mode, do: "ctrl-btn-active"}"} title="Build Mode — World Builder">
+            🔨
+          </button>
 
           <%!-- God Mode --%>
           <button phx-click="toggle_god_mode" class={"ctrl-btn #{if @god_mode, do: "ctrl-btn-active"}"} title="God Mode — See All Agent Internals">
@@ -877,6 +904,59 @@ defmodule ModusWeb.UniverseLive do
         <div class={"shrink-0 border-r border-white/5 bg-[#0A0A0F]/90 backdrop-blur-md overflow-y-auto z-10 transition-all duration-300 " <>
           "hidden md:block " <> if(@timeline_open, do: "md:w-64", else: "md:w-48")}>
           <div class="p-3">
+            <%= if @build_mode do %>
+              <%!-- Build Mode Palette --%>
+              <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-3">🔨 World Builder</h3>
+
+              <%!-- Terrain Brushes --%>
+              <div class="mb-4">
+                <div class="text-[9px] uppercase tracking-wider text-slate-600 mb-2">Terrain</div>
+                <div class="grid grid-cols-2 gap-1.5">
+                  <%= for {terrain, emoji, label} <- [{"grass", "🌿", "Grass"}, {"forest", "🌲", "Forest"}, {"water", "💧", "Water"}, {"mountain", "⛰️", "Mountain"}, {"desert", "🏜️", "Desert"}, {"sand", "🏖️", "Sand"}, {"farm", "🌾", "Farm"}, {"flowers", "🌸", "Flowers"}] do %>
+                    <button
+                      phx-click="set_build_brush"
+                      phx-value-brush={terrain}
+                      phx-value-type="terrain"
+                      class={"flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] transition-all " <>
+                        if(@build_brush == terrain && @build_type == "terrain",
+                          do: "bg-purple-500/20 border border-purple-500/40 text-purple-300",
+                          else: "bg-white/3 border border-white/5 text-slate-400 hover:border-white/10")}
+                    >
+                      <span class="text-sm"><%= emoji %></span>
+                      <span><%= label %></span>
+                    </button>
+                  <% end %>
+                </div>
+              </div>
+
+              <%!-- Resource Node Brushes --%>
+              <div class="mb-4">
+                <div class="text-[9px] uppercase tracking-wider text-slate-600 mb-2">Resource Nodes</div>
+                <div class="grid grid-cols-1 gap-1.5">
+                  <%= for {node, emoji, label} <- [{"food_source", "🍖", "Food Source"}, {"water_well", "💧", "Water Well"}, {"wood_pile", "🪵", "Wood Pile"}, {"stone_quarry", "⛏️", "Stone Quarry"}] do %>
+                    <button
+                      phx-click="set_build_brush"
+                      phx-value-brush={node}
+                      phx-value-type="resource"
+                      class={"flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] transition-all " <>
+                        if(@build_brush == node && @build_type == "resource",
+                          do: "bg-cyan-500/20 border border-cyan-500/40 text-cyan-300",
+                          else: "bg-white/3 border border-white/5 text-slate-400 hover:border-white/10")}
+                    >
+                      <span class="text-sm"><%= emoji %></span>
+                      <span><%= label %></span>
+                    </button>
+                  <% end %>
+                </div>
+              </div>
+
+              <div class="text-[9px] text-slate-600 leading-relaxed">
+                Click/drag on map to paint.<br/>
+                Resources respawn after 200 ticks.<br/>
+                Nature is survival infrastructure.
+              </div>
+
+            <% else %>
             <%= if @timeline_open do %>
               <%!-- Timeline View --%>
               <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-3">📜 World Timeline</h3>
@@ -926,6 +1006,7 @@ defmodule ModusWeb.UniverseLive do
                   <% end %>
                 </div>
               <% end %>
+            <% end %>
             <% end %>
           </div>
         </div>
@@ -1189,6 +1270,33 @@ defmodule ModusWeb.UniverseLive do
                   <p class="text-xs text-slate-600 italic">No events yet</p>
                 <% end %>
               </div>
+
+              <%!-- Inventory --%>
+              <%= if @selected_agent["inventory"] && @selected_agent["inventory"] != %{} do %>
+                <div class="mb-4">
+                  <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">🎒 Inventory</h3>
+                  <div class="grid grid-cols-2 gap-1.5">
+                    <%= for {item, amount} <- @selected_agent["inventory"] || %{} do %>
+                      <% item_emoji = case item do
+                        "wood" -> "🪵"
+                        "stone" -> "⛏️"
+                        "fish" -> "🐟"
+                        "fresh_water" -> "💧"
+                        "crops" -> "🌾"
+                        "herbs" -> "🌿"
+                        "wild_berries" -> "🫐"
+                        "food" -> "🍖"
+                        _ -> "📦"
+                      end %>
+                      <div class="flex items-center gap-1.5 px-2 py-1 rounded bg-white/3 border border-white/5 text-[10px]">
+                        <span><%= item_emoji %></span>
+                        <span class="text-slate-400"><%= item %></span>
+                        <span class="text-cyan-400 ml-auto tabular-nums"><%= amount %></span>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
 
               <%!-- Chat Button --%>
               <button phx-click="open_chat" class="w-full ctrl-btn ctrl-btn-primary text-center">

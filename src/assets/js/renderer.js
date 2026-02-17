@@ -22,6 +22,17 @@ const TERRAIN_COLORS = {
   water:    0x60a5fa,
   forest:   0x166534,
   mountain: 0x78716c,
+  desert:   0xd4a574,
+  sand:     0xf5deb3,
+  farm:     0x8b9a46,
+  flowers:  0xe879a8,
+}
+
+const RESOURCE_NODE_ICONS = {
+  food_source: "🍖",
+  water_well: "💧",
+  wood_pile: "🪵",
+  stone_quarry: "⛏️",
 }
 
 const AGENT_COLORS = [
@@ -77,6 +88,15 @@ export default class Renderer {
     // Terrain grid cache for minimap
     this.terrainGrid = null
 
+    // Build Mode
+    this.buildMode = false
+    this.buildBrush = "grass" // current terrain or resource node type
+    this.buildType = "terrain" // "terrain" or "resource"
+    this.onPaintTerrain = null // callback(x, y, terrain)
+    this.onPlaceResource = null // callback(x, y, nodeType)
+    this.resourceNodeLayer = null
+    this.resourceNodeSprites = new Map() // "x,y" -> container
+
     // Camera state
     this.dragging = false
     this.didDrag = false
@@ -113,7 +133,9 @@ export default class Renderer {
     this.nightOverlay = null // created after terrain render
     this.relationshipLayer = new Container()
     this.agentLayer = new Container()
+    this.resourceNodeLayer = new Container()
     this.worldContainer.addChild(this.terrainLayer)
+    this.worldContainer.addChild(this.resourceNodeLayer)
     this.worldContainer.addChild(this.relationshipLayer)
     this.worldContainer.addChild(this.agentLayer)
 
@@ -162,6 +184,15 @@ export default class Renderer {
     this.nightOverlay.clear()
     this.nightOverlay.rect(0, 0, GRID_W * TILE_SIZE, GRID_H * TILE_SIZE)
     this.nightOverlay.fill({ color: 0x0a1030, alpha: 0 })
+
+    // Render resource nodes from grid data
+    for (const cell of grid) {
+      if (cell.resource_nodes) {
+        for (const nodeType of cell.resource_nodes) {
+          this.addResourceNode(cell.x, cell.y, nodeType)
+        }
+      }
+    }
 
     // Update minimap terrain
     this._drawMinimapTerrain()
@@ -733,6 +764,27 @@ export default class Renderer {
 
     canvas.addEventListener("pointermove", (e) => {
       if (!this.dragging) return
+
+      // Build mode: drag-paint
+      if (this.buildMode) {
+        const rect = canvas.getBoundingClientRect()
+        const mx = e.clientX - rect.left
+        const my = e.clientY - rect.top
+        const wx = (mx - this.worldContainer.x) / this.scale
+        const wy = (my - this.worldContainer.y) / this.scale
+        const tileX = Math.floor(wx / TILE_SIZE)
+        const tileY = Math.floor(wy / TILE_SIZE)
+        if (tileX >= 0 && tileX < GRID_W && tileY >= 0 && tileY < GRID_H) {
+          if (this.buildType === "resource" && this.onPlaceResource) {
+            this.onPlaceResource(tileX, tileY, this.buildBrush)
+          } else if (this.onPaintTerrain) {
+            this.onPaintTerrain(tileX, tileY, this.buildBrush)
+          }
+        }
+        this.didDrag = true
+        return
+      }
+
       const dx = e.clientX - this.dragStart.x
       const dy = e.clientY - this.dragStart.y
       if (Math.abs(dx) > 3 || Math.abs(dy) > 3) this.didDrag = true
@@ -872,35 +924,39 @@ export default class Renderer {
   // ── Helpers ─────────────────────────────────────────────
 
   _handleClick(e) {
-    if (!this.onAgentClick) return
     const rect = this.app.canvas.getBoundingClientRect()
     const mx = e.clientX - rect.left
     const my = e.clientY - rect.top
-    // Convert to world coordinates
     const wx = (mx - this.worldContainer.x) / this.scale
     const wy = (my - this.worldContainer.y) / this.scale
 
-    // Debug: log all agent positions
-    const agentPositions = []
-    for (const [id, sprite] of this.agentSprites) {
-      agentPositions.push({id: id.slice(0,8), tx: sprite.targetX.toFixed(0), ty: sprite.targetY.toFixed(0), cx: sprite.container.x.toFixed(0), cy: sprite.container.y.toFixed(0)})
+    // Build Mode: paint terrain or place resource
+    if (this.buildMode) {
+      const tileX = Math.floor(wx / TILE_SIZE)
+      const tileY = Math.floor(wy / TILE_SIZE)
+      if (tileX >= 0 && tileX < GRID_W && tileY >= 0 && tileY < GRID_H) {
+        if (this.buildType === "resource" && this.onPlaceResource) {
+          this.onPlaceResource(tileX, tileY, this.buildBrush)
+        } else if (this.onPaintTerrain) {
+          this.onPaintTerrain(tileX, tileY, this.buildBrush)
+        }
+      }
+      return
     }
-    console.log("[MODUS] Click at world:", wx.toFixed(1), wy.toFixed(1), "agents:", this.agentSprites.size, "positions:", JSON.stringify(agentPositions))
 
-    // Find closest agent within click radius (check both target and current lerped position)
+    // Normal mode: agent click
+    if (!this.onAgentClick) return
+
     let closest = null
     let closestDist = TILE_SIZE * 2.5
 
     for (const [id, sprite] of this.agentSprites) {
-      // Distance to target position
       const dx1 = sprite.targetX - wx
       const dy1 = sprite.targetY - wy
       const dist1 = Math.sqrt(dx1 * dx1 + dy1 * dy1)
-      // Distance to current lerped position
       const dx2 = sprite.container.x - wx
       const dy2 = sprite.container.y - wy
       const dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2)
-      // Use whichever is closer
       const dist = Math.min(dist1, dist2)
       if (dist < closestDist) {
         closestDist = dist
@@ -911,6 +967,45 @@ export default class Renderer {
     if (closest) {
       this.onAgentClick(closest)
     }
+  }
+
+  // ── Build Mode ──────────────────────────────────────────
+
+  setBuildMode(active) {
+    this.buildMode = active
+    if (this.app?.canvas) {
+      this.app.canvas.style.cursor = active ? "crosshair" : "grab"
+    }
+  }
+
+  setBuildBrush(brush, type = "terrain") {
+    this.buildBrush = brush
+    this.buildType = type
+  }
+
+  // Paint a single tile immediately (called after server confirms)
+  paintTile(x, y, terrain) {
+    if (this._terrainMap) {
+      this._terrainMap.set(`${x},${y}`, terrain)
+      this._chunksDirty = true
+    }
+  }
+
+  // Add a resource node icon to a tile
+  addResourceNode(x, y, nodeType) {
+    const key = `${x},${y}`
+    if (this.resourceNodeSprites.has(key)) return // already has a node
+
+    const icon = RESOURCE_NODE_ICONS[nodeType] || "📦"
+    const text = new Text({
+      text: icon,
+      style: new TextStyle({ fontSize: 10, align: "center" }),
+    })
+    text.anchor.set(0.5, 0.5)
+    text.x = x * TILE_SIZE + TILE_SIZE / 2
+    text.y = y * TILE_SIZE + TILE_SIZE / 2
+    this.resourceNodeLayer.addChild(text)
+    this.resourceNodeSprites.set(key, text)
   }
 
   _hashCode(str) {

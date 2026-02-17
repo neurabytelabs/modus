@@ -197,6 +197,54 @@ Hooks.WorldCanvas = {
       this.selectedAgentId = null
       if (this.rendererReady) this.renderer.selectAgent(null)
     })
+
+    // ── Build Mode ──────────────────────────────────────────
+    this.handleEvent("toggle_build_mode", (data) => {
+      if (this.rendererReady && this.renderer) {
+        this.renderer.setBuildMode(data.active)
+      }
+    })
+    this.handleEvent("set_build_brush", (data) => {
+      if (this.rendererReady && this.renderer) {
+        this.renderer.setBuildBrush(data.brush, data.type || "terrain")
+      }
+    })
+
+    // Debounced paint to avoid flooding the channel
+    this._lastPaint = ""
+    this._paintThrottle = 0
+
+    // Wire up renderer paint callbacks
+    this.renderer.onPaintTerrain = (x, y, terrain) => {
+      const key = `${x},${y},${terrain}`
+      if (key === this._lastPaint) return
+      this._lastPaint = key
+      if (this.worldSocket) {
+        this.worldSocket.paintTerrain(x, y, terrain)
+      }
+    }
+    this.renderer.onPlaceResource = (x, y, nodeType) => {
+      const key = `r${x},${y},${nodeType}`
+      if (key === this._lastPaint) return
+      this._lastPaint = key
+      if (this.worldSocket) {
+        this.worldSocket.placeResource(x, y, nodeType)
+      }
+    }
+
+    // Listen for broadcast updates
+    if (this.worldSocket) {
+      this.worldSocket.onTerrainPainted = (data) => {
+        if (this.rendererReady && this.renderer) {
+          this.renderer.paintTile(data.x, data.y, data.terrain)
+        }
+      }
+      this.worldSocket.onResourcePlaced = (data) => {
+        if (this.rendererReady && this.renderer) {
+          this.renderer.addResourceNode(data.x, data.y, data.node_type)
+        }
+      }
+    }
   },
 
   destroyed() {
@@ -237,8 +285,8 @@ document.addEventListener("keydown", (e) => {
       }
       break
     case "KeyB":
-      // Mind view toggle
-      document.getElementById("mind-view-btn")?.click()
+      // Build mode toggle (priority over mind view when not in build mode)
+      document.querySelector("[phx-click='toggle_build_mode']")?.click()
       break
     case "KeyG":
       // God Mode toggle

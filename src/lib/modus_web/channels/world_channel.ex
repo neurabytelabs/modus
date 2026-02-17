@@ -248,6 +248,61 @@ defmodule ModusWeb.WorldChannel do
     end
   end
 
+  # ── World Builder: Paint Terrain ──────────────────────────────
+
+  @valid_terrains ~w(grass forest water mountain desert sand farm flowers)
+
+  def handle_in("paint_terrain", %{"x" => x, "y" => y, "terrain" => terrain}, socket)
+      when is_integer(x) and is_integer(y) and terrain in @valid_terrains do
+    terrain_atom = String.to_existing_atom(terrain)
+    case World.paint_terrain({x, y}, terrain_atom) do
+      :ok ->
+        # Broadcast tile update to all clients
+        broadcast!(socket, "terrain_painted", %{x: x, y: y, terrain: terrain})
+        {:reply, :ok, socket}
+      {:error, reason} ->
+        {:reply, {:error, %{reason: inspect(reason)}}, socket}
+    end
+  end
+
+  def handle_in("paint_terrain", _payload, socket) do
+    {:reply, {:error, %{reason: "invalid_params"}}, socket}
+  end
+
+  # ── World Builder: Place Resource Node ─────────────────────
+
+  @valid_nodes ~w(food_source water_well wood_pile stone_quarry)
+
+  def handle_in("place_resource", %{"x" => x, "y" => y, "node_type" => node_type}, socket)
+      when is_integer(x) and is_integer(y) and node_type in @valid_nodes do
+    node_atom = String.to_existing_atom(node_type)
+    case World.place_resource_node({x, y}, node_atom) do
+      :ok ->
+        broadcast!(socket, "resource_placed", %{x: x, y: y, node_type: node_type})
+        {:reply, :ok, socket}
+      {:error, reason} ->
+        {:reply, {:error, %{reason: inspect(reason)}}, socket}
+    end
+  end
+
+  def handle_in("place_resource", _payload, socket) do
+    {:reply, {:error, %{reason: "invalid_params"}}, socket}
+  end
+
+  # ── Gather Resource (triggered by client) ──────────────────
+
+  def handle_in("gather_resource", %{"agent_id" => agent_id, "x" => x, "y" => y}, socket) do
+    try do
+      GenServer.cast(
+        {:via, Registry, {Modus.AgentRegistry, agent_id}},
+        {:gather_at, {x, y}}
+      )
+      {:reply, :ok, socket}
+    catch
+      :exit, _ -> {:reply, {:error, %{reason: "agent_not_found"}}, socket}
+    end
+  end
+
   def handle_in("get_agent_detail", %{"agent_id" => agent_id}, socket) do
     try do
       state = Agent.get_state(agent_id)
@@ -351,7 +406,9 @@ defmodule ModusWeb.WorldChannel do
     for x <- 0..(max_x - 1), y <- 0..(max_y - 1) do
       case :ets.lookup(world_state.grid_table, {x, y}) do
         [{{^x, ^y}, cell}] ->
-          %{x: x, y: y, terrain: cell.terrain |> to_string()}
+          base = %{x: x, y: y, terrain: cell.terrain |> to_string()}
+          nodes = Map.get(cell, :resource_nodes, [])
+          if nodes == [], do: base, else: Map.put(base, :resource_nodes, Enum.map(nodes, &to_string/1))
 
         _ ->
           %{x: x, y: y, terrain: "grass"}
@@ -460,7 +517,8 @@ defmodule ModusWeb.WorldChannel do
           _, _ -> []
         end,
       last_reasoning: state.last_reasoning,
-      skills: Modus.Mind.Learning.to_map(state.id)
+      skills: Modus.Mind.Learning.to_map(state.id),
+      inventory: state.inventory || %{}
     }
   end
 

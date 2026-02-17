@@ -11,9 +11,11 @@ defmodule Modus.Simulation.ResourceSystem do
 
   @regen_rates %{
     forest:   %{food: {2, 5}, wood: {1, 8}},
-    grass:    %{food: {1, 3}},
-    water:    %{fish: {1, 6}},
-    mountain: %{stone: {1, 10}, ore: {0.5, 4}}
+    grass:    %{food: {1, 3}, wild_berries: {0.5, 2}},
+    water:    %{fish: {1, 6}, fresh_water: {2, 10}},
+    mountain: %{stone: {1, 10}, ore: {0.5, 4}},
+    farm:     %{crops: {3, 12}, food: {2, 8}},
+    flowers:  %{herbs: {1, 6}, food: {0.5, 2}}
   }
 
   def start_link(_opts \\ []) do

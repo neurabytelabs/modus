@@ -14,6 +14,8 @@ export default class WorldSocket {
     this.onStatus = opts.onStatus || (() => {})
     this.onChatReply = opts.onChatReply || (() => {})
     this.onAgentDetailUpdate = opts.onAgentDetailUpdate || (() => {})
+    this.onTerrainPainted = opts.onTerrainPainted || (() => {})
+    this.onResourcePlaced = opts.onResourcePlaced || (() => {})
     this.channel = null
     this.socket = null
   }
@@ -48,6 +50,14 @@ export default class WorldSocket {
 
     this.channel.on("agent_detail_update", (payload) => {
       this.onAgentDetailUpdate(payload)
+    })
+
+    this.channel.on("terrain_painted", (payload) => {
+      this.onTerrainPainted(payload)
+    })
+
+    this.channel.on("resource_placed", (payload) => {
+      this.onResourcePlaced(payload)
     })
 
     this.channel
@@ -147,6 +157,26 @@ export default class WorldSocket {
       .receive("error", (err) => {
         if (callback) callback(err)
       })
+  }
+
+  // ── World Builder ──────────────────────────────────────────
+
+  paintTerrain(x, y, terrain, callback) {
+    this.channel
+      .push("paint_terrain", { x, y, terrain })
+      .receive("ok", () => { if (callback) callback(null) })
+      .receive("error", (err) => { if (callback) callback(err) })
+  }
+
+  placeResource(x, y, nodeType, callback) {
+    this.channel
+      .push("place_resource", { x, y, node_type: nodeType })
+      .receive("ok", () => { if (callback) callback(null) })
+      .receive("error", (err) => { if (callback) callback(err) })
+  }
+
+  gatherResource(agentId, x, y) {
+    this.channel.push("gather_resource", { agent_id: agentId, x, y })
   }
 
   disconnect() {
