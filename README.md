@@ -1,4 +1,4 @@
-# MODUS v1.5.0 — Deus
+# MODUS v2.3.0 — Amor
 
 > *"Deus sive Natura"* — God, or Nature — Spinoza
 

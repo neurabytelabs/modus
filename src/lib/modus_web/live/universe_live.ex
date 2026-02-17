@@ -22,8 +22,8 @@ defmodule ModusWeb.UniverseLive do
       _, _ -> []
     end
 
-    # Start at dashboard if there are saved worlds, otherwise go straight to onboarding
-    initial_phase = if saved_worlds != [], do: :dashboard, else: :onboarding
+    # Always start at landing page
+    initial_phase = :landing
 
     {:ok,
      assign(socket,
@@ -128,13 +128,43 @@ defmodule ModusWeb.UniverseLive do
        designer_a: 50,
        designer_n: 50,
        designer_animal: "deer",
-       designer_placing: false
+       designer_placing: false,
+       text_mode: false,
+       zen_mode: false
      )}
+  end
+
+  # ── Landing Page Events ───────────────────────────────────
+
+  @impl true
+  def handle_event("landing_start", _params, socket) do
+    saved_worlds = socket.assigns.dashboard_worlds
+    phase = if saved_worlds != [], do: :dashboard, else: :onboarding
+    {:noreply, assign(socket, phase: phase)}
+  end
+
+  # ── Text Mode & Zen Mode ─────────────────────────────────
+
+  def handle_event("toggle_text_mode", _params, socket) do
+    {:noreply, assign(socket, text_mode: !socket.assigns.text_mode)}
+  end
+
+  def handle_event("toggle_zen_mode", _params, socket) do
+    {:noreply, assign(socket, zen_mode: !socket.assigns.zen_mode)}
+  end
+
+  def handle_event("random_world", _params, socket) do
+    templates = socket.assigns.templates
+    t = Enum.random(templates)
+    pop = Enum.random(5..30)
+    danger = Enum.random(["low", "normal", "high"])
+    socket = assign(socket, template: t.id, population: pop, danger: danger, phase: :onboarding)
+    # Reuse create_world logic
+    {:noreply, socket}
   end
 
   # ── Dashboard Events ─────────────────────────────────────
 
-  @impl true
   def handle_event("dashboard_new_universe", _params, socket) do
     {:noreply, assign(socket, phase: :onboarding)}
   end
@@ -1134,6 +1164,8 @@ defmodule ModusWeb.UniverseLive do
   def render(assigns) do
     ~H"""
     <%= case @phase do %>
+      <% :landing -> %>
+        <%= render_landing(assigns) %>
       <% :dashboard -> %>
         <%= render_dashboard(assigns) %>
       <% :onboarding -> %>
@@ -1141,6 +1173,59 @@ defmodule ModusWeb.UniverseLive do
       <% _ -> %>
         <%= render_simulation(assigns) %>
     <% end %>
+    """
+  end
+
+  # ── Landing Page ─────────────────────────────────────────
+
+  defp render_landing(assigns) do
+    ~H"""
+    <div class="min-h-screen bg-[#050508] text-slate-200 font-mono flex flex-col items-center justify-center px-4 relative overflow-hidden">
+      <%!-- Background blurs --%>
+      <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-3xl animate-pulse"></div>
+        <div class="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-cyan-600/10 rounded-full blur-3xl animate-pulse" style="animation-delay: 1s"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-purple-500/5 rounded-full blur-3xl"></div>
+      </div>
+
+      <div class="relative z-10 text-center max-w-3xl mx-auto">
+        <%!-- Logo --%>
+        <h1 class="text-7xl md:text-8xl font-bold tracking-tighter mb-4">
+          MODUS<span class="text-purple-400">_</span>
+        </h1>
+        <p class="text-2xl md:text-3xl font-light text-slate-300 mb-2">Create Worlds. Watch Them Live.</p>
+        <p class="text-sm text-slate-500 mb-12">v2.3.0 Amor · AI-Powered Universe Simulation</p>
+
+        <%!-- Feature Cards --%>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
+          <div class="p-6 rounded-2xl border border-white/10 bg-white/[0.02] backdrop-blur-sm hover:border-purple-500/30 transition-all">
+            <div class="text-4xl mb-3">🧠</div>
+            <h3 class="text-lg font-semibold text-slate-200 mb-2">Thinking Agents</h3>
+            <p class="text-sm text-slate-500">AI-powered minds with emotions, memory, personality, and free will.</p>
+          </div>
+          <div class="p-6 rounded-2xl border border-white/10 bg-white/[0.02] backdrop-blur-sm hover:border-cyan-500/30 transition-all">
+            <div class="text-4xl mb-3">🌍</div>
+            <h3 class="text-lg font-semibold text-slate-200 mb-2">Living Ecosystems</h3>
+            <p class="text-sm text-slate-500">Dynamic weather, seasons, resources, birth & death cycles.</p>
+          </div>
+          <div class="p-6 rounded-2xl border border-white/10 bg-white/[0.02] backdrop-blur-sm hover:border-purple-500/30 transition-all">
+            <div class="text-4xl mb-3">🔬</div>
+            <h3 class="text-lg font-semibold text-slate-200 mb-2">Spinoza Mind Engine</h3>
+            <p class="text-sm text-slate-500">Conatus, affects, social networks — philosophy meets silicon.</p>
+          </div>
+        </div>
+
+        <%!-- CTA --%>
+        <button
+          phx-click="landing_start"
+          class="px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-semibold text-lg hover:from-purple-500 hover:to-cyan-500 transition-all shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40 hover:scale-105 transform"
+        >
+          Start Creating →
+        </button>
+
+        <p class="text-[10px] text-slate-600 mt-8">Built on Elixir/BEAM · Pixi.js · 30+ modules · Spinoza's Ethics</p>
+      </div>
+    </div>
     """
   end
 
@@ -1159,7 +1244,7 @@ defmodule ModusWeb.UniverseLive do
           <h1 class="text-5xl md:text-6xl font-bold tracking-tighter mb-2">
             MODUS<span class="text-purple-400">_</span>
           </h1>
-          <p class="text-sm text-slate-500">v2.0.0 Infinitum · You're not limited to one world — create many.</p>
+          <p class="text-sm text-slate-500">v2.3.0 Amor · You're not limited to one world — create many.</p>
         </div>
 
         <%!-- Sort Controls --%>
@@ -1284,12 +1369,40 @@ defmodule ModusWeb.UniverseLive do
           <span class="px-2 py-1 bg-white/5 rounded border border-white/10">🌿 Nature Resources</span>
           <span class="px-2 py-1 bg-white/5 rounded border border-white/10">🎛️ Custom Rules Engine</span>
         </div>
-        <p class="text-xs text-slate-600 mb-6">v2.0.0 Infinitum · 30+ modules · Elixir/BEAM · Pixi.js</p>
+        <p class="text-xs text-slate-600 mb-6">v2.3.0 Amor · 30+ modules · Elixir/BEAM · Pixi.js</p>
       </div>
 
       <%!-- Create World Section --%>
       <div class="flex justify-center px-4 pb-16">
       <div class="w-full max-w-lg">
+
+        <%!-- Step Indicator --%>
+        <div class="flex items-center justify-center gap-2 mb-8">
+          <div class="flex items-center gap-1.5 text-xs">
+            <span class="w-6 h-6 rounded-full bg-purple-500/20 border border-purple-500/50 text-purple-400 flex items-center justify-center text-[10px] font-bold">1</span>
+            <span class="text-purple-400 font-medium">Template</span>
+          </div>
+          <span class="text-slate-700">→</span>
+          <div class="flex items-center gap-1.5 text-xs">
+            <span class="w-6 h-6 rounded-full bg-white/5 border border-white/10 text-slate-500 flex items-center justify-center text-[10px] font-bold">2</span>
+            <span class="text-slate-500">Rules</span>
+          </div>
+          <span class="text-slate-700">→</span>
+          <div class="flex items-center gap-1.5 text-xs">
+            <span class="w-6 h-6 rounded-full bg-white/5 border border-white/10 text-slate-500 flex items-center justify-center text-[10px] font-bold">3</span>
+            <span class="text-slate-500">Create!</span>
+          </div>
+        </div>
+
+        <%!-- Quick Start --%>
+        <div class="mb-6 flex justify-center">
+          <button
+            phx-click="random_world"
+            class="px-4 py-2 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-400 text-sm hover:bg-amber-500/20 transition-all"
+          >
+            🎲 Random World — Quick Start
+          </button>
+        </div>
 
         <%!-- Step 1: Template --%>
         <div class="mb-6">
@@ -1416,13 +1529,21 @@ defmodule ModusWeb.UniverseLive do
   defp render_simulation(assigns) do
     ~H"""
     <div class="h-screen flex flex-col bg-[#050508] text-slate-200 font-mono overflow-hidden">
+      <%!-- Zen Mode indicator --%>
+      <%= if @zen_mode do %>
+        <div class="fixed top-3 right-3 z-50 text-[10px] text-slate-600 bg-black/50 px-2 py-1 rounded backdrop-blur-sm">Z</div>
+      <% end %>
+      <%!-- Text Mode indicator --%>
+      <%= if @text_mode do %>
+        <div class="fixed top-3 left-3 z-50 text-[10px] text-cyan-400 bg-black/50 px-2 py-1 rounded backdrop-blur-sm">📝 TEXT MODE</div>
+      <% end %>
       <%!-- Top Bar --%>
-      <nav class="border-b border-white/5 bg-[#0A0A0F]/80 backdrop-blur-md px-4 md:px-6 h-14 flex items-center justify-between shrink-0 z-20">
+      <nav class={"border-b border-white/5 bg-[#0A0A0F]/80 backdrop-blur-md px-4 md:px-6 h-14 flex items-center justify-between shrink-0 z-20" <> if(@zen_mode, do: " hidden", else: "")}>
         <div class="flex items-center gap-3">
           <span class="text-xl font-bold tracking-tighter">
             MODUS<span class="text-purple-400">_</span>
           </span>
-          <span class="text-xs text-slate-600 hidden sm:inline">v2.0.0 · Infinitum</span>
+          <span class="text-xs text-slate-600 hidden sm:inline">v2.3.0 · Amor</span>
           <%= if @rules["preset"] && @rules["preset"] != "Custom" do %>
             <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 hidden sm:inline">
               🎛️ <%= @rules["preset"] %>
@@ -1561,7 +1682,7 @@ defmodule ModusWeb.UniverseLive do
       <div class="flex-1 flex min-h-0 relative">
         <%!-- Left Sidebar: Event Injection + Timeline --%>
         <div class={"shrink-0 border-r border-white/5 bg-[#0A0A0F]/90 backdrop-blur-md overflow-y-auto z-10 transition-all duration-300 " <>
-          "hidden md:block " <> if(@timeline_open, do: "md:w-64", else: "md:w-48")}>
+          if(@zen_mode, do: "hidden ", else: "hidden md:block ") <> if(@timeline_open, do: "md:w-64", else: "md:w-48")}>
           <div class="p-3">
             <%= if @agent_designer_open do %>
               <%!-- Agent Designer Panel --%>
@@ -1845,13 +1966,13 @@ defmodule ModusWeb.UniverseLive do
             </div>
           </div>
 
-          <div class="absolute bottom-4 left-4 text-[10px] text-slate-600 pointer-events-none hidden md:block">
-            Click agent to inspect · Drag to pan · Scroll to zoom · <span class="text-slate-500">Space</span>=pause · <span class="text-slate-500">1/5/0</span>=speed · <span class="text-slate-500">G</span>=god · <span class="text-slate-500">C</span>=cinematic · <span class="text-slate-500">P</span>=screenshot · <span class="text-slate-500">M</span>=minimap · <span class="text-slate-500">Esc</span>=deselect
+          <div class={"absolute bottom-4 left-4 text-[10px] text-slate-600 pointer-events-none hidden md:block" <> if(@zen_mode, do: " !hidden", else: "")}>
+            Click agent to inspect · Drag to pan · Scroll to zoom · <span class="text-slate-500">Space</span>=pause · <span class="text-slate-500">1/5/0</span>=speed · <span class="text-slate-500">G</span>=god · <span class="text-slate-500">C</span>=cinematic · <span class="text-slate-500">P</span>=screenshot · <span class="text-slate-500">M</span>=minimap · <span class="text-slate-500">T</span>=text · <span class="text-slate-500">Z</span>=zen · <span class="text-slate-500">Esc</span>=deselect
           </div>
         </div>
 
         <%!-- Right Panel: Agent Detail (desktop) --%>
-        <%= if @selected_agent do %>
+        <%= if @selected_agent && !@zen_mode do %>
           <div class={"shrink-0 border-l border-white/5 bg-[#0A0A0F]/90 backdrop-blur-md overflow-y-auto z-10 transition-all duration-300 " <>
             "fixed inset-x-0 bottom-0 top-14 md:static md:w-80 " <>
             if(@mobile_panel == :agent, do: "translate-y-0", else: "translate-y-full md:translate-y-0")}>
@@ -2208,7 +2329,7 @@ defmodule ModusWeb.UniverseLive do
         <% end %>
 
         <%!-- Mobile Bottom Bar --%>
-        <div class="fixed bottom-0 inset-x-0 md:hidden bg-[#0A0A0F]/95 backdrop-blur-md border-t border-white/5 z-30 px-2 py-2 flex items-center justify-around">
+        <div class={"fixed bottom-0 inset-x-0 md:hidden bg-[#0A0A0F]/95 backdrop-blur-md border-t border-white/5 z-30 px-2 py-2 flex items-center justify-around" <> if(@zen_mode, do: " hidden", else: "")}>
           <button phx-click="inject_event" phx-value-type="natural_disaster" class="mobile-action-btn">🌋</button>
           <button phx-click="inject_event" phx-value-type="migrant" class="mobile-action-btn">🚶</button>
           <button phx-click="inject_event" phx-value-type="resource_bonus" class="mobile-action-btn">🌾</button>

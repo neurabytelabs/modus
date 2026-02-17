@@ -6,6 +6,24 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v2.3.0 · **Amor** — _Final Polish_
+_17 Şubat 2026_
+
+### ✨ Features
+- **Landing Page** — Beautiful new `:landing` phase with hero tagline, 3 feature cards, and "Start Creating →" CTA
+- **Onboarding Step Indicator** — Visual 1→2→3 progress (Template → Rules → Create!)
+- **🎲 Random World** — Quick-start button that picks random template + settings
+- **Text Mode (T key)** — Toggle emoji-based HTML grid view of the world (🟩🟦🌲⛰️🏜️🌾🌸🧑🏠)
+- **Zen Mode (Z key)** — Hide all UI for pure world-watching, tiny "Z" indicator in corner
+- **Version Bump** — v2.3.0 across all UI surfaces
+
+### 🎨 Polish
+- Dark theme landing page with purple/cyan gradient blurs
+- Updated version strings throughout (dashboard, onboarding, simulation nav)
+- New keyboard shortcuts: T (text mode), Z (zen mode)
+
+---
+
 ## v2.2.1 · **Speculum** — _Export & Share_
 _17 Şubat 2026_
 

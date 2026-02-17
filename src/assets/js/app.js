@@ -500,6 +500,20 @@ document.addEventListener("keydown", (e) => {
       // Screenshot with overlay
       document.querySelector("[phx-click='screenshot_with_overlay']")?.click()
       break
+    case "KeyT":
+      // Text mode toggle
+      {
+        const hook = document.getElementById("world-canvas")?.__modusHook
+        if (hook) hook.pushEvent("toggle_text_mode", {})
+      }
+      break
+    case "KeyZ":
+      // Zen mode toggle
+      {
+        const hook = document.getElementById("world-canvas")?.__modusHook
+        if (hook) hook.pushEvent("toggle_zen_mode", {})
+      }
+      break
     case "Escape":
       // Deselect agent
       document.querySelector("[phx-click='deselect_agent']")?.click()
