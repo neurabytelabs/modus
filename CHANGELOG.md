@@ -6,6 +6,26 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v2.1.1 · **Lingua** — _World History_
+_17 Şubat 2026_
+
+### ✨ Features
+- **World History System** — 📖 Automatic era detection and historical narrative
+  - 🏛️ **Era Detection** — Auto-detects eras based on simulation metrics: The Founding, Expansion, Great Famine, Golden Age, Renaissance, Age of Conflict
+  - 📖 **History Panel** — New modal with era timeline (left), event detail (right), key figures section
+  - 📜 **Chronicle Export** — "Chronicle of [World]" full markdown export with eras, events, key figures
+  - 🧠 **History in Agent Context** — Agents know their world's history via LLM context injection
+  - 👤 **Key Figures Tracking** — Notable agents tracked by achievements (merchants, builders, elders)
+  - 🔄 **Era Transitions** — Smooth transitions with PubSub broadcast for UI notifications
+
+### 🔧 Technical
+- New module: `Modus.Simulation.WorldHistory` (GenServer, ~400 LOC)
+- Integrated into: `ContextBuilder` (LLM prompts), `Ticker` (metrics feed), `UniverseLive` (UI modal)
+- Era detection algorithm: rolling window of population, birth/death/trade/conflict rates
+- Events tracked per-era (max 100), key figures with up to 10 achievements each
+
+---
+
 ## v2.1.0 · **Lingua** — _Cultural Evolution_
 _17 Şubat 2026_
 

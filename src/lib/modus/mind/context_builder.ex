@@ -3,7 +3,7 @@ defmodule Modus.Mind.ContextBuilder do
 
   alias Modus.Mind.{Perception, Cerebro.SocialInsight, Culture}
   alias Modus.Persistence.AgentMemory
-  alias Modus.Simulation.Seasons
+  alias Modus.Simulation.{Seasons, WorldHistory}
 
   defp ensure_float(val) when is_float(val), do: val
   defp ensure_float(val) when is_integer(val), do: val / 1
@@ -34,6 +34,8 @@ defmodule Modus.Mind.ContextBuilder do
     #{goals_context(agent.id)}
 
     #{culture_context(agent.id)}
+
+    #{world_history_context()}
 
     RULES:
     - Speak naturally as #{agent.name} would — use your personality
@@ -261,6 +263,15 @@ defmodule Modus.Mind.ContextBuilder do
     end
 
     Enum.join(parts, "\n\n")
+  end
+
+  defp world_history_context do
+    try do
+      ctx = WorldHistory.history_context()
+      if ctx != "" and ctx != nil, do: ctx, else: ""
+    catch
+      _, _ -> ""
+    end
   end
 
   defp emotional_dynamic(affect_a, affect_b, name_a, name_b) do

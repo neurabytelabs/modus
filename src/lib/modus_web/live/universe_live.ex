@@ -89,6 +89,11 @@ defmodule ModusWeb.UniverseLive do
        toasts: [],
        chronicle_open: false,
        chronicle_md: "",
+       history_open: false,
+       history_eras: [],
+       history_selected_era: nil,
+       history_era_events: [],
+       history_figures: [],
        stats_open: false,
        population_history: [],
        # Agent Designer
@@ -817,6 +822,26 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, chronicle_open: true, chronicle_md: md)}
   end
 
+  def handle_event("open_history", _params, socket) do
+    eras = try do Modus.Simulation.WorldHistory.get_eras() catch _, _ -> [] end
+    figures = try do Modus.Simulation.WorldHistory.key_figures() catch _, _ -> [] end
+    {:noreply, assign(socket, history_open: true, history_eras: eras, history_figures: figures, history_selected_era: nil, history_era_events: [])}
+  end
+
+  def handle_event("close_history", _params, socket) do
+    {:noreply, assign(socket, history_open: false)}
+  end
+
+  def handle_event("select_history_era", %{"era-id" => era_id}, socket) do
+    events = try do Modus.Simulation.WorldHistory.era_events(era_id) catch _, _ -> [] end
+    {:noreply, assign(socket, history_selected_era: era_id, history_era_events: events)}
+  end
+
+  def handle_event("export_world_chronicle", _params, socket) do
+    md = try do Modus.Simulation.WorldHistory.export_chronicle("This World") catch _, _ -> "No history yet." end
+    {:noreply, assign(socket, chronicle_open: true, chronicle_md: md)}
+  end
+
   def handle_event("close_chronicle", _params, socket) do
     {:noreply, assign(socket, chronicle_open: false)}
   end
@@ -1322,8 +1347,8 @@ defmodule ModusWeb.UniverseLive do
             📊
           </button>
 
-          <%!-- Chronicle Export --%>
-          <button phx-click="open_chronicle" class="ctrl-btn" title="Export Chronicle">
+          <%!-- World History --%>
+          <button phx-click="open_history" class={"ctrl-btn #{if @history_open, do: "ctrl-btn-primary"}"} title="World History">
             📖
           </button>
 
@@ -2333,6 +2358,104 @@ defmodule ModusWeb.UniverseLive do
               <button phx-click="dismiss_toast" phx-value-id={toast.id} class="text-slate-600 hover:text-slate-400 text-xs ml-1">✕</button>
             </div>
           <% end %>
+        </div>
+      <% end %>
+
+      <%!-- World History Modal --%>
+      <%= if @history_open do %>
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div class="bg-[#0A0A0F] border border-white/10 rounded-xl w-full max-w-3xl max-h-[80vh] flex flex-col shadow-2xl" phx-click-away="close_history">
+            <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
+              <span class="font-bold text-slate-100">📖 World History</span>
+              <div class="flex items-center gap-2">
+                <button phx-click="export_world_chronicle" class="text-[10px] px-2 py-1 bg-purple-500/20 text-purple-300 rounded hover:bg-purple-500/30 border border-purple-500/20">
+                  📜 Export Chronicle
+                </button>
+                <button phx-click="close_history" class="text-slate-600 hover:text-slate-400">✕</button>
+              </div>
+            </div>
+            <div class="flex flex-1 overflow-hidden">
+              <%!-- Era Timeline (left) --%>
+              <div class="w-1/3 border-r border-white/5 overflow-y-auto p-3 space-y-2">
+                <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">Eras</h3>
+                <%= if @history_eras == [] do %>
+                  <p class="text-xs text-slate-600 italic">No eras detected yet...</p>
+                <% else %>
+                  <%= for era <- @history_eras do %>
+                    <button
+                      phx-click="select_history_era"
+                      phx-value-era-id={era.id}
+                      class={"w-full text-left p-2 rounded-lg border transition-all cursor-pointer " <>
+                        if(@history_selected_era == era.id,
+                          do: "bg-purple-500/20 border-purple-500/40",
+                          else: "bg-white/3 border-white/5 hover:bg-white/5")}
+                    >
+                      <div class="flex items-center gap-1.5">
+                        <span class="text-lg"><%= era.emoji %></span>
+                        <span class="text-xs font-medium text-slate-200"><%= era.name %></span>
+                      </div>
+                      <div class="text-[9px] text-slate-500 mt-1">
+                        t:<%= era.start_tick %><%= if era.end_tick, do: " → #{era.end_tick}", else: " → now" %>
+                      </div>
+                      <%= if era.end_tick == nil do %>
+                        <span class="inline-block mt-1 text-[8px] px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded-full">current</span>
+                      <% end %>
+                    </button>
+                  <% end %>
+                <% end %>
+
+                <%!-- Key Figures --%>
+                <%= if @history_figures != [] do %>
+                  <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mt-4 mb-2">Key Figures</h3>
+                  <%= for fig <- Enum.take(@history_figures, 8) do %>
+                    <div class="p-2 bg-white/3 rounded-lg border border-white/5">
+                      <div class="text-xs font-medium text-cyan-300"><%= fig.name %></div>
+                      <div class="text-[9px] text-slate-500 mt-0.5">
+                        <%= List.first(fig.achievements) || "Notable figure" %>
+                      </div>
+                    </div>
+                  <% end %>
+                <% end %>
+              </div>
+
+              <%!-- Era Detail (right) --%>
+              <div class="flex-1 overflow-y-auto p-4">
+                <%= if @history_selected_era do %>
+                  <% selected = Enum.find(@history_eras, fn e -> e.id == @history_selected_era end) %>
+                  <%= if selected do %>
+                    <div class="mb-4">
+                      <h2 class="text-lg font-bold text-slate-100"><%= selected.emoji %> <%= selected.name %></h2>
+                      <p class="text-xs text-slate-400 mt-1 italic"><%= selected.description %></p>
+                      <div class="text-[9px] text-slate-600 mt-1">
+                        Duration: <%= if selected.end_tick, do: "#{selected.end_tick - selected.start_tick} ticks", else: "ongoing" %>
+                      </div>
+                    </div>
+
+                    <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">Events</h3>
+                    <%= if @history_era_events == [] do %>
+                      <p class="text-xs text-slate-600 italic">No events recorded for this era.</p>
+                    <% else %>
+                      <div class="space-y-1.5">
+                        <%= for event <- @history_era_events do %>
+                          <div class="border-l-2 border-purple-500/30 pl-2 py-0.5">
+                            <div class="flex items-center gap-1.5">
+                              <span class="text-sm"><%= event.emoji %></span>
+                              <span class="text-[9px] text-slate-600 tabular-nums">t:<%= event.tick %></span>
+                            </div>
+                            <p class="text-[11px] text-slate-300 mt-0.5"><%= event.summary %></p>
+                          </div>
+                        <% end %>
+                      </div>
+                    <% end %>
+                  <% end %>
+                <% else %>
+                  <div class="flex items-center justify-center h-full">
+                    <p class="text-xs text-slate-600 italic">← Select an era to view its history</p>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
         </div>
       <% end %>
 

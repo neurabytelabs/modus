@@ -166,6 +166,20 @@ defmodule Modus.Simulation.Ticker do
         _, _ -> 0
       end
       Modus.Simulation.StoryEngine.record_population(new_tick, agent_count)
+
+      # Feed WorldHistory metrics for era detection
+      try do
+        Modus.Simulation.WorldHistory.record_metrics(%{
+          tick: new_tick,
+          population: agent_count,
+          births: 0,
+          deaths: 0,
+          trades: 0,
+          conflicts: 0
+        })
+      catch
+        _, _ -> :ok
+      end
     end
 
     # Schedule next tick

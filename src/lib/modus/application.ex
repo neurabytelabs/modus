@@ -33,6 +33,7 @@ defmodule Modus.Application do
       Modus.Simulation.ResourceSystem,
       Modus.Simulation.WorldSystems,
       Modus.Simulation.StoryEngine,
+      Modus.Simulation.WorldHistory,
       Modus.Simulation.WorldEvents,
       Modus.Simulation.Seasons,
       ModusWeb.Endpoint
