@@ -210,6 +210,56 @@ Hooks.WorldCanvas = {
       }
     })
 
+    // ── Agent Designer ──────────────────────────────────────
+    this.handleEvent("designer_place_mode", (data) => {
+      console.log("[MODUS] Designer place mode:", data)
+      this._designerPlacing = data
+      if (this.rendererReady && this.renderer && this.renderer.app && this.renderer.app.canvas) {
+        this.renderer.app.canvas.style.cursor = "crosshair"
+      }
+    })
+
+    // Handle map click for agent/animal placement — intercept renderer's _handleClick
+    this._designerPlacing = null
+    const origHandleClick = this.renderer._handleClick.bind(this.renderer)
+    this.renderer._handleClick = (e) => {
+      if (this._designerPlacing) {
+        const rect = this.renderer.app.canvas.getBoundingClientRect()
+        const mx = e.clientX - rect.left
+        const my = e.clientY - rect.top
+        const wx = (mx - this.renderer.worldContainer.x) / this.renderer.scale
+        const wy = (my - this.renderer.worldContainer.y) / this.renderer.scale
+        const tileSize = 16 // TILE_SIZE from renderer
+        const tileX = Math.floor(wx / tileSize)
+        const tileY = Math.floor(wy / tileSize)
+
+        const dp = this._designerPlacing
+        this._designerPlacing = null
+        this.renderer.app.canvas.style.cursor = "grab"
+
+        if (dp.mode === "agent") {
+          const d = dp.data
+          this.worldSocket.spawnCustomAgent({
+            name: d.name || "Unnamed",
+            occupation: d.occupation,
+            mood: d.mood,
+            personality: d.personality,
+            x: tileX,
+            y: tileY
+          }, (err, resp) => {
+            if (!err) console.log("[MODUS] Agent placed:", resp)
+          })
+        } else if (dp.mode === "animal") {
+          this.worldSocket.spawnAnimal(dp.data.animal, tileX, tileY, (err, resp) => {
+            if (!err) console.log("[MODUS] Animal placed:", resp)
+          })
+        }
+        this.pushEvent("agent_placed", {})
+        return
+      }
+      origHandleClick(e)
+    }
+
     // Debounced paint to avoid flooding the channel
     this._lastPaint = ""
     this._paintThrottle = 0

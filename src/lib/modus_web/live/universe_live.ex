@@ -1,7 +1,7 @@
 defmodule ModusWeb.UniverseLive do
   @moduledoc """
   Main LiveView — MODUS universe dashboard with 2D renderer.
-  v1.6.0 Creator — World Builder, Terrain Painter, Nature Resource System.
+  v1.6.1 Creator — Agent Designer, World Builder, Terrain Painter, Nature Resource System.
   """
   use ModusWeb, :live_view
   # JS alias available if needed
@@ -75,7 +75,20 @@ defmodule ModusWeb.UniverseLive do
        chronicle_open: false,
        chronicle_md: "",
        stats_open: false,
-       population_history: []
+       population_history: [],
+       # Agent Designer
+       agent_designer_open: false,
+       agent_designer_mode: :agent,
+       designer_name: "",
+       designer_occupation: "explorer",
+       designer_mood: "calm",
+       designer_o: 50,
+       designer_c: 50,
+       designer_e: 50,
+       designer_a: 50,
+       designer_n: 50,
+       designer_animal: "deer",
+       designer_placing: false
      )}
   end
 
@@ -490,6 +503,77 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, mobile_panel: new_panel)}
   end
 
+  # ── Creator: Agent Designer ──────────────────────────────────
+
+  def handle_event("toggle_agent_designer", _params, socket) do
+    {:noreply, assign(socket, agent_designer_open: !socket.assigns.agent_designer_open, designer_placing: false)}
+  end
+
+  def handle_event("set_designer_mode", %{"mode" => mode}, socket) do
+    {:noreply, assign(socket, agent_designer_mode: String.to_existing_atom(mode))}
+  end
+
+  def handle_event("designer_change", params, socket) do
+    socket = socket
+    |> maybe_assign(params, "name", :designer_name)
+    |> maybe_assign(params, "occupation", :designer_occupation)
+    |> maybe_assign(params, "mood", :designer_mood)
+    |> maybe_assign(params, "animal", :designer_animal)
+    |> maybe_assign_int(params, "o", :designer_o)
+    |> maybe_assign_int(params, "c", :designer_c)
+    |> maybe_assign_int(params, "e", :designer_e)
+    |> maybe_assign_int(params, "a", :designer_a)
+    |> maybe_assign_int(params, "n", :designer_n)
+    {:noreply, socket}
+  end
+
+  def handle_event("designer_place", _params, socket) do
+    # Toggle placing mode — next map click spawns agent
+    {:noreply,
+     socket
+     |> assign(designer_placing: true)
+     |> push_event("designer_place_mode", %{
+       mode: to_string(socket.assigns.agent_designer_mode),
+       data: %{
+         name: socket.assigns.designer_name,
+         occupation: socket.assigns.designer_occupation,
+         mood: socket.assigns.designer_mood,
+         personality: %{
+           o: socket.assigns.designer_o,
+           c: socket.assigns.designer_c,
+           e: socket.assigns.designer_e,
+           a: socket.assigns.designer_a,
+           n: socket.assigns.designer_n
+         },
+         animal: socket.assigns.designer_animal
+       }
+     })}
+  end
+
+  def handle_event("agent_placed", _params, socket) do
+    {:noreply, assign(socket, designer_placing: false)}
+  end
+
+  defp maybe_assign(socket, params, key, field) do
+    case Map.get(params, key) do
+      nil -> socket
+      val -> assign(socket, [{field, val}])
+    end
+  end
+
+  defp maybe_assign_int(socket, params, key, field) do
+    case Map.get(params, key) do
+      nil -> socket
+      val when is_binary(val) ->
+        case Integer.parse(val) do
+          {i, _} -> assign(socket, [{field, max(0, min(i, 100))}])
+          :error -> socket
+        end
+      val when is_integer(val) -> assign(socket, [{field, max(0, min(val, 100))}])
+      _ -> socket
+    end
+  end
+
   # ── Creator: Build Mode ──────────────────────────────────────
 
   def handle_event("toggle_build_mode", _params, socket) do
@@ -671,7 +755,7 @@ defmodule ModusWeb.UniverseLive do
           <span class="px-2 py-1 bg-white/5 rounded border border-white/10">🔨 World Builder</span>
           <span class="px-2 py-1 bg-white/5 rounded border border-white/10">🌿 Nature Resources</span>
         </div>
-        <p class="text-xs text-slate-600 mb-6">v1.6.0 Creator · 29+ modules · Elixir/BEAM · Pixi.js</p>
+        <p class="text-xs text-slate-600 mb-6">v1.6.1 Creator · 29+ modules · Elixir/BEAM · Pixi.js</p>
       </div>
 
       <%!-- Create World Section --%>
@@ -794,7 +878,7 @@ defmodule ModusWeb.UniverseLive do
           <span class="text-xl font-bold tracking-tighter">
             MODUS<span class="text-purple-400">_</span>
           </span>
-          <span class="text-xs text-slate-600 hidden sm:inline">v1.6.0 · Creator</span>
+          <span class="text-xs text-slate-600 hidden sm:inline">v1.6.1 · Creator</span>
         </div>
 
         <div class="flex items-center gap-3 md:gap-6">
@@ -841,6 +925,11 @@ defmodule ModusWeb.UniverseLive do
             <% end %>
             <button phx-click="reset" class="ctrl-btn">↻</button>
           </div>
+
+          <%!-- Agent Designer --%>
+          <button phx-click="toggle_agent_designer" class={"ctrl-btn #{if @agent_designer_open, do: "ctrl-btn-active"}"} title="Agent Designer — Create Characters & Animals">
+            ➕🧑
+          </button>
 
           <%!-- Build Mode --%>
           <button phx-click="toggle_build_mode" class={"ctrl-btn #{if @build_mode, do: "ctrl-btn-active"}"} title="Build Mode — World Builder">
@@ -904,6 +993,116 @@ defmodule ModusWeb.UniverseLive do
         <div class={"shrink-0 border-r border-white/5 bg-[#0A0A0F]/90 backdrop-blur-md overflow-y-auto z-10 transition-all duration-300 " <>
           "hidden md:block " <> if(@timeline_open, do: "md:w-64", else: "md:w-48")}>
           <div class="p-3">
+            <%= if @agent_designer_open do %>
+              <%!-- Agent Designer Panel --%>
+              <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-3">➕ Agent Designer</h3>
+
+              <%!-- Mode Toggle: Agent vs Animal --%>
+              <div class="flex gap-1 mb-3">
+                <button phx-click="set_designer_mode" phx-value-mode="agent"
+                  class={"flex-1 py-1.5 text-[10px] rounded-lg border text-center transition-all " <>
+                    if(@agent_designer_mode == :agent, do: "border-purple-500 bg-purple-500/10 text-purple-300", else: "border-white/10 bg-white/5 text-slate-500 hover:border-white/20")}>
+                  🧑 Agent
+                </button>
+                <button phx-click="set_designer_mode" phx-value-mode="animal"
+                  class={"flex-1 py-1.5 text-[10px] rounded-lg border text-center transition-all " <>
+                    if(@agent_designer_mode == :animal, do: "border-cyan-500 bg-cyan-500/10 text-cyan-300", else: "border-white/10 bg-white/5 text-slate-500 hover:border-white/20")}>
+                  🦌 Animal
+                </button>
+              </div>
+
+              <form phx-change="designer_change">
+              <%= if @agent_designer_mode == :agent do %>
+                <%!-- Name --%>
+                <div class="mb-3">
+                  <label class="text-[9px] uppercase tracking-wider text-slate-600 block mb-1">Name</label>
+                  <input type="text" name="name" value={@designer_name} placeholder="Agent name..."
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-500/50" />
+                </div>
+
+                <%!-- Occupation --%>
+                <div class="mb-3">
+                  <label class="text-[9px] uppercase tracking-wider text-slate-600 block mb-1">Occupation</label>
+                  <select name="occupation"
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500/50">
+                    <%= for {occ, emoji} <- [{"farmer", "🌾"}, {"merchant", "💰"}, {"explorer", "🧭"}, {"healer", "💚"}, {"builder", "🏗️"}, {"guard", "🛡️"}, {"hunter", "🏹"}, {"fisher", "🎣"}, {"artist", "🎨"}, {"scholar", "📚"}] do %>
+                      <option value={occ} selected={@designer_occupation == occ}><%= emoji %> <%= String.capitalize(occ) %></option>
+                    <% end %>
+                  </select>
+                </div>
+
+                <%!-- Mood --%>
+                <div class="mb-3">
+                  <label class="text-[9px] uppercase tracking-wider text-slate-600 block mb-1">Starting Mood</label>
+                  <div class="grid grid-cols-2 gap-1">
+                    <%= for {mood, emoji} <- [{"happy", "😊"}, {"calm", "😌"}, {"anxious", "😰"}, {"eager", "🔥"}] do %>
+                      <button type="button" phx-click="designer_change" phx-value-mood={mood}
+                        class={"flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] transition-all " <>
+                          if(@designer_mood == mood,
+                            do: "bg-purple-500/20 border border-purple-500/40 text-purple-300",
+                            else: "bg-white/3 border border-white/5 text-slate-400 hover:border-white/10")}>
+                        <span><%= emoji %></span><span><%= String.capitalize(mood) %></span>
+                      </button>
+                    <% end %>
+                  </div>
+                </div>
+
+                <%!-- Big Five Personality Sliders --%>
+                <div class="mb-3">
+                  <label class="text-[9px] uppercase tracking-wider text-slate-600 block mb-2">Personality (Big Five)</label>
+                  <%= for {trait, label, val} <- [{"o", "Openness", @designer_o}, {"c", "Conscientiousness", @designer_c}, {"e", "Extraversion", @designer_e}, {"a", "Agreeableness", @designer_a}, {"n", "Neuroticism", @designer_n}] do %>
+                    <div class="mb-1.5">
+                      <div class="flex justify-between text-[9px] mb-0.5">
+                        <span class="text-slate-500"><%= label %></span>
+                        <span class="text-cyan-400 tabular-nums"><%= val %></span>
+                      </div>
+                      <input type="range" name={trait} min="0" max="100" value={val}
+                        class="w-full accent-purple-500 h-1" />
+                    </div>
+                  <% end %>
+                </div>
+
+              <% else %>
+                <%!-- Animal Type --%>
+                <div class="mb-3">
+                  <label class="text-[9px] uppercase tracking-wider text-slate-600 block mb-2">Animal Type</label>
+                  <div class="space-y-1.5">
+                    <%= for {animal, emoji, desc} <- [{"deer", "🦌", "Peaceful grazer"}, {"rabbit", "🐇", "Quick & shy"}, {"wolf", "🐺", "Pack predator"}] do %>
+                      <button type="button" phx-click="designer_change" phx-value-animal={animal}
+                        class={"flex items-center gap-2 w-full px-2 py-2 rounded-lg text-[11px] transition-all " <>
+                          if(@designer_animal == animal,
+                            do: "bg-cyan-500/20 border border-cyan-500/40 text-cyan-300",
+                            else: "bg-white/3 border border-white/5 text-slate-400 hover:border-white/10")}>
+                        <span class="text-lg"><%= emoji %></span>
+                        <div>
+                          <div class="font-medium"><%= String.capitalize(animal) %></div>
+                          <div class="text-[9px] text-slate-600"><%= desc %></div>
+                        </div>
+                      </button>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+              </form>
+
+              <%!-- Place Button --%>
+              <button phx-click="designer_place"
+                class={"w-full py-2 rounded-lg text-xs font-bold tracking-wider transition-all mt-2 " <>
+                  if(@designer_placing,
+                    do: "bg-green-500/20 border border-green-500/40 text-green-300 animate-pulse",
+                    else: "bg-gradient-to-r from-purple-600 to-cyan-600 text-white hover:from-purple-500 hover:to-cyan-500")}>
+                <%= if @designer_placing do %>
+                  📍 Click on map to place...
+                <% else %>
+                  📍 Place on Map
+                <% end %>
+              </button>
+
+              <div class="text-[9px] text-slate-600 mt-2 leading-relaxed">
+                Design your character, then click "Place on Map" and click the world to spawn them.
+              </div>
+
+            <% else %>
             <%= if @build_mode do %>
               <%!-- Build Mode Palette --%>
               <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-3">🔨 World Builder</h3>
@@ -1006,6 +1205,7 @@ defmodule ModusWeb.UniverseLive do
                   <% end %>
                 </div>
               <% end %>
+            <% end %>
             <% end %>
             <% end %>
           </div>

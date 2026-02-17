@@ -303,6 +303,120 @@ defmodule ModusWeb.WorldChannel do
     end
   end
 
+  # ── Agent Designer: Spawn Custom Agent ────────────────────────
+
+  @valid_occupations ~w(farmer merchant explorer healer builder guard hunter fisher artist scholar)
+  @valid_moods ~w(happy calm anxious eager)
+  @valid_animal_types ~w(deer rabbit wolf)
+
+  def handle_in("spawn_custom_agent", payload, socket) do
+    require Logger
+    Logger.info("MODUS spawn_custom_agent: #{inspect(payload)}")
+
+    name = payload["name"] || "Unnamed"
+    occupation = if payload["occupation"] in @valid_occupations,
+      do: String.to_atom(payload["occupation"]),
+      else: :explorer
+    mood = if payload["mood"] in @valid_moods,
+      do: String.to_atom(payload["mood"]),
+      else: :calm
+
+    # Parse personality (Big Five 0-100 → 0.0-1.0)
+    p = payload["personality"] || %{}
+    personality = %{
+      openness: (p["o"] || 50) / 100,
+      conscientiousness: (p["c"] || 50) / 100,
+      extraversion: (p["e"] || 50) / 100,
+      agreeableness: (p["a"] || 50) / 100,
+      neuroticism: (p["n"] || 50) / 100
+    }
+
+    # Position — use provided or find walkable
+    position = if payload["x"] && payload["y"] do
+      {payload["x"], payload["y"]}
+    else
+      if Process.whereis(World) do
+        state = World.get_state()
+        {max_x, max_y} = state.grid_size
+        find_walkable({max_x, max_y}, state.grid_table)
+      else
+        {50, 50}
+      end
+    end
+
+    agent = Agent.new_custom(name, position, occupation, personality, mood)
+
+    case AgentSupervisor.spawn_agent(agent) do
+      {:ok, _pid} ->
+        tick = if Process.whereis(Ticker), do: Ticker.current_tick(), else: 0
+        EventLog.log(:birth, tick, [agent.id], %{name: name, type: :custom_spawn, occupation: occupation})
+
+        agents = get_agent_list()
+        broadcast!(socket, "delta", %{
+          tick: tick,
+          agent_count: length(agents),
+          agents: agents
+        })
+        {:reply, {:ok, %{id: agent.id, name: name}}, socket}
+
+      {:error, reason} ->
+        {:reply, {:error, %{reason: inspect(reason)}}, socket}
+    end
+  end
+
+  def handle_in("spawn_animal", %{"type" => animal_type, "x" => x, "y" => y}, socket)
+      when animal_type in @valid_animal_types do
+    require Logger
+    Logger.info("MODUS spawn_animal: #{animal_type} at #{x},#{y}")
+
+    # Animals are simple agents with animal occupation
+    name = case animal_type do
+      "deer" -> "Deer"
+      "rabbit" -> "Rabbit"
+      "wolf" -> "Wolf"
+    end
+
+    personality = %{
+      openness: :rand.uniform() * 0.5,
+      conscientiousness: :rand.uniform() * 0.3,
+      extraversion: :rand.uniform() * 0.4,
+      agreeableness: if(animal_type == "wolf", do: 0.1, else: 0.7),
+      neuroticism: if(animal_type == "rabbit", do: 0.8, else: 0.3)
+    }
+
+    agent = Agent.new_custom(name, {x, y}, String.to_atom(animal_type), personality, :calm)
+
+    case AgentSupervisor.spawn_agent(agent) do
+      {:ok, _pid} ->
+        tick = if Process.whereis(Ticker), do: Ticker.current_tick(), else: 0
+        EventLog.log(:birth, tick, [agent.id], %{name: name, type: :animal_spawn, animal: animal_type})
+
+        agents = get_agent_list()
+        broadcast!(socket, "delta", %{
+          tick: tick,
+          agent_count: length(agents),
+          agents: agents
+        })
+        {:reply, {:ok, %{id: agent.id, name: name}}, socket}
+
+      {:error, reason} ->
+        {:reply, {:error, %{reason: inspect(reason)}}, socket}
+    end
+  end
+
+  def handle_in("spawn_animal", _payload, socket) do
+    {:reply, {:error, %{reason: "invalid_animal_type"}}, socket}
+  end
+
+  defp find_walkable({max_x, max_y}, table) do
+    x = :rand.uniform(max_x) - 1
+    y = :rand.uniform(max_y) - 1
+    case :ets.lookup(table, {x, y}) do
+      [{{^x, ^y}, %{terrain: terrain}}] when terrain in [:grass, :forest] -> {x, y}
+      _ -> find_walkable({max_x, max_y}, table)
+    end
+  end
+
   def handle_in("get_agent_detail", %{"agent_id" => agent_id}, socket) do
     try do
       state = Agent.get_state(agent_id)

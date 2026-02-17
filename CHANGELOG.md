@@ -6,6 +6,35 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v1.6.1 · **Creator** — _Agent Designer_
+_17 Şubat 2026_
+
+### ✨ Features
+- **Agent Designer Panel** — ➕🧑 button in top bar opens left-panel designer
+- **Custom Agent Creation** — Name, occupation (10 types), personality (Big Five sliders 0-100), starting mood (happy/calm/anxious/eager)
+- **Click-to-Place** — Design agent → click "Place on Map" → click map tile to spawn
+- **Animal Spawning** — Switch to Animal mode to place deer 🦌, rabbit 🐇, or wolf 🐺
+- **Agent.new_custom/5** — New constructor accepting custom personality map and mood
+- **WorldChannel handlers** — `spawn_custom_agent` and `spawn_animal` with full validation
+- **WorldSocket.spawnCustomAgent/spawnAnimal** — JS client methods for channel communication
+- **Live placement mode** — Crosshair cursor, click intercept, auto-reset after placement
+
+### 🧠 Architecture
+- Agent Designer state managed in LiveView (designer_name, designer_o/c/e/a/n sliders, etc.)
+- `designer_place_mode` push_event triggers JS click intercept on renderer
+- Custom agents join simulation immediately with specified Big Five traits mapped to 0.0-1.0
+- Mood mapping: happy→joy, calm→neutral, anxious→fear, eager→desire
+- Animals spawn as agents with animal-appropriate personality profiles
+
+### 🧪 Files Modified
+- `universe_live.ex` — Designer UI panel, state, event handlers
+- `world_channel.ex` — spawn_custom_agent, spawn_animal handlers
+- `agent.ex` — new_custom/5 constructor
+- `world_socket.js` — spawnCustomAgent, spawnAnimal methods
+- `app.js` — Designer place mode click intercept
+
+---
+
 ## v1.4.0 · **Potentia** — _"By reality and perfection I mean the same thing"_
 _17 Şubat 2026_
 

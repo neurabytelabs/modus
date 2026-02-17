@@ -179,6 +179,34 @@ export default class WorldSocket {
     this.channel.push("gather_resource", { agent_id: agentId, x, y })
   }
 
+  // ── Agent Designer ──────────────────────────────────────────
+
+  spawnCustomAgent(data, callback) {
+    this.channel
+      .push("spawn_custom_agent", data)
+      .receive("ok", (resp) => {
+        console.log("[MODUS] Custom agent spawned:", resp)
+        if (callback) callback(null, resp)
+      })
+      .receive("error", (err) => {
+        console.error("[MODUS] Spawn failed:", err)
+        if (callback) callback(err)
+      })
+  }
+
+  spawnAnimal(type, x, y, callback) {
+    this.channel
+      .push("spawn_animal", { type, x, y })
+      .receive("ok", (resp) => {
+        console.log("[MODUS] Animal spawned:", resp)
+        if (callback) callback(null, resp)
+      })
+      .receive("error", (err) => {
+        console.error("[MODUS] Animal spawn failed:", err)
+        if (callback) callback(err)
+      })
+  }
+
   disconnect() {
     if (this.channel) this.channel.leave()
     if (this.socket) this.socket.disconnect()

@@ -90,6 +90,38 @@ defmodule Modus.Simulation.Agent do
     }
   end
 
+  @doc "Create a new agent with custom personality and mood."
+  @spec new_custom(String.t(), {integer(), integer()}, atom(), map(), atom()) :: t()
+  def new_custom(name, position, occupation, personality, mood \\ :neutral) do
+    affect = case mood do
+      :happy -> :joy
+      :calm -> :neutral
+      :anxious -> :fear
+      :eager -> :desire
+      _ -> :neutral
+    end
+
+    %__MODULE__{
+      id: generate_id(),
+      name: name,
+      position: position,
+      personality: personality,
+      needs: %{hunger: 50.0, social: 50.0, rest: 80.0, shelter: 70.0},
+      occupation: occupation,
+      relationships: %{},
+      memory: [],
+      current_action: :idle,
+      conatus_score: 5.0,
+      alive?: true,
+      age: 0,
+      conatus_energy: 0.7,
+      affect_state: affect,
+      affect_history: [],
+      conatus_history: [],
+      inventory: %{}
+    }
+  end
+
   # --- Public API ---
 
   @doc "Get the agent's current state by id."
