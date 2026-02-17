@@ -1,0 +1,9 @@
+{
+  "daily_limit": 10.00,
+  "sprint_limit": 15.00,
+  "cumulative_limit": 30.00,
+  "spent_today": 0.00,
+  "spent_this_sprint": 0.00,
+  "spent_total": 0.00,
+  "last_reset": "2026-02-17"
+}
