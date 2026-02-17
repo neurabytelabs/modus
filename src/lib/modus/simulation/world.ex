@@ -137,6 +137,8 @@ defmodule Modus.Simulation.World do
     table = :ets.new(:modus_grid, [:set, :public, read_concurrency: true])
     world = %{world | grid_table: table, status: :paused}
     generate_terrain(world)
+    # Initialize buildings ETS
+    Modus.Simulation.Building.init_table()
     {:ok, world}
   end
 

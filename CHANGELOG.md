@@ -6,6 +6,33 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v1.8.0 · **Architectus** — _Building System_
+_17 Şubat 2026_
+
+### ✨ Features
+- **Building System** — 6 building types: Hut 🛋, House 🏠, Farm 🌾, Market 🏪, Well 🪣, Watchtower 🗼
+- **Resource Costs** — Buildings require gathered wood/stone (Hut: 5 wood, House: 10 wood + 5 stone, etc.)
+- **Agent Build Behavior** — Agents with conatus > 0.6, no home, and sufficient resources auto-build
+- **Area Bonuses** — Buildings provide passive need bonuses to nearby agents (rest, shelter, hunger, social)
+- **Building Decay** — Unowned buildings lose 0.5 health per 100 ticks, destroyed at 0
+- **God Mode Placement** — Place any building type via World Builder palette
+- **2D Flat Rendering** — Colored rectangles with emoji overlays, health bars (FLAT 2D, no 3D)
+- **Building Broadcast** — Buildings included in full_state and delta channel pushes
+
+### 🏗️ Architecture
+- New module: `Modus.Simulation.Building` — ETS-backed building storage, cost/bonus system
+- `BehaviorTree` — Added `:build` and `:go_home` actions with conatus/inventory checks
+- `DecisionEngine` — Resolves build (at position) and go_home (move to home building)
+- `Agent` — `apply_action(:build)` deducts resources, places building, logs event
+- `Agent` — `apply_building_bonuses/1` applies area bonuses each tick
+- `Ticker` — Decays unowned buildings every 100 ticks
+- `WorldChannel` — Buildings in full_state/delta, God Mode `place_building` handler
+- `Renderer` — New building layer with colored rects + emoji + health bars
+- `WorldSocket` — `placeBuilding()` client method
+- `UniverseLive` — Building brush palette in World Builder
+
+---
+
 ## v1.7.1 · **Nexus** — _Universe Templates Gallery_
 _17 Şubat 2026_
 

@@ -243,6 +243,7 @@ defmodule Modus.Simulation.Agent do
     agent =
       agent
       |> decay_needs()
+      |> apply_building_bonuses()
       |> apply_action(action, params)
       |> tap(fn a -> Modus.Mind.Learning.award_for_action(a.id, action) end)
       |> Modus.Mind.MindEngine.process_tick(action, params, tick_number)
@@ -363,6 +364,33 @@ defmodule Modus.Simulation.Agent do
     %{agent | position: {ax + dx, ay + dy}, current_action: :fleeing}
   end
 
+  defp apply_action(agent, :build, params) do
+    alias Modus.Simulation.Building
+
+    # Determine best building type agent can afford (prefer hut for homeless)
+    build_type = cond do
+      !Building.has_home?(agent.id) and Building.can_build?(agent.inventory, :house) -> :house
+      !Building.has_home?(agent.id) and Building.can_build?(agent.inventory, :hut) -> :hut
+      Building.can_build?(agent.inventory, :farm) -> :farm
+      Building.can_build?(agent.inventory, :well) -> :well
+      Building.can_build?(agent.inventory, :market) -> :market
+      Building.can_build?(agent.inventory, :watchtower) -> :watchtower
+      true -> nil
+    end
+
+    if build_type do
+      inventory = Building.deduct_costs(agent.inventory, build_type)
+      building = Building.place(build_type, agent.position, agent.id, Map.get(params, :tick, 0))
+      Modus.Simulation.EventLog.log(:building, Map.get(params, :tick, 0), [agent.id], %{
+        name: agent.name, type: build_type, position: agent.position, building_id: building.id
+      })
+      needs = %{agent.needs | shelter: min(agent.needs.shelter + 20.0, 100.0)}
+      %{agent | inventory: inventory, needs: needs, current_action: :building}
+    else
+      %{agent | current_action: :idle}
+    end
+  end
+
   defp apply_action(agent, :idle, _params) do
     %{agent | current_action: :idle}
   end
@@ -434,6 +462,11 @@ defmodule Modus.Simulation.Agent do
         rest: min(max(needs.rest - 0.015 + rest_recovery, 0.0), 100.0)
     }
 
+    %{agent | needs: new_needs}
+  end
+
+  defp apply_building_bonuses(agent) do
+    new_needs = Modus.Simulation.Building.apply_area_bonuses(agent.needs, agent.position)
     %{agent | needs: new_needs}
   end
 

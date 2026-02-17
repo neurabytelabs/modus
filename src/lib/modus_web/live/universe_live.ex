@@ -1346,10 +1346,31 @@ defmodule ModusWeb.UniverseLive do
                 </div>
               </div>
 
+              <%!-- Building Brushes (God Mode placement) --%>
+              <div class="mb-4">
+                <div class="text-[9px] uppercase tracking-wider text-slate-600 mb-2">Buildings</div>
+                <div class="grid grid-cols-2 gap-1.5">
+                  <%= for {btype, emoji, label} <- [{"hut", "🛋", "Hut"}, {"house", "🏠", "House"}, {"farm", "🌾", "Farm"}, {"market", "🏪", "Market"}, {"well", "🪣", "Well"}, {"watchtower", "🗼", "Tower"}] do %>
+                    <button
+                      phx-click="set_build_brush"
+                      phx-value-brush={btype}
+                      phx-value-type="building"
+                      class={"flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] transition-all " <>
+                        if(@build_brush == btype && @build_type == "building",
+                          do: "bg-amber-500/20 border border-amber-500/40 text-amber-300",
+                          else: "bg-white/3 border border-white/5 text-slate-400 hover:border-white/10")}
+                    >
+                      <span class="text-sm"><%= emoji %></span>
+                      <span><%= label %></span>
+                    </button>
+                  <% end %>
+                </div>
+              </div>
+
               <div class="text-[9px] text-slate-600 leading-relaxed">
                 Click/drag on map to paint.<br/>
                 Resources respawn after 200 ticks.<br/>
-                Nature is survival infrastructure.
+                Buildings placed by God Mode have no owner.
               </div>
 
             <% else %>

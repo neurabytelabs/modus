@@ -91,11 +91,14 @@ export default class Renderer {
     // Build Mode
     this.buildMode = false
     this.buildBrush = "grass" // current terrain or resource node type
-    this.buildType = "terrain" // "terrain" or "resource"
+    this.buildType = "terrain" // "terrain", "resource", or "building"
     this.onPaintTerrain = null // callback(x, y, terrain)
     this.onPlaceResource = null // callback(x, y, nodeType)
+    this.onPlaceBuilding = null // callback(x, y, buildingType)
     this.resourceNodeLayer = null
     this.resourceNodeSprites = new Map() // "x,y" -> container
+    this.buildingLayer = null
+    this.buildingSprites = new Map() // id -> {gfx, label}
 
     // Camera state
     this.dragging = false
@@ -134,8 +137,10 @@ export default class Renderer {
     this.relationshipLayer = new Container()
     this.agentLayer = new Container()
     this.resourceNodeLayer = new Container()
+    this.buildingLayer = new Container()
     this.worldContainer.addChild(this.terrainLayer)
     this.worldContainer.addChild(this.resourceNodeLayer)
+    this.worldContainer.addChild(this.buildingLayer)
     this.worldContainer.addChild(this.relationshipLayer)
     this.worldContainer.addChild(this.agentLayer)
 
@@ -399,10 +404,12 @@ export default class Renderer {
     let glowPhase = 0
     const ACTION_EMOJIS = {
       explore: "🧭", exploring: "🧭",
-      gather: "🌾", find_food: "🍖",
-      find_friend: "💬", talk: "💬",
-      go_home_sleep: "😴", sleep: "😴",
-      help_nearby: "🤝", flee: "🏃",
+      gather: "🌾", gathering: "🌾", find_food: "🍖",
+      find_friend: "💬", talk: "💬", talking: "💬",
+      go_home_sleep: "😴", sleep: "😴", sleeping: "😴",
+      help_nearby: "🤝", flee: "🏃", fleeing: "🏃",
+      build: "🔨", building: "🔨",
+      go_home: "🏠",
       idle: "",
       reasoning: "💭",
     }
@@ -775,7 +782,9 @@ export default class Renderer {
         const tileX = Math.floor(wx / TILE_SIZE)
         const tileY = Math.floor(wy / TILE_SIZE)
         if (tileX >= 0 && tileX < GRID_W && tileY >= 0 && tileY < GRID_H) {
-          if (this.buildType === "resource" && this.onPlaceResource) {
+          if (this.buildType === "building" && this.onPlaceBuilding) {
+            this.onPlaceBuilding(tileX, tileY, this.buildBrush)
+          } else if (this.buildType === "resource" && this.onPlaceResource) {
             this.onPlaceResource(tileX, tileY, this.buildBrush)
           } else if (this.onPaintTerrain) {
             this.onPaintTerrain(tileX, tileY, this.buildBrush)
@@ -935,7 +944,9 @@ export default class Renderer {
       const tileX = Math.floor(wx / TILE_SIZE)
       const tileY = Math.floor(wy / TILE_SIZE)
       if (tileX >= 0 && tileX < GRID_W && tileY >= 0 && tileY < GRID_H) {
-        if (this.buildType === "resource" && this.onPlaceResource) {
+        if (this.buildType === "building" && this.onPlaceBuilding) {
+          this.onPlaceBuilding(tileX, tileY, this.buildBrush)
+        } else if (this.buildType === "resource" && this.onPlaceResource) {
           this.onPlaceResource(tileX, tileY, this.buildBrush)
         } else if (this.onPaintTerrain) {
           this.onPaintTerrain(tileX, tileY, this.buildBrush)
@@ -988,6 +999,65 @@ export default class Renderer {
     if (this._terrainMap) {
       this._terrainMap.set(`${x},${y}`, terrain)
       this._chunksDirty = true
+    }
+  }
+
+  // ── Buildings ──────────────────────────────────────────────
+
+  updateBuildings(buildings) {
+    if (!buildings) return
+    const seen = new Set()
+
+    for (const b of buildings) {
+      seen.add(b.id)
+      if (this.buildingSprites.has(b.id)) continue // already rendered
+
+      const container = new Container()
+      const px = b.x * TILE_SIZE + TILE_SIZE / 2
+      const py = b.y * TILE_SIZE + TILE_SIZE / 2
+      container.x = px
+      container.y = py
+
+      // Colored rectangle — FLAT 2D
+      const w = b.w || 14
+      const h = b.h || 14
+      const gfx = new Graphics()
+      gfx.rect(-w / 2, -h / 2, w, h)
+      gfx.fill(b.color || 0x888888)
+      gfx.rect(-w / 2, -h / 2, w, h)
+      gfx.stroke({ width: 1, color: 0xffffff, alpha: 0.2 })
+      container.addChild(gfx)
+
+      // Emoji overlay
+      const emoji = new Text({
+        text: b.emoji || "🏗️",
+        style: new TextStyle({ fontSize: 10, align: "center" }),
+      })
+      emoji.anchor.set(0.5, 0.5)
+      container.addChild(emoji)
+
+      // Health bar (small, below building)
+      const healthBar = new Graphics()
+      healthBar.y = h / 2 + 2
+      const hp = Math.max(0, Math.min(1, (b.health || 100) / 100))
+      const barW = w
+      healthBar.rect(-barW / 2, 0, barW, 2)
+      healthBar.fill({ color: 0x333333, alpha: 0.5 })
+      healthBar.rect(-barW / 2, 0, barW * hp, 2)
+      healthBar.fill(hp > 0.5 ? 0x4ade80 : hp > 0.25 ? 0xfbbf24 : 0xef4444)
+      container.addChild(healthBar)
+
+      this.buildingLayer.addChild(container)
+      this.buildingSprites.set(b.id, { container, gfx, healthBar })
+    }
+
+    // Remove destroyed buildings
+    for (const [id, sprite] of this.buildingSprites) {
+      if (!seen.has(id)) {
+        this.buildingLayer.removeChild(sprite.container)
+        sprite.container.destroy({ children: true })
+        this.buildingSprites.delete(id)
+      }
     }
   }
 

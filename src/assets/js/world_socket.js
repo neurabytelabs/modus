@@ -179,6 +179,13 @@ export default class WorldSocket {
     this.channel.push("gather_resource", { agent_id: agentId, x, y })
   }
 
+  placeBuilding(x, y, type, callback) {
+    this.channel
+      .push("place_building", { x, y, type })
+      .receive("ok", () => { if (callback) callback(null) })
+      .receive("error", (err) => { if (callback) callback(err) })
+  }
+
   // ── Agent Designer ──────────────────────────────────────────
 
   spawnCustomAgent(data, callback) {

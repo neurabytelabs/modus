@@ -103,6 +103,19 @@ defmodule Modus.Simulation.DecisionEngine do
     {:sleep, %{}}
   end
 
+  defp resolve(:build, agent, _context) do
+    # Build at current position
+    {:build, %{position: agent.position}}
+  end
+
+  defp resolve(:go_home, agent, _context) do
+    alias Modus.Simulation.Building
+    case Building.get_home(agent.id) do
+      nil -> {:idle, %{}}
+      home -> {:move_to, %{target: home.position, intent: :go_home}}
+    end
+  end
+
   defp resolve(:find_friend, agent, context) do
     case Map.get(context, :nearby_agents, []) do
       [] -> {:explore, %{target: random_nearby(agent.position, context)}}

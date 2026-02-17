@@ -12,14 +12,18 @@ defmodule Modus.Intelligence.BehaviorTree do
   alias Modus.Simulation.Agent
 
   @type action :: :find_food | :go_home_sleep | :find_friend | :explore |
-                  :help_nearby | :gather | :idle
+                  :help_nearby | :gather | :idle | :build | :go_home
 
   @spec evaluate(Agent.t(), non_neg_integer()) :: action()
   def evaluate(%Agent{} = agent, tick) do
     case check_critical_needs(agent) do
       nil ->
-        case check_moderate_needs(agent) do
-          nil -> check_personality(agent, tick)
+        case check_building_needs(agent) do
+          nil ->
+            case check_moderate_needs(agent) do
+              nil -> check_personality(agent, tick)
+              action -> action
+            end
           action -> action
         end
       action -> action
@@ -34,6 +38,23 @@ defmodule Modus.Intelligence.BehaviorTree do
       needs.rest < 25.0   -> :go_home_sleep
       needs.social < 20.0 -> :find_friend
       true                -> nil
+    end
+  end
+
+  # ── Building & Home behaviors ──────────────────────────────
+
+  defp check_building_needs(%Agent{} = agent) do
+    alias Modus.Simulation.Building
+
+    has_home = Building.has_home?(agent.id)
+    can_build_hut = Building.can_build?(agent.inventory, :hut)
+
+    cond do
+      # Go home to rest if rest > 60 and has home
+      has_home and agent.needs.rest > 60.0 and :rand.uniform() < 0.2 -> :go_home
+      # Build a hut if no home, conatus > 0.6, has resources
+      !has_home and agent.conatus_energy > 0.6 and can_build_hut -> :build
+      true -> nil
     end
   end
 

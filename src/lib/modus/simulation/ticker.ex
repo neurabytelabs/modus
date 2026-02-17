@@ -134,6 +134,15 @@ defmodule Modus.Simulation.Ticker do
     # Broadcast to agents (self-tick)
     Phoenix.PubSub.broadcast(@pubsub, "simulation:ticks", {:tick, new_tick})
 
+    # Decay unowned buildings every 100 ticks
+    if rem(new_tick, 100) == 0 do
+      try do
+        Modus.Simulation.Building.decay_unowned()
+      catch
+        _, _ -> :ok
+      end
+    end
+
     # Record population every 10 ticks for StoryEngine graphs
     if rem(new_tick, 10) == 0 do
       agent_count = try do

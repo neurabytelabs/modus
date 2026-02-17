@@ -8,7 +8,7 @@ defmodule ModusWeb.WorldChannel do
   """
   use Phoenix.Channel
 
-  alias Modus.Simulation.{World, Ticker, Agent, AgentSupervisor, EventLog}
+  alias Modus.Simulation.{World, Ticker, Agent, AgentSupervisor, EventLog, Building}
   alias Modus.Intelligence.LlmProvider
 
   defp ensure_float(val) when is_float(val), do: val
@@ -289,6 +289,24 @@ defmodule ModusWeb.WorldChannel do
     {:reply, {:error, %{reason: "invalid_params"}}, socket}
   end
 
+  # ── God Mode: Place Building ──────────────────────────────
+
+  @valid_building_types ~w(hut house farm market well watchtower)
+
+  def handle_in("place_building", %{"x" => x, "y" => y, "type" => type}, socket)
+      when is_integer(x) and is_integer(y) and type in @valid_building_types do
+    building_type = String.to_existing_atom(type)
+    tick = if Process.whereis(Ticker), do: Ticker.current_tick(), else: 0
+    building = Building.place(building_type, {x, y}, nil, tick)
+    EventLog.log(:building, tick, [], %{type: building_type, position: {x, y}, god_mode: true})
+    broadcast!(socket, "building_placed", %{building: hd(Building.serialize_all() |> Enum.filter(&(&1.id == building.id)))})
+    {:reply, :ok, socket}
+  end
+
+  def handle_in("place_building", _payload, socket) do
+    {:reply, {:error, %{reason: "invalid_params"}}, socket}
+  end
+
   # ── Gather Resource (triggered by client) ──────────────────
 
   def handle_in("gather_resource", %{"agent_id" => agent_id, "x" => x, "y" => y}, socket) do
@@ -442,10 +460,17 @@ defmodule ModusWeb.WorldChannel do
       :exit, _ -> %{time_of_day: :day, cycle_progress: 0.0}
     end
 
+    buildings = try do
+      Building.serialize_all()
+    catch
+      _, _ -> []
+    end
+
     delta = %{
       tick: tick_number,
       agent_count: length(Enum.filter(agents, & &1.alive)),
       agents: agents,
+      buildings: buildings,
       time_of_day: to_string(env.time_of_day),
       cycle_progress: Float.round(ensure_float(env.cycle_progress), 4)
     }
@@ -501,9 +526,16 @@ defmodule ModusWeb.WorldChannel do
     grid_size = if world_state, do: world_state.grid_size, else: {100, 100}
     {gw, gh} = grid_size
 
+    buildings = try do
+      Building.serialize_all()
+    catch
+      _, _ -> []
+    end
+
     %{
       grid: grid,
       agents: agents,
+      buildings: buildings,
       tick: tick,
       status: status,
       agent_count: length(agents),

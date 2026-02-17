@@ -77,6 +77,7 @@ Hooks.WorldCanvas = {
           }
           if (state.grid) this.renderer.renderTerrain(state.grid)
           if (state.agents) this.renderer.updateAgents(state.agents)
+          if (state.buildings) this.renderer.updateBuildings(state.buildings)
           // Environment
           if (state.time_of_day) this.renderer.updateEnvironment(state)
         }
@@ -91,6 +92,9 @@ Hooks.WorldCanvas = {
       onDelta: (delta) => {
         if (this.rendererReady && delta.agents) {
           this.renderer.updateAgents(delta.agents)
+        }
+        if (this.rendererReady && delta.buildings) {
+          this.renderer.updateBuildings(delta.buildings)
         }
         // Update environment visuals
         if (this.rendererReady && delta.cycle_progress != null) {
@@ -279,6 +283,14 @@ Hooks.WorldCanvas = {
       this._lastPaint = key
       if (this.worldSocket) {
         this.worldSocket.placeResource(x, y, nodeType)
+      }
+    }
+    this.renderer.onPlaceBuilding = (x, y, type) => {
+      const key = `b${x},${y},${type}`
+      if (key === this._lastPaint) return
+      this._lastPaint = key
+      if (this.worldSocket) {
+        this.worldSocket.placeBuilding(x, y, type)
       }
     }
 
