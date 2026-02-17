@@ -2,13 +2,21 @@ defmodule Modus.Intelligence.LlmScheduler do
   @moduledoc """
   LlmScheduler — Subscribes to tick events and triggers LLM batch decisions.
 
-  Rate limited: max 1 concurrent LLM request, conversations every 500 ticks.
+  v3.2.0 Ratio: Uses ResponseCache, FallbackChain, BudgetTracker, and LlmMetrics.
+  Rate limited: max 1 concurrent LLM request, batched every 100 ticks.
   """
   use GenServer
   require Logger
 
   alias Modus.Simulation.Agent
-  alias Modus.Intelligence.{LlmProvider, DecisionCache}
+  alias Modus.Intelligence.{
+    DecisionCache,
+    ResponseCache,
+    FallbackChain,
+    BudgetTracker,
+    BehaviorTree,
+    LlmMetrics
+  }
 
   @batch_interval 100
 
@@ -18,25 +26,26 @@ defmodule Modus.Intelligence.LlmScheduler do
 
   @impl true
   def init(_) do
+    # Initialize metrics and budget tables
+    LlmMetrics.init()
+    BudgetTracker.init()
     Modus.Simulation.Ticker.subscribe()
     {:ok, %{last_conversation_tick: 0, busy: false}}
   end
 
   @impl true
   def handle_info({:tick, _tick}, %{busy: true} = state) do
-    # Skip — previous LLM request still running
     {:noreply, state}
   end
 
   def handle_info({:tick, tick}, state) do
-    cond do
-      # Conversations disabled: Agent.get_state causes GenServer deadlocks
-      # rem(tick, @conversation_interval) == 0 and tick > 0 ->
-      #   {:noreply, %{state | busy: true} |> spawn_conversations(tick)}
+    # Reset budget each tick and snapshot metrics
+    BudgetTracker.reset()
+    LlmMetrics.tick_snapshot(tick)
 
+    cond do
       rem(tick, @batch_interval) == 0 and tick > 0 ->
         {:noreply, %{state | busy: true} |> spawn_batch(tick)}
-
       true ->
         {:noreply, state}
     end
@@ -54,15 +63,58 @@ defmodule Modus.Intelligence.LlmScheduler do
       try do
         agents = get_alive_agents()
         if agents != [] do
-          context = %{tick: tick, world_size: {50, 50}}
-          case LlmProvider.decide(agents, context) do
-            :fallback -> :ok
-            decisions when is_list(decisions) ->
-              for {agent_id, action, params} <- decisions do
-                DecisionCache.put(agent_id, {action, params})
-              end
-              Logger.info("LLM batch decided for #{length(decisions)} agents at tick #{tick}")
-            _ -> :ok
+          # Split: agents with cached responses vs those needing LLM
+          {cached_agents, uncached_agents} = Enum.split_with(agents, fn agent ->
+            hash = ResponseCache.situation_hash(agent)
+            ResponseCache.get(hash, tick) != nil
+          end)
+
+          # Apply cached decisions
+          for agent <- cached_agents do
+            hash = ResponseCache.situation_hash(agent)
+            case ResponseCache.get(hash, tick) do
+              {action, params} -> DecisionCache.put(agent.id, {action, params})
+              _ -> :ok
+            end
+          end
+
+          if length(cached_agents) > 0 do
+            Logger.debug("LLM cache hit for #{length(cached_agents)} agents")
+          end
+
+          # Check budget for uncached
+          if uncached_agents != [] do
+            case BudgetTracker.request_slot(:normal) do
+              :ok ->
+                context = %{tick: tick, world_size: {50, 50}}
+                case FallbackChain.batch_decide(uncached_agents, context) do
+                  :fallback ->
+                    # Use behavior tree
+                    for agent <- uncached_agents do
+                      action = BehaviorTree.evaluate(agent, tick)
+                      DecisionCache.put(agent.id, {action, %{reason: "behavior_tree"}})
+                    end
+                  decisions when is_list(decisions) ->
+                    for {agent_id, action, params} <- decisions do
+                      DecisionCache.put(agent_id, {action, params})
+                      # Cache the response for similar situations
+                      agent = Enum.find(uncached_agents, &(&1.id == agent_id))
+                      if agent do
+                        hash = ResponseCache.situation_hash(agent)
+                        ResponseCache.put(hash, {action, params}, tick)
+                      end
+                    end
+                    Logger.info("LLM batch decided for #{length(decisions)} agents at tick #{tick}")
+                  _ -> :ok
+                end
+              :over_budget ->
+                # Over budget — use behavior tree
+                for agent <- uncached_agents do
+                  action = BehaviorTree.evaluate(agent, tick)
+                  DecisionCache.put(agent.id, {action, %{reason: "budget_limited"}})
+                end
+                Logger.debug("LLM over budget at tick #{tick}, using behavior tree for #{length(uncached_agents)} agents")
+            end
           end
         end
       rescue

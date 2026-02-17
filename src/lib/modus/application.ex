@@ -24,6 +24,7 @@ defmodule Modus.Application do
       {Phoenix.PubSub, name: Modus.PubSub},
       {Registry, keys: :unique, name: Modus.AgentRegistry},
       Modus.Intelligence.DecisionCache,
+      Modus.Intelligence.ResponseCache,
       Modus.Intelligence.LlmProvider,
       Modus.Simulation.AgentSupervisor,
       Modus.Simulation.EventLog,

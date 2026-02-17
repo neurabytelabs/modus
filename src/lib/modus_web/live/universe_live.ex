@@ -130,7 +130,10 @@ defmodule ModusWeb.UniverseLive do
        designer_animal: "deer",
        designer_placing: false,
        text_mode: false,
-       zen_mode: false
+       zen_mode: false,
+       # LLM Metrics
+       llm_metrics_open: false,
+       llm_metrics: %{calls_this_tick: 0, total_calls: 0, cache_hit_rate: 0.0, avg_latency_ms: 0, active_model: "none", sparkline: []}
      )}
   end
 
@@ -151,6 +154,16 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("toggle_zen_mode", _params, socket) do
     {:noreply, assign(socket, zen_mode: !socket.assigns.zen_mode)}
+  end
+
+  def handle_event("toggle_llm_metrics", _params, socket) do
+    open = !socket.assigns.llm_metrics_open
+    metrics = if open do
+      try do Modus.Intelligence.LlmMetrics.get_metrics() catch _, _ -> socket.assigns.llm_metrics end
+    else
+      socket.assigns.llm_metrics
+    end
+    {:noreply, assign(socket, llm_metrics_open: open, llm_metrics: metrics)}
   end
 
   def handle_event("random_world", _params, socket) do
@@ -448,6 +461,14 @@ defmodule ModusWeb.UniverseLive do
       []
     end
 
+    # Refresh LLM metrics if panel is open
+    llm_assigns = if socket.assigns.llm_metrics_open do
+      metrics = try do Modus.Intelligence.LlmMetrics.get_metrics() catch _, _ -> socket.assigns.llm_metrics end
+      [llm_metrics: metrics]
+    else
+      []
+    end
+
     {:noreply,
      assign(socket,
        [{:tick, tick},
@@ -456,7 +477,7 @@ defmodule ModusWeb.UniverseLive do
         {:trades_count, eco.trades},
         {:births_count, life.births},
         {:deaths_count, life.deaths}
-        | season_assigns ++ obs_assigns]
+        | season_assigns ++ obs_assigns ++ llm_assigns]
      )}
   end
 
@@ -1543,7 +1564,7 @@ defmodule ModusWeb.UniverseLive do
           <span class="text-xl font-bold tracking-tighter">
             MODUS<span class="text-purple-400">_</span>
           </span>
-          <span class="text-xs text-slate-600 hidden sm:inline">v2.3.0 · Amor</span>
+          <span class="text-xs text-slate-600 hidden sm:inline">v3.2.0 · Ratio</span>
           <%= if @rules["preset"] && @rules["preset"] != "Custom" do %>
             <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 hidden sm:inline">
               🎛️ <%= @rules["preset"] %>
@@ -1635,6 +1656,11 @@ defmodule ModusWeb.UniverseLive do
           <%!-- Timeline --%>
           <button phx-click="toggle_timeline" class={"ctrl-btn #{if @timeline_open, do: "ctrl-btn-primary"}"} title="Timeline">
             📜
+          </button>
+
+          <%!-- LLM Metrics (M key) --%>
+          <button phx-click="toggle_llm_metrics" class={"ctrl-btn #{if @llm_metrics_open, do: "ctrl-btn-primary"}"} title="LLM Metrics (M)">
+            ⚡
           </button>
 
           <%!-- Observatory --%>
@@ -2644,6 +2670,63 @@ defmodule ModusWeb.UniverseLive do
         </div>
       <% end %>
     </div>
+
+      <%!-- LLM Metrics Panel (toggle with M key / ⚡ button) --%>
+      <%= if @llm_metrics_open do %>
+        <div class="fixed bottom-4 right-4 z-40 w-[300px] rounded-xl border border-cyan-500/20 bg-[#0A0A0F]/95 backdrop-blur-md shadow-lg shadow-cyan-500/5 p-3 font-mono">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] uppercase tracking-wider text-cyan-400 font-bold">⚡ LLM Metrics</span>
+            <button phx-click="toggle_llm_metrics" class="text-slate-600 hover:text-slate-400 text-xs">✕</button>
+          </div>
+
+          <%!-- Active Model --%>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+            <span class="text-[11px] text-slate-300 truncate"><%= @llm_metrics.active_model %></span>
+          </div>
+
+          <%!-- Stats Grid --%>
+          <div class="grid grid-cols-3 gap-2 mb-2">
+            <div class="text-center">
+              <div class="text-lg font-bold text-cyan-400 tabular-nums"><%= @llm_metrics.calls_this_tick %></div>
+              <div class="text-[8px] uppercase text-slate-600">calls/tick</div>
+            </div>
+            <div class="text-center">
+              <div class="text-lg font-bold text-emerald-400 tabular-nums"><%= @llm_metrics.cache_hit_rate %>%</div>
+              <div class="text-[8px] uppercase text-slate-600">cache hits</div>
+            </div>
+            <div class="text-center">
+              <% latency = if is_number(@llm_metrics.avg_latency_ms), do: round(@llm_metrics.avg_latency_ms), else: 0 %>
+              <div class={"text-lg font-bold tabular-nums #{if latency < 500, do: "text-emerald-400", else: if(latency < 2000, do: "text-amber-400", else: "text-red-400")}"}><%= latency %>ms</div>
+              <div class="text-[8px] uppercase text-slate-600">latency</div>
+            </div>
+          </div>
+
+          <%!-- Sparkline (SVG) --%>
+          <div class="h-8 w-full">
+            <svg viewBox="0 0 300 32" class="w-full h-full" preserveAspectRatio="none">
+              <%= if @llm_metrics.sparkline != [] do %>
+                <% max_val = max(Enum.max(@llm_metrics.sparkline), 1) %>
+                <% points = @llm_metrics.sparkline |> Enum.with_index() |> Enum.map(fn {v, i} ->
+                  x = i / max(length(@llm_metrics.sparkline) - 1, 1) * 300
+                  y = 30 - (v / max_val * 28)
+                  "#{x},#{y}"
+                end) |> Enum.join(" ") %>
+                <polyline points={points} fill="none" stroke="#06B6D4" stroke-width="1.5" stroke-linejoin="round" />
+              <% else %>
+                <line x1="0" y1="30" x2="300" y2="30" stroke="#1e293b" stroke-width="0.5" />
+              <% end %>
+            </svg>
+          </div>
+          <div class="text-[8px] text-slate-600 text-right">calls/tick (last 50)</div>
+
+          <%!-- Total --%>
+          <div class="mt-1 text-[9px] text-slate-600 flex justify-between">
+            <span>total: <%= @llm_metrics.total_calls %> calls</span>
+            <span>budget: <%= try do Modus.Intelligence.BudgetTracker.get_remaining() rescue _ -> "?" end %>/<%= try do Modus.Intelligence.BudgetTracker.max_per_tick() rescue _ -> "?" end %></span>
+          </div>
+        </div>
+      <% end %>
 
       <%!-- Toast Notifications --%>
       <%= if @toasts != [] do %>
