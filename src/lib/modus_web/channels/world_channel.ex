@@ -8,7 +8,7 @@ defmodule ModusWeb.WorldChannel do
   """
   use Phoenix.Channel
 
-  alias Modus.Simulation.{World, Ticker, Agent, AgentSupervisor, EventLog, Building}
+  alias Modus.Simulation.{World, Ticker, Agent, AgentSupervisor, EventLog, Building, WorldEvents}
   alias Modus.Intelligence.LlmProvider
 
   defp ensure_float(val) when is_float(val), do: val
@@ -18,6 +18,7 @@ defmodule ModusWeb.WorldChannel do
   @impl true
   def join("world:lobby", _payload, socket) do
     Ticker.subscribe()
+    Phoenix.PubSub.subscribe(Modus.PubSub, "world_events")
     state = build_full_state()
     {:ok, state, assign(socket, :selected_agent_id, nil)}
   end
@@ -426,6 +427,27 @@ defmodule ModusWeb.WorldChannel do
     {:reply, {:error, %{reason: "invalid_animal_type"}}, socket}
   end
 
+  # ── World Events (God Mode) ────────────────────────────────
+
+  @valid_world_events ~w(storm earthquake meteor_shower plague golden_age flood fire)
+
+  def handle_in("trigger_world_event", %{"event_type" => event_type}, socket)
+      when event_type in @valid_world_events do
+    tick = if Process.whereis(Ticker), do: Ticker.current_tick(), else: 0
+    event_atom = String.to_existing_atom(event_type)
+    {:ok, _event} = WorldEvents.trigger(event_atom, tick: tick)
+    {:reply, :ok, socket}
+  end
+
+  def handle_in("trigger_world_event", _payload, socket) do
+    {:reply, {:error, %{reason: "invalid_event_type"}}, socket}
+  end
+
+  def handle_in("get_world_events", _payload, socket) do
+    events = WorldEvents.serialize()
+    {:reply, {:ok, %{events: events}}, socket}
+  end
+
   defp find_walkable({max_x, max_y}, table) do
     x = :rand.uniform(max_x) - 1
     y = :rand.uniform(max_y) - 1
@@ -472,12 +494,19 @@ defmodule ModusWeb.WorldChannel do
       _, _ -> []
     end
 
+    world_events = try do
+      WorldEvents.serialize()
+    catch
+      _, _ -> []
+    end
+
     delta = %{
       tick: tick_number,
       agent_count: length(Enum.filter(agents, & &1.alive)),
       agents: agents,
       buildings: buildings,
       neighborhoods: neighborhoods,
+      world_events: world_events,
       time_of_day: to_string(env.time_of_day),
       cycle_progress: Float.round(ensure_float(env.cycle_progress), 4)
     }
@@ -497,6 +526,16 @@ defmodule ModusWeb.WorldChannel do
       end
     end
 
+    {:noreply, socket}
+  end
+
+  def handle_info({:world_event, event_data}, socket) do
+    push(socket, "world_event", event_data)
+    {:noreply, socket}
+  end
+
+  def handle_info({:event_ended, event_data}, socket) do
+    push(socket, "world_event_ended", event_data)
     {:noreply, socket}
   end
 
@@ -545,11 +584,18 @@ defmodule ModusWeb.WorldChannel do
       _, _ -> []
     end
 
+    world_events = try do
+      WorldEvents.serialize()
+    catch
+      _, _ -> []
+    end
+
     %{
       grid: grid,
       agents: agents,
       buildings: buildings,
       neighborhoods: neighborhoods,
+      world_events: world_events,
       tick: tick,
       status: status,
       agent_count: length(agents),

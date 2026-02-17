@@ -197,6 +197,26 @@ defmodule Modus.Simulation.StoryEngine do
         size = event.data[:size] || 3
         "#{hood_name} emerged — #{size} buildings clustered together, forming a neighborhood. Community takes root."
 
+      :world_event ->
+        evt_type = event.data[:type] || :unknown
+        severity = event.data[:severity] || 1
+        severity_word = case severity do
+          1 -> "minor"
+          2 -> "severe"
+          3 -> "catastrophic"
+          _ -> "mysterious"
+        end
+        case evt_type do
+          :storm -> "A #{severity_word} storm swept across the land, darkening the skies."
+          :earthquake -> "The earth trembled — a #{severity_word} earthquake shook the foundations of existence."
+          :meteor_shower -> "Meteors streaked across the sky — a #{severity_word} celestial display."
+          :plague -> "A #{severity_word} plague spread through the population, weakening all in its path."
+          :golden_age -> "A golden age dawned — prosperity and joy filled the world."
+          :flood -> "Waters rose — a #{severity_word} flood consumed the lowlands."
+          :fire -> "Flames erupted — a #{severity_word} fire scorched the earth."
+          _ -> "A #{severity_word} world event reshapes the landscape."
+        end
+
       _ ->
         "Something stirred in the world (#{event.type})."
     end
@@ -212,7 +232,7 @@ defmodule Modus.Simulation.StoryEngine do
   end
 
   defp is_notable?(event) do
-    event.type in [:birth, :death, :disaster, :migration, :conflict, :trade]
+    event.type in [:birth, :death, :disaster, :migration, :conflict, :trade, :world_event]
   end
 
   defp event_emoji(:birth), do: "👶"
@@ -226,6 +246,7 @@ defmodule Modus.Simulation.StoryEngine do
   defp event_emoji(:trade), do: "🤝"
   defp event_emoji(:building_upgrade), do: "⬆️"
   defp event_emoji(:neighborhood_formed), do: "🏘️"
+  defp event_emoji(:world_event), do: "🌍"
   defp event_emoji(_), do: "⚡"
 
   # ── Markdown Export ─────────────────────────────────────

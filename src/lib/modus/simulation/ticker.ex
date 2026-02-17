@@ -151,6 +151,13 @@ defmodule Modus.Simulation.Ticker do
       end
     end
 
+    # Tick world events engine
+    try do
+      Modus.Simulation.WorldEvents.tick(new_tick)
+    catch
+      _, _ -> :ok
+    end
+
     # Record population every 10 ticks for StoryEngine graphs
     if rem(new_tick, 10) == 0 do
       agent_count = try do

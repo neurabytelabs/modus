@@ -6,6 +6,34 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v1.9.0 · **Tempus** — _World Events Engine_
+_17 Şubat 2026_
+
+### ✨ Features
+- **World Events Engine** — 7 event types: 🌩️ Storm, 🌍 Earthquake, ☄️ Meteor Shower, 🦠 Plague, ✨ Golden Age, 🌊 Flood, 🔥 Fire
+- **Event Properties** — Each event has duration (ticks), severity (1-3), affected area (radius), and unique effects
+- **Random Triggers** — 1% chance per 100 ticks for a random world event to spawn naturally
+- **God Mode: Trigger Event** — 7-button grid in God Mode panel to manually trigger any world event
+- **Event Effects** — Terrain changes (fire→desert, flood→water), building damage, agent mood/need shifts
+- **Ongoing Effects** — Active events continue affecting agents each 10 ticks (plague drains hunger, fire drains rest, golden age heals)
+- **2D Color Overlays** — Flat circle overlays on the map: red=fire, blue=flood, grey=storm, gold=golden age, etc.
+- **Overlay Fade** — Overlays pulse/fade as event duration expires
+- **Toast Notifications** — World events trigger toast popups with severity level ("Minor/Severe/Catastrophic")
+- **StoryEngine Integration** — All world events generate narrative timeline entries with Spinoza-flavored prose
+- **Building Damage** — Destructive events (earthquake, fire, flood, storm, meteor) damage buildings in radius; buildings destroyed at 0 HP
+
+### 🏗️ Architecture
+- `WorldEvents` — New GenServer: event lifecycle, random triggers, effect application, terrain mutation, building damage
+- `Building.damage/2` — New function for direct HP reduction with auto-removal at 0
+- `Ticker` — Calls `WorldEvents.tick/1` each tick
+- `StoryEngine` — `:world_event` narrative generation with severity-based prose
+- `WorldChannel` — `trigger_world_event`, `get_world_events` handlers; world_events in delta + full_state; PubSub subscription for live event/expiry push
+- `WorldSocket` — `triggerWorldEvent()`, `onWorldEvent`/`onWorldEventEnded` callbacks
+- `Renderer` — `updateWorldEvents()` flat 2D circle overlays, `removeWorldEvent()` cleanup, `worldEventsLayer` between buildings and agents
+- `UniverseLive` — `trigger_world_event` event handler, `world_event_toast` for client-pushed toasts, 7-button God Mode grid
+
+---
+
 ## v1.8.1 · **Architectus** — _Neighborhoods_
 _17 Şubat 2026_
 

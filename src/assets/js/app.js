@@ -79,6 +79,7 @@ Hooks.WorldCanvas = {
           if (state.agents) this.renderer.updateAgents(state.agents)
           if (state.buildings) this.renderer.updateBuildings(state.buildings)
           if (state.neighborhoods) this.renderer.updateNeighborhoods(state.neighborhoods)
+          if (state.world_events) this.renderer.updateWorldEvents(state.world_events)
           // Environment
           if (state.time_of_day) this.renderer.updateEnvironment(state)
         }
@@ -99,6 +100,9 @@ Hooks.WorldCanvas = {
         }
         if (this.rendererReady && delta.neighborhoods) {
           this.renderer.updateNeighborhoods(delta.neighborhoods)
+        }
+        if (this.rendererReady && delta.world_events) {
+          this.renderer.updateWorldEvents(delta.world_events)
         }
         // Update environment visuals
         if (this.rendererReady && delta.cycle_progress != null) {
@@ -164,6 +168,9 @@ Hooks.WorldCanvas = {
     })
     this.handleEvent("inject_event", (data) => {
       if (this.worldSocket) this.worldSocket.injectEvent(data.event_type)
+    })
+    this.handleEvent("trigger_world_event", (data) => {
+      if (this.worldSocket) this.worldSocket.triggerWorldEvent(data.event_type)
     })
     this.handleEvent("deselect_agent", () => {
       this.selectedAgentId = null
@@ -308,6 +315,19 @@ Hooks.WorldCanvas = {
       this.worldSocket.onResourcePlaced = (data) => {
         if (this.rendererReady && this.renderer) {
           this.renderer.addResourceNode(data.x, data.y, data.node_type)
+        }
+      }
+      this.worldSocket.onWorldEvent = (data) => {
+        // Show toast notification for world events
+        this.pushEvent("world_event_toast", {
+          emoji: data.emoji,
+          type: data.type,
+          severity: data.severity,
+        })
+      }
+      this.worldSocket.onWorldEventEnded = (data) => {
+        if (this.rendererReady && this.renderer) {
+          this.renderer.removeWorldEvent(data.id)
         }
       }
     }

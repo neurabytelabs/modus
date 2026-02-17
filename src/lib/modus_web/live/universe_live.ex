@@ -551,6 +551,29 @@ defmodule ModusWeb.UniverseLive do
      |> push_event("inject_event", %{event_type: event_type})}
   end
 
+  @valid_world_events ~w(storm earthquake meteor_shower plague golden_age flood fire)
+
+  def handle_event("trigger_world_event", %{"type" => event_type}, socket)
+      when event_type in @valid_world_events do
+    emoji = case event_type do
+      "storm" -> "🌩️"
+      "earthquake" -> "🌍"
+      "meteor_shower" -> "☄️"
+      "plague" -> "🦠"
+      "golden_age" -> "✨"
+      "flood" -> "🌊"
+      "fire" -> "🔥"
+      _ -> "🌍"
+    end
+
+    feed = [%{emoji: emoji, label: "World Event: #{event_type}", tick: socket.assigns.tick} | Enum.take(socket.assigns.event_feed, 9)]
+
+    {:noreply,
+     socket
+     |> assign(event_feed: feed)
+     |> push_event("trigger_world_event", %{event_type: event_type})}
+  end
+
   # ── Mobile Panel Toggle ────────────────────────────────────
 
   def handle_event("toggle_mind_view", _params, socket) do
@@ -706,6 +729,24 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("close_stats", _params, socket) do
     {:noreply, assign(socket, stats_open: false)}
+  end
+
+  def handle_event("world_event_toast", %{"emoji" => emoji, "type" => type, "severity" => severity}, socket) do
+    severity_word = case severity do
+      1 -> "Minor"
+      2 -> "Severe"
+      3 -> "Catastrophic"
+      _ -> ""
+    end
+    toast = %{
+      id: System.unique_integer([:positive]) |> to_string(),
+      emoji: emoji,
+      text: "#{severity_word} #{String.replace(type, "_", " ")} strikes the world!",
+      tick: socket.assigns.tick
+    }
+    toasts = Enum.take([toast | socket.assigns.toasts], 5)
+    Process.send_after(self(), {:dismiss_toast, toast.id}, 8_000)
+    {:noreply, assign(socket, toasts: toasts)}
   end
 
   def handle_event("dismiss_toast", %{"id" => id}, socket) do
@@ -1407,6 +1448,39 @@ defmodule ModusWeb.UniverseLive do
                 <button phx-click="inject_event" phx-value-type="resource_bonus" class="event-btn">
                   <span class="text-lg">🌾</span>
                   <span class="text-xs">Resources</span>
+                </button>
+              </div>
+
+              <%!-- World Events (God Mode) --%>
+              <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mt-5 mb-3">🌍 Trigger World Event</h3>
+              <div class="grid grid-cols-2 gap-1.5">
+                <button phx-click="trigger_world_event" phx-value-type="storm" class="event-btn">
+                  <span class="text-lg">🌩️</span>
+                  <span class="text-[10px]">Storm</span>
+                </button>
+                <button phx-click="trigger_world_event" phx-value-type="earthquake" class="event-btn">
+                  <span class="text-lg">🌍</span>
+                  <span class="text-[10px]">Earthquake</span>
+                </button>
+                <button phx-click="trigger_world_event" phx-value-type="meteor_shower" class="event-btn">
+                  <span class="text-lg">☄️</span>
+                  <span class="text-[10px]">Meteor</span>
+                </button>
+                <button phx-click="trigger_world_event" phx-value-type="plague" class="event-btn">
+                  <span class="text-lg">🦠</span>
+                  <span class="text-[10px]">Plague</span>
+                </button>
+                <button phx-click="trigger_world_event" phx-value-type="golden_age" class="event-btn">
+                  <span class="text-lg">✨</span>
+                  <span class="text-[10px]">Golden Age</span>
+                </button>
+                <button phx-click="trigger_world_event" phx-value-type="flood" class="event-btn">
+                  <span class="text-lg">🌊</span>
+                  <span class="text-[10px]">Flood</span>
+                </button>
+                <button phx-click="trigger_world_event" phx-value-type="fire" class="event-btn">
+                  <span class="text-lg">🔥</span>
+                  <span class="text-[10px]">Fire</span>
                 </button>
               </div>
 

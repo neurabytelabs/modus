@@ -187,6 +187,23 @@ defmodule Modus.Simulation.Building do
     |> Enum.map(fn {_id, b} -> b end)
   end
 
+  @doc "Damage a building by amount. Removes it if health <= 0."
+  @spec damage(String.t(), number()) :: :ok
+  def damage(building_id, amount) do
+    init_table()
+    case :ets.lookup(:buildings, building_id) do
+      [{^building_id, building}] ->
+        new_health = building.health - amount
+        if new_health <= 0 do
+          :ets.delete(:buildings, building_id)
+        else
+          :ets.insert(:buildings, {building_id, %{building | health: new_health}})
+        end
+        :ok
+      _ -> :ok
+    end
+  end
+
   @doc "Get building at a position."
   @spec at({integer(), integer()}) :: t() | nil
   def at(position) do

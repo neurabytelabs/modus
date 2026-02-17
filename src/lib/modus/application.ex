@@ -30,6 +30,7 @@ defmodule Modus.Application do
       Modus.Simulation.ResourceSystem,
       Modus.Simulation.WorldSystems,
       Modus.Simulation.StoryEngine,
+      Modus.Simulation.WorldEvents,
       ModusWeb.Endpoint
     ]
 

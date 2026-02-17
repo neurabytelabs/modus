@@ -100,6 +100,10 @@ export default class Renderer {
     this.buildingLayer = null
     this.buildingSprites = new Map() // id -> {gfx, label}
 
+    // World Events overlay
+    this.worldEventsLayer = null
+    this.worldEventOverlays = new Map() // id -> {gfx, container}
+
     // Camera state
     this.dragging = false
     this.didDrag = false
@@ -138,9 +142,11 @@ export default class Renderer {
     this.agentLayer = new Container()
     this.resourceNodeLayer = new Container()
     this.buildingLayer = new Container()
+    this.worldEventsLayer = new Container()
     this.worldContainer.addChild(this.terrainLayer)
     this.worldContainer.addChild(this.resourceNodeLayer)
     this.worldContainer.addChild(this.buildingLayer)
+    this.worldContainer.addChild(this.worldEventsLayer)
     this.worldContainer.addChild(this.relationshipLayer)
     this.worldContainer.addChild(this.agentLayer)
 
@@ -1148,6 +1154,70 @@ export default class Renderer {
     text.y = y * TILE_SIZE + TILE_SIZE / 2
     this.resourceNodeLayer.addChild(text)
     this.resourceNodeSprites.set(key, text)
+  }
+
+  // ── World Events (2D color overlays) ──────────────────────
+
+  static EVENT_COLORS = {
+    storm: 0x6B7280,    // grey
+    earthquake: 0x92400E, // brown
+    meteor_shower: 0xF59E0B, // orange
+    plague: 0x16A34A,   // green
+    golden_age: 0xFBBF24, // gold
+    flood: 0x3B82F6,    // blue
+    fire: 0xEF4444,     // red
+  }
+
+  updateWorldEvents(events) {
+    if (!events || !this.worldEventsLayer) return
+    const seen = new Set()
+
+    for (const evt of events) {
+      seen.add(evt.id)
+      if (this.worldEventOverlays.has(evt.id)) {
+        // Update alpha based on remaining duration (pulse effect)
+        const overlay = this.worldEventOverlays.get(evt.id)
+        const progress = evt.remaining / evt.duration
+        const baseAlpha = 0.12 + evt.severity * 0.06
+        overlay.gfx.alpha = baseAlpha * Math.max(0.3, progress)
+        continue
+      }
+
+      // Create new overlay — flat 2D circle
+      const color = Renderer.EVENT_COLORS[evt.type] || 0xFFFFFF
+      const cx = evt.center_x * TILE_SIZE + TILE_SIZE / 2
+      const cy = evt.center_y * TILE_SIZE + TILE_SIZE / 2
+      const r = evt.radius * TILE_SIZE
+      const baseAlpha = 0.12 + evt.severity * 0.06
+
+      const gfx = new Graphics()
+      gfx.circle(cx, cy, r)
+      gfx.fill({ color, alpha: baseAlpha })
+      // Border ring
+      gfx.circle(cx, cy, r)
+      gfx.stroke({ width: 2, color, alpha: baseAlpha + 0.15 })
+
+      this.worldEventsLayer.addChild(gfx)
+      this.worldEventOverlays.set(evt.id, { gfx })
+    }
+
+    // Remove expired overlays
+    for (const [id, overlay] of this.worldEventOverlays) {
+      if (!seen.has(id)) {
+        this.worldEventsLayer.removeChild(overlay.gfx)
+        overlay.gfx.destroy()
+        this.worldEventOverlays.delete(id)
+      }
+    }
+  }
+
+  removeWorldEvent(eventId) {
+    const overlay = this.worldEventOverlays.get(eventId)
+    if (overlay) {
+      this.worldEventsLayer.removeChild(overlay.gfx)
+      overlay.gfx.destroy()
+      this.worldEventOverlays.delete(eventId)
+    }
   }
 
   _hashCode(str) {

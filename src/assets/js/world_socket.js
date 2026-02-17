@@ -16,6 +16,8 @@ export default class WorldSocket {
     this.onAgentDetailUpdate = opts.onAgentDetailUpdate || (() => {})
     this.onTerrainPainted = opts.onTerrainPainted || (() => {})
     this.onResourcePlaced = opts.onResourcePlaced || (() => {})
+    this.onWorldEvent = opts.onWorldEvent || (() => {})
+    this.onWorldEventEnded = opts.onWorldEventEnded || (() => {})
     this.channel = null
     this.socket = null
   }
@@ -60,6 +62,14 @@ export default class WorldSocket {
       this.onResourcePlaced(payload)
     })
 
+    this.channel.on("world_event", (payload) => {
+      this.onWorldEvent(payload)
+    })
+
+    this.channel.on("world_event_ended", (payload) => {
+      this.onWorldEventEnded(payload)
+    })
+
     this.channel
       .join()
       .receive("ok", (resp) => {
@@ -94,6 +104,10 @@ export default class WorldSocket {
 
   injectEvent(eventType) {
     this.channel.push("inject_event", { event_type: eventType })
+  }
+
+  triggerWorldEvent(eventType) {
+    this.channel.push("trigger_world_event", { event_type: eventType })
   }
 
   createWorld(template, population, danger) {
