@@ -134,10 +134,18 @@ defmodule Modus.Simulation.Ticker do
     # Broadcast to agents (self-tick)
     Phoenix.PubSub.broadcast(@pubsub, "simulation:ticks", {:tick, new_tick})
 
-    # Decay unowned buildings every 100 ticks
+    # Decay unowned buildings + detect neighborhoods every 100 ticks
     if rem(new_tick, 100) == 0 do
       try do
         Modus.Simulation.Building.decay_unowned()
+        old_hoods = Modus.Simulation.Building.neighborhoods() |> Enum.map(& &1.id) |> MapSet.new()
+        new_hoods = Modus.Simulation.Building.detect_neighborhoods()
+        # Log story events for newly formed neighborhoods
+        for hood <- new_hoods, not MapSet.member?(old_hoods, hood.id) do
+          Modus.Simulation.EventLog.log(:neighborhood_formed, new_tick, hood.resident_ids, %{
+            name: hood.name, size: hood.size, center: hood.center
+          })
+        end
       catch
         _, _ -> :ok
       end

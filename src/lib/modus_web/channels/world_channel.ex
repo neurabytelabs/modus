@@ -466,11 +466,18 @@ defmodule ModusWeb.WorldChannel do
       _, _ -> []
     end
 
+    neighborhoods = try do
+      Building.serialize_neighborhoods()
+    catch
+      _, _ -> []
+    end
+
     delta = %{
       tick: tick_number,
       agent_count: length(Enum.filter(agents, & &1.alive)),
       agents: agents,
       buildings: buildings,
+      neighborhoods: neighborhoods,
       time_of_day: to_string(env.time_of_day),
       cycle_progress: Float.round(ensure_float(env.cycle_progress), 4)
     }
@@ -532,10 +539,17 @@ defmodule ModusWeb.WorldChannel do
       _, _ -> []
     end
 
+    neighborhoods = try do
+      Building.serialize_neighborhoods()
+    catch
+      _, _ -> []
+    end
+
     %{
       grid: grid,
       agents: agents,
       buildings: buildings,
+      neighborhoods: neighborhoods,
       tick: tick,
       status: status,
       agent_count: length(agents),

@@ -244,6 +244,7 @@ defmodule Modus.Simulation.Agent do
       agent
       |> decay_needs()
       |> apply_building_bonuses()
+      |> apply_neighborhood_bonus()
       |> apply_action(action, params)
       |> tap(fn a -> Modus.Mind.Learning.award_for_action(a.id, action) end)
       |> Modus.Mind.MindEngine.process_tick(action, params, tick_number)
@@ -379,13 +380,46 @@ defmodule Modus.Simulation.Agent do
     end
 
     if build_type do
+      # Try to build near a friend's home (social proximity)
+      build_pos = case Building.friend_build_position(agent.id) do
+        nil -> agent.position
+        pos -> pos
+      end
+
       inventory = Building.deduct_costs(agent.inventory, build_type)
-      building = Building.place(build_type, agent.position, agent.id, Map.get(params, :tick, 0))
+      building = Building.place(build_type, build_pos, agent.id, Map.get(params, :tick, 0))
       Modus.Simulation.EventLog.log(:building, Map.get(params, :tick, 0), [agent.id], %{
-        name: agent.name, type: build_type, position: agent.position, building_id: building.id
+        name: agent.name, type: build_type, position: build_pos, building_id: building.id
       })
       needs = %{agent.needs | shelter: min(agent.needs.shelter + 20.0, 100.0)}
       %{agent | inventory: inventory, needs: needs, current_action: :building}
+    else
+      %{agent | current_action: :idle}
+    end
+  end
+
+  defp apply_action(agent, :upgrade_home, params) do
+    alias Modus.Simulation.Building
+
+    home = Building.get_home(agent.id)
+    tick = Map.get(params, :tick, 0)
+
+    if home != nil and Building.can_upgrade?(home, agent.conatus_energy, tick) and
+       Building.can_afford_upgrade?(agent.inventory, home) do
+      inventory = Building.deduct_upgrade_costs(agent.inventory, home)
+      case Building.upgrade(home.id, tick) do
+        {:ok, upgraded} ->
+          Modus.Simulation.EventLog.log(:building_upgrade, tick, [agent.id], %{
+            name: agent.name,
+            from: home.type,
+            to: upgraded.type,
+            level: upgraded.level,
+            position: home.position
+          })
+          %{agent | inventory: inventory, current_action: :building}
+        :error ->
+          %{agent | current_action: :idle}
+      end
     else
       %{agent | current_action: :idle}
     end
@@ -468,6 +502,16 @@ defmodule Modus.Simulation.Agent do
   defp apply_building_bonuses(agent) do
     new_needs = Modus.Simulation.Building.apply_area_bonuses(agent.needs, agent.position)
     %{agent | needs: new_needs}
+  end
+
+  defp apply_neighborhood_bonus(agent) do
+    bonus = Modus.Simulation.Building.neighborhood_social_bonus(agent.id)
+    if bonus > 0.0 do
+      new_social = min(100.0, agent.needs.social + bonus)
+      %{agent | needs: %{agent.needs | social: new_social}}
+    else
+      agent
+    end
   end
 
   # --- Death Check ---

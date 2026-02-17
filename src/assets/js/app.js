@@ -78,6 +78,7 @@ Hooks.WorldCanvas = {
           if (state.grid) this.renderer.renderTerrain(state.grid)
           if (state.agents) this.renderer.updateAgents(state.agents)
           if (state.buildings) this.renderer.updateBuildings(state.buildings)
+          if (state.neighborhoods) this.renderer.updateNeighborhoods(state.neighborhoods)
           // Environment
           if (state.time_of_day) this.renderer.updateEnvironment(state)
         }
@@ -95,6 +96,9 @@ Hooks.WorldCanvas = {
         }
         if (this.rendererReady && delta.buildings) {
           this.renderer.updateBuildings(delta.buildings)
+        }
+        if (this.rendererReady && delta.neighborhoods) {
+          this.renderer.updateNeighborhoods(delta.neighborhoods)
         }
         // Update environment visuals
         if (this.rendererReady && delta.cycle_progress != null) {

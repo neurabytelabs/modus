@@ -108,6 +108,10 @@ defmodule Modus.Simulation.DecisionEngine do
     {:build, %{position: agent.position}}
   end
 
+  defp resolve(:upgrade_home, _agent, _context) do
+    {:upgrade_home, %{}}
+  end
+
   defp resolve(:go_home, agent, _context) do
     alias Modus.Simulation.Building
     case Building.get_home(agent.id) do

@@ -186,6 +186,17 @@ defmodule Modus.Simulation.StoryEngine do
       :trade ->
         "A trade was completed, resources flowing between agents."
 
+      :building_upgrade ->
+        name = event.data[:name] || "Someone"
+        to = event.data[:to] || "a grander dwelling"
+        level = event.data[:level] || 2
+        "#{name} upgraded their home to #{to} (level #{level}) — a testament to their perseverance."
+
+      :neighborhood_formed ->
+        hood_name = event.data[:name] || "a new quarter"
+        size = event.data[:size] || 3
+        "#{hood_name} emerged — #{size} buildings clustered together, forming a neighborhood. Community takes root."
+
       _ ->
         "Something stirred in the world (#{event.type})."
     end
@@ -213,6 +224,8 @@ defmodule Modus.Simulation.StoryEngine do
   defp event_emoji(:migration), do: "🚶"
   defp event_emoji(:resource), do: "🎁"
   defp event_emoji(:trade), do: "🤝"
+  defp event_emoji(:building_upgrade), do: "⬆️"
+  defp event_emoji(:neighborhood_formed), do: "🏘️"
   defp event_emoji(_), do: "⚡"
 
   # ── Markdown Export ─────────────────────────────────────

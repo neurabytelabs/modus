@@ -1010,7 +1010,15 @@ export default class Renderer {
 
     for (const b of buildings) {
       seen.add(b.id)
-      if (this.buildingSprites.has(b.id)) continue // already rendered
+      const existing = this.buildingSprites.get(b.id)
+
+      // Re-render if level changed (upgrade visual)
+      if (existing && existing.level === b.level) continue
+      if (existing) {
+        this.buildingLayer.removeChild(existing.container)
+        existing.container.destroy({ children: true })
+        this.buildingSprites.delete(b.id)
+      }
 
       const container = new Container()
       const px = b.x * TILE_SIZE + TILE_SIZE / 2
@@ -1018,23 +1026,41 @@ export default class Renderer {
       container.x = px
       container.y = py
 
-      // Colored rectangle — FLAT 2D
-      const w = b.w || 14
-      const h = b.h || 14
+      // Level-based size scaling: L1=1x, L2=1.3x, L3=1.6x — FLAT 2D rect
+      const levelScale = b.level === 3 ? 1.6 : b.level === 2 ? 1.3 : 1.0
+      const w = Math.round((b.w || 14) * levelScale)
+      const h = Math.round((b.h || 14) * levelScale)
+
+      // Level-based color tint
+      const baseColor = b.color || 0x888888
+      const color = b.level === 3 ? 0xFFD700 : b.level === 2 ? 0xD2B48C : baseColor
+
       const gfx = new Graphics()
       gfx.rect(-w / 2, -h / 2, w, h)
-      gfx.fill(b.color || 0x888888)
+      gfx.fill(color)
       gfx.rect(-w / 2, -h / 2, w, h)
-      gfx.stroke({ width: 1, color: 0xffffff, alpha: 0.2 })
+      gfx.stroke({ width: b.level > 1 ? 2 : 1, color: b.level === 3 ? 0xFFFFFF : 0xffffff, alpha: b.level === 3 ? 0.5 : 0.2 })
       container.addChild(gfx)
 
-      // Emoji overlay
+      // Emoji overlay (bigger for higher levels)
+      const emojiFontSize = b.level === 3 ? 14 : b.level === 2 ? 12 : 10
       const emoji = new Text({
         text: b.emoji || "🏗️",
-        style: new TextStyle({ fontSize: 10, align: "center" }),
+        style: new TextStyle({ fontSize: emojiFontSize, align: "center" }),
       })
       emoji.anchor.set(0.5, 0.5)
       container.addChild(emoji)
+
+      // Level badge for L2+
+      if (b.level > 1) {
+        const badge = new Text({
+          text: `L${b.level}`,
+          style: new TextStyle({ fontSize: 7, fill: 0xFFFFFF, fontWeight: "bold" }),
+        })
+        badge.anchor.set(0.5, 0.5)
+        badge.y = -h / 2 - 5
+        container.addChild(badge)
+      }
 
       // Health bar (small, below building)
       const healthBar = new Graphics()
@@ -1048,7 +1074,7 @@ export default class Renderer {
       container.addChild(healthBar)
 
       this.buildingLayer.addChild(container)
-      this.buildingSprites.set(b.id, { container, gfx, healthBar })
+      this.buildingSprites.set(b.id, { container, gfx, healthBar, level: b.level })
     }
 
     // Remove destroyed buildings
@@ -1057,6 +1083,52 @@ export default class Renderer {
         this.buildingLayer.removeChild(sprite.container)
         sprite.container.destroy({ children: true })
         this.buildingSprites.delete(id)
+      }
+    }
+  }
+
+  // ── Neighborhoods (labels on map) ─────────────────────────
+
+  updateNeighborhoods(neighborhoods) {
+    if (!neighborhoods) return
+
+    // Lazy init
+    if (!this.neighborhoodLabels) this.neighborhoodLabels = new Map()
+
+    const seen = new Set()
+    for (const n of neighborhoods) {
+      seen.add(n.id)
+      if (this.neighborhoodLabels.has(n.id)) continue
+
+      const px = n.x * TILE_SIZE + TILE_SIZE / 2
+      const py = n.y * TILE_SIZE + TILE_SIZE / 2
+
+      const label = new Text({
+        text: `🏘️ ${n.name}`,
+        style: new TextStyle({
+          fontSize: 9,
+          fill: 0xE2E8F0,
+          fontWeight: "bold",
+          dropShadow: true,
+          dropShadowColor: 0x000000,
+          dropShadowDistance: 1,
+          dropShadowAlpha: 0.7,
+        }),
+      })
+      label.anchor.set(0.5, 0.5)
+      label.x = px
+      label.y = py - 20
+
+      this.buildingLayer.addChild(label)
+      this.neighborhoodLabels.set(n.id, label)
+    }
+
+    // Remove stale labels
+    for (const [id, label] of this.neighborhoodLabels) {
+      if (!seen.has(id)) {
+        this.buildingLayer.removeChild(label)
+        label.destroy()
+        this.neighborhoodLabels.delete(id)
       }
     }
   }

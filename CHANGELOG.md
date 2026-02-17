@@ -6,6 +6,34 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v1.8.1 · **Architectus** — _Neighborhoods_
+_17 Şubat 2026_
+
+### ✨ Features
+- **Building Upgrades** — Hut (L1) → House (L2) → Mansion (L3). Requires owner + conatus > 0.7 + 500 ticks age. Visual: size scales (1x/1.3x/1.6x), color shifts (brown→tan→gold), level badge on map
+- **Mansion Type** — New top-tier home: 🏛 gold, 22x22px, rest+25/shelter+20/social+5 bonuses
+- **Neighborhoods** — 3+ buildings within 5 tiles auto-cluster into named neighborhoods (deterministic name from position: "Green Hill", "Oak Meadow", etc.)
+- **Neighborhood Labels** — 🏘️ labels rendered on map at cluster center (flat 2D text, drop shadow)
+- **Neighborhood Social Bonus** — Residents get +0.02 social/tick passive bonus
+- **Build Near Friends** — Agents prefer building 1-2 tiles from a friend's home (SocialNetwork check)
+- **Home Benefit** — Agents with rest > 60 and a home return to it (go_home behavior)
+- **Upgrade Behavior** — BehaviorTree evaluates upgrade opportunity (30% chance per tick when eligible)
+- **Story Events** — Narrative entries for building upgrades (⬆️) and neighborhood formation (🏘️)
+- **Level Multiplier** — Area bonuses scale with building level: L2=1.5x, L3=2x
+
+### 🏗️ Architecture
+- `Building` — Upgrade system (can_upgrade?/upgrade/upgrade_cost), neighborhood detection (greedy clustering), serialize_neighborhoods, friend_build_position, :mansion type + costs/bonuses/emoji/colors/sizes
+- `Building` — New ETS table :neighborhoods for cluster storage
+- `BehaviorTree` — Added :upgrade_home action with conatus/tick/inventory checks
+- `DecisionEngine` — :upgrade_home resolver
+- `Agent` — :upgrade_home apply_action, apply_neighborhood_bonus/1, build-near-friends in :build action
+- `Ticker` — Neighborhood detection every 100 ticks, fires :neighborhood_formed events for new clusters
+- `WorldChannel` — Neighborhoods in full_state and delta broadcasts
+- `StoryEngine` — Narratives + emojis for :building_upgrade and :neighborhood_formed
+- `Renderer` — Level-aware building rendering (re-render on upgrade), neighborhood label layer
+
+---
+
 ## v1.8.0 · **Architectus** — _Building System_
 _17 Şubat 2026_
 
