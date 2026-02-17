@@ -36,6 +36,7 @@ defmodule Modus.Application do
       Modus.Simulation.WorldHistory,
       Modus.Simulation.WorldEvents,
       Modus.Simulation.Seasons,
+      Modus.Simulation.Wildlife,
       ModusWeb.Endpoint
     ]
 

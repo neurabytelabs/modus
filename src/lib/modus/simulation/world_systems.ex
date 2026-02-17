@@ -22,6 +22,14 @@ defmodule Modus.Simulation.WorldSystems do
     # Run world-level systems (non-blocking, fire-and-forget)
     Modus.Simulation.Economy.tick(tick_number)
     Modus.Simulation.Lifecycle.tick(tick_number)
+
+    # Wildlife ecology tick with current season
+    season = try do
+      Modus.Simulation.Seasons.current_season()
+    catch
+      _, _ -> :spring
+    end
+    Modus.Simulation.Wildlife.tick(tick_number, season)
     {:noreply, state}
   end
 
