@@ -1,7 +1,7 @@
 defmodule Modus.Mind.ContextBuilder do
   @moduledoc "Builds dynamic LLM system prompts enriched with real agent state"
 
-  alias Modus.Mind.{Perception, Cerebro.SocialInsight}
+  alias Modus.Mind.{Perception, Cerebro.SocialInsight, Culture}
   alias Modus.Persistence.AgentMemory
   alias Modus.Simulation.Seasons
 
@@ -32,6 +32,8 @@ defmodule Modus.Mind.ContextBuilder do
     #{memory_context(agent.id)}
 
     #{goals_context(agent.id)}
+
+    #{culture_context(agent.id)}
 
     RULES:
     - Speak naturally as #{agent.name} would — use your personality
@@ -232,6 +234,33 @@ defmodule Modus.Mind.ContextBuilder do
       end)
       "Your current goals:\n#{Enum.join(lines, "\n")}"
     end
+  end
+
+  defp culture_context(agent_id) do
+    phrases = Culture.get_catchphrases(agent_id)
+    traditions = Culture.list_traditions()
+
+    parts = []
+
+    parts = if phrases != [] do
+      phrase_lines = Enum.map(phrases, fn p -> "- \"#{p.text}\"" end) |> Enum.join("\n")
+      ["Your catchphrases (use them naturally in conversation):\n#{phrase_lines}" | parts]
+    else
+      parts
+    end
+
+    parts = if traditions != [] do
+      trad_lines = traditions
+        |> Enum.filter(fn t -> t.strength > 0.2 end)
+        |> Enum.take(3)
+        |> Enum.map(fn t -> "- #{t.name}: #{t.description}" end)
+        |> Enum.join("\n")
+      if trad_lines != "", do: ["Your community traditions:\n#{trad_lines}" | parts], else: parts
+    else
+      parts
+    end
+
+    Enum.join(parts, "\n\n")
   end
 
   defp emotional_dynamic(affect_a, affect_b, name_a, name_b) do

@@ -818,7 +818,8 @@ defmodule ModusWeb.WorldChannel do
       last_reasoning: state.last_reasoning,
       skills: Modus.Mind.Learning.to_map(state.id),
       inventory: state.inventory || %{},
-      goals: Modus.Mind.Goals.serialize(state.id)
+      goals: Modus.Mind.Goals.serialize(state.id),
+      culture: Modus.Mind.Culture.serialize(state.id)
     }
   end
 

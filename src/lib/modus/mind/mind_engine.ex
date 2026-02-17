@@ -1,7 +1,7 @@
 defmodule Modus.Mind.MindEngine do
   @moduledoc "Orchestrates conatus + affect processing each tick"
 
-  alias Modus.Mind.{Conatus, Affect, AffectMemory, ReasoningEngine, Goals}
+  alias Modus.Mind.{Conatus, Affect, AffectMemory, ReasoningEngine, Goals, Culture}
 
   @max_history 20
 
@@ -53,6 +53,47 @@ defmodule Modus.Mind.MindEngine do
     # 7b. Decay social relationships every 100 ticks
     if rem(tick, 100) == 0 do
       Modus.Mind.Cerebro.SocialNetwork.decay_all()
+    end
+
+    # 7d. Culture: generate catchphrases from experience
+    Culture.maybe_generate_catchphrase(agent.id, event, tick)
+
+    # 7e. Cultural drift every 150 ticks
+    if rem(tick, 150) == 0 do
+      Culture.drift(agent.id)
+    end
+
+    # 7f. Decay culture every 200 ticks
+    if rem(tick, 200) == 0 do
+      Culture.decay_all()
+    end
+
+    # 7g. Check traditions every 100 ticks
+    if rem(tick, 100) == 0 do
+      season = try do
+        Modus.Simulation.Seasons.get_state().season
+      catch
+        _, _ -> :spring
+      end
+
+      triggered = Culture.check_traditions(tick, season, if(not agent.alive?, do: :death))
+
+      Enum.each(triggered, fn tradition ->
+        # Find nearby agents as participants
+        nearby_ids = Modus.AgentRegistry
+          |> Registry.select([{{:"$1", :_, :"$3"}, [], [{{:"$1", :"$3"}}]}])
+          |> Enum.filter(fn {_id, {_x, _y, alive}} -> alive end)
+          |> Enum.map(fn {id, _} -> id end)
+          |> Enum.take(6)
+
+        Culture.perform_tradition(tradition.id, [agent.id | nearby_ids], tick)
+
+        Modus.Simulation.EventLog.log(:tradition_performed, tick, [agent.id | nearby_ids], %{
+          tradition: tradition.name,
+          description: tradition.description,
+          type: to_string(tradition.type)
+        })
+      end)
     end
 
     # 7c. Try to form groups every 200 ticks

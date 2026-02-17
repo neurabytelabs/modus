@@ -6,6 +6,31 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v2.1.0 · **Lingua** — _Cultural Evolution_
+_17 Şubat 2026_
+
+### ✨ Features
+- **Cultural Evolution System** — 🎭 Emergent culture that evolves organically through agent experience
+  - 💬 **Catchphrases** — Agents develop sayings from lived experience (hunger, joy, social bonding, fear)
+  - 🔄 **Cultural Spread** — Catchphrases spread between agents during conversations, weighted by strength
+  - 🧬 **Cultural Drift** — Phrases mutate slightly over time, creating unique cultural variations
+  - 👶 **Generational Transfer** — Children inherit strongest catchphrases from parents with mutation chance
+  - 🎉 **Traditions** — Community rituals emerge: Harvest Festival, Mourning Circle, Dawn Greeting, Winter Vigil, Spring Awakening, Stargazing Rite
+  - 📊 **Tradition Strength** — Traditions grow stronger when performed, decay when neglected
+  - 🤝 **Social Bonding** — Tradition participants get relationship boosts
+- **Culture UI** — New "Culture" section in Agent Detail panel showing catchphrases with strength + community traditions
+- **LLM Culture Awareness** — Agents naturally use their catchphrases and reference traditions in conversation
+- **Story Events** — Tradition performances logged as story events (`:tradition_performed`)
+
+### 🔧 Technical
+- New module: `Modus.Mind.Culture` (ETS-backed, ~350 LOC)
+- Integrated into: `MindEngine` (generation, drift, decay, tradition checks), `ContextBuilder` (LLM prompts), `AgentConversation` (cultural spread), `Lifecycle` (inheritance), `WorldChannel` (serialization), `UniverseLive` (UI)
+- Culture ETS tables: `:agent_culture` (catchphrases), `:world_traditions` (traditions)
+- Catchphrase templates: 8 context categories, 25+ unique phrases
+- Tradition templates: 6 archetypes (seasonal + event-triggered)
+
+---
+
 ## v2.0.1 · **Infinitum** — _Agent Goals_
 _17 Şubat 2026_
 

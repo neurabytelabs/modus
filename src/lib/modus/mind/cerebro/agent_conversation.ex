@@ -172,6 +172,9 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
     # Update social network
     SocialNetwork.update_relationship(agent.id, partner.id, event_type)
 
+    # Spread culture between conversing agents
+    Modus.Mind.Culture.spread_culture(agent.id, partner.id, tick)
+
     # Boost conatus and social need via casts
     rel_bonus = if relationship && relationship.strength > 0.5, do: 0.03, else: 0.0
     _conatus_boost = 0.05 + rel_bonus

@@ -1959,6 +1959,42 @@ defmodule ModusWeb.UniverseLive do
                 <% end %>
               </div>
 
+              <%!-- Culture --%>
+              <%= if @selected_agent["culture"] do %>
+                <div class="mb-4">
+                  <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">🎭 Culture</h3>
+                  <%!-- Catchphrases --%>
+                  <%= if @selected_agent["culture"]["catchphrases"] && @selected_agent["culture"]["catchphrases"] != [] do %>
+                    <div class="mb-2">
+                      <div class="text-[10px] text-slate-500 mb-1">Catchphrases:</div>
+                      <%= for phrase <- @selected_agent["culture"]["catchphrases"] do %>
+                        <div class="text-[10px] text-slate-300 mb-1 flex items-center gap-1 border-l-2 border-amber-500/20 pl-2">
+                          <span class="italic truncate">"<%= phrase["text"] %>"</span>
+                          <span class="text-slate-600 ml-auto text-[9px] shrink-0"><%= phrase["strength"] %></span>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% else %>
+                    <p class="text-[10px] text-slate-600 italic mb-2">No catchphrases yet</p>
+                  <% end %>
+                  <%!-- Traditions --%>
+                  <%= if @selected_agent["culture"]["traditions"] && @selected_agent["culture"]["traditions"] != [] do %>
+                    <div>
+                      <div class="text-[10px] text-slate-500 mb-1">Community Traditions:</div>
+                      <%= for trad <- @selected_agent["culture"]["traditions"] do %>
+                        <div class="text-[10px] text-slate-400 mb-1.5 p-1.5 rounded bg-white/3 border border-white/5">
+                          <div class="flex justify-between">
+                            <span class="text-amber-400"><%= trad["name"] %></span>
+                            <span class="text-slate-600 text-[9px]"><%= trad["season"] %> · <%= trad["strength"] %></span>
+                          </div>
+                          <div class="text-slate-500 mt-0.5 truncate"><%= trad["description"] %></div>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+
               <%!-- Chat Button --%>
               <button phx-click="open_chat" class="w-full ctrl-btn ctrl-btn-primary text-center">
                 💬 Chat with <%= @selected_agent["name"] %>
