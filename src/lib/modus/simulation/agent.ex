@@ -281,8 +281,11 @@ defmodule Modus.Simulation.Agent do
     # Terrain effects
     agent = apply_terrain_effects(agent, action)
 
-    # Night: agents with low rest should prioritize sleeping
-    {action, params} = maybe_force_sleep(agent, action, params)
+    # Daily routine: sleep cycles, energy, and schedule overrides
+    {action, params} = case Modus.Simulation.DailyRoutine.recommend_action(agent) do
+      {:override, new_action, new_params} -> {new_action, Map.merge(params, new_params)}
+      :no_override -> maybe_force_sleep(agent, action, params)
+    end
 
     agent =
       agent
@@ -290,6 +293,7 @@ defmodule Modus.Simulation.Agent do
       |> apply_building_bonuses()
       |> apply_neighborhood_bonus()
       |> apply_action(action, params)
+      |> Modus.Simulation.DailyRoutine.process_tick(action, tick_number)
       |> tap(fn a -> Modus.Mind.Learning.award_for_action(a.id, action) end)
       |> Modus.Mind.MindEngine.process_tick(action, params, tick_number)
       |> tap(fn a -> Modus.Mind.Cerebro.AgentConversation.maybe_converse(a, nearby, tick_number) end)
