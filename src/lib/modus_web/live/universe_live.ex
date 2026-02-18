@@ -79,6 +79,9 @@ defmodule ModusWeb.UniverseLive do
        season_emoji: "🌸",
        season_year: 1,
        day_phase: "day",
+       # Weather
+       weather_name: "Clear",
+       weather_emoji: "☀️",
        # Deus — God Mode & Cinematic Camera
        god_mode: false,
        cinematic_mode: false,
@@ -504,6 +507,16 @@ defmodule ModusWeb.UniverseLive do
       []
     end
 
+    weather_data = params["weather"]
+    weather_assigns = if weather_data do
+      [
+        weather_name: weather_data["name"] || "Clear",
+        weather_emoji: weather_data["emoji"] || "☀️"
+      ]
+    else
+      []
+    end
+
     tick = params["tick"] || socket.assigns.tick
 
     # Auto-refresh observatory every 50 ticks when open
@@ -547,7 +560,7 @@ defmodule ModusWeb.UniverseLive do
         {:trades_count, eco.trades},
         {:births_count, life.births},
         {:deaths_count, life.deaths}
-        | season_assigns ++ obs_assigns ++ llm_assigns ++ perf_assigns]
+        | season_assigns ++ weather_assigns ++ obs_assigns ++ llm_assigns ++ perf_assigns]
      )}
   end
 
@@ -1846,6 +1859,11 @@ defmodule ModusWeb.UniverseLive do
               <span class="text-sm"><%= @season_emoji %></span>
               <span class="text-slate-300 font-medium text-[10px] uppercase tracking-wider"><%= @season_name %></span>
               <span class="text-slate-600 text-[9px]">Y<%= @season_year %></span>
+            </div>
+            <%!-- Weather indicator --%>
+            <div class="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/50">
+              <span class="text-sm"><%= @weather_emoji %></span>
+              <span class="text-slate-300 font-medium text-[10px] uppercase tracking-wider"><%= @weather_name %></span>
             </div>
             <div class="flex items-center gap-1.5">
               <span class="text-sm"><%= if @time_of_day == "night", do: "🌙", else: "☀️" %></span>

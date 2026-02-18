@@ -586,6 +586,12 @@ defmodule ModusWeb.WorldChannel do
       _, _ -> %{season: "spring", season_name: "Spring", emoji: "🌸", year: 1, progress: 0.0, tint: 0x88DD88, tint_alpha: 0.08, terrain_shift: %{}, growth_modifier: 1.0}
     end
 
+    weather = try do
+      Modus.Simulation.Weather.serialize()
+    catch
+      _, _ -> %{current: "clear", name: "Clear", emoji: "☀️", move_mod: 1.0, gather_mod: 1.0, mood_mod: 0.0, crop_mod: 1.0, severe_event: nil, ticks_remaining: 0, forecast: []}
+    end
+
     delta = %{
       tick: tick_number,
       agent_count: length(Enum.filter(agents, & &1.alive)),
@@ -599,6 +605,7 @@ defmodule ModusWeb.WorldChannel do
       ambient_alpha: Float.round(ensure_float(Map.get(env, :ambient_alpha, 0.0)), 4),
       day_phase: to_string(Map.get(env, :day_phase, :day)),
       season: seasons,
+      weather: weather,
       rules: try do Modus.Simulation.RulesEngine.serialize() catch _, _ -> %{} end
     }
 
