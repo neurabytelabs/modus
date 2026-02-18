@@ -1,7 +1,7 @@
 defmodule ModusWeb.UniverseLive do
   @moduledoc """
   Main LiveView — MODUS universe dashboard with 2D renderer.
-  v3.6.0 Speculum — Data Visualization Dashboard + UI Enhancement.
+  v3.7.0 Persistentia — Robust World Persistence + Save/Load UI.
   """
   use ModusWeb, :live_view
   # JS alias available if needed
@@ -66,8 +66,11 @@ defmodule ModusWeb.UniverseLive do
        # Save/Load
        save_load_open: false,
        saved_worlds: [],
+       save_slots: [],
        save_name: "",
        save_load_status: nil,
+       selected_slot: 1,
+       autosave_status: %{enabled: true, last_tick: 0, last_at: nil, interval: 500},
        # UI
        mind_view_active: false,
        # Seasons
@@ -712,8 +715,9 @@ defmodule ModusWeb.UniverseLive do
   # ── Save / Load ───────────────────────────────────────────────
 
   def handle_event("open_save_load", _params, socket) do
-    worlds = Modus.Persistence.WorldPersistence.list()
-    {:noreply, assign(socket, save_load_open: true, saved_worlds: worlds, save_load_status: nil, save_name: "")}
+    slots = try do Modus.Persistence.SaveManager.list_slots() catch _, _ -> [] end
+    autosave = try do Modus.Persistence.SaveManager.autosave_status() catch _, _ -> %{enabled: false, last_tick: 0, last_at: nil, interval: 500} end
+    {:noreply, assign(socket, save_load_open: true, save_slots: slots, save_load_status: nil, save_name: "", selected_slot: 1, autosave_status: autosave)}
   end
 
   def handle_event("close_save_load", _params, socket) do
@@ -724,36 +728,61 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, save_name: name)}
   end
 
+  def handle_event("select_slot", %{"slot" => slot_str}, socket) do
+    {slot, _} = Integer.parse(slot_str)
+    {:noreply, assign(socket, selected_slot: slot)}
+  end
+
   def handle_event("do_save", _params, socket) do
+    slot = socket.assigns[:selected_slot] || 1
     name = if socket.assigns.save_name == "", do: nil, else: socket.assigns.save_name
-    case Modus.Persistence.WorldPersistence.save(name) do
+    case Modus.Persistence.SaveManager.save_slot(slot, name) do
       {:ok, info} ->
-        worlds = Modus.Persistence.WorldPersistence.list()
-        {:noreply, assign(socket, saved_worlds: worlds, save_load_status: "✅ Saved: #{info.name}", save_name: "")}
+        slots = Modus.Persistence.SaveManager.list_slots()
+        {:noreply, assign(socket, save_slots: slots, save_load_status: "✅ Saved: #{info.name}", save_name: "")}
       {:error, reason} ->
         {:noreply, assign(socket, save_load_status: "❌ #{reason}")}
     end
   end
 
-  def handle_event("do_load", %{"id" => id_str}, socket) do
-    {id, _} = Integer.parse(id_str)
-    case Modus.Persistence.WorldPersistence.load(id) do
+  def handle_event("do_load", %{"slot" => slot_str}, socket) do
+    {slot, _} = Integer.parse(slot_str)
+    case Modus.Persistence.SaveManager.load_slot(slot) do
       {:ok, info} ->
-        Modus.Simulation.Ticker.run()
+        try do Modus.Simulation.Ticker.run() catch _, _ -> :ok end
         {:noreply,
          socket
          |> assign(save_load_open: false, save_load_status: nil, status: :running)
-         |> push_event("world_loaded", %{agents: info.agents, tick: info.tick})}
+         |> push_event("world_loaded", %{agents: info.agents, tick: 0})}
+      {:error, reason} ->
+        {:noreply, assign(socket, save_load_status: "❌ #{inspect(reason)}")}
+    end
+  end
+
+  def handle_event("do_delete_save", %{"slot" => slot_str}, socket) do
+    {slot, _} = Integer.parse(slot_str)
+    Modus.Persistence.SaveManager.delete_slot(slot)
+    slots = Modus.Persistence.SaveManager.list_slots()
+    {:noreply, assign(socket, save_slots: slots, save_load_status: "🗑️ Deleted")}
+  end
+
+  def handle_event("do_export_save", _params, socket) do
+    case Modus.Persistence.SaveManager.export_json() do
+      {:ok, json} ->
+        {:noreply, assign(socket, save_load_status: "✅ Exported") |> push_event("download", %{data: json, filename: "modus_world.json", content_type: "application/json"})}
       {:error, reason} ->
         {:noreply, assign(socket, save_load_status: "❌ #{reason}")}
     end
   end
 
-  def handle_event("do_delete_save", %{"id" => id_str}, socket) do
-    {id, _} = Integer.parse(id_str)
-    Modus.Persistence.WorldPersistence.delete(id)
-    worlds = Modus.Persistence.WorldPersistence.list()
-    {:noreply, assign(socket, saved_worlds: worlds, save_load_status: "🗑️ Deleted")}
+  def handle_event("do_import_save", %{"json" => json}, socket) do
+    case Modus.Persistence.SaveManager.import_json(json) do
+      {:ok, info} ->
+        slots = Modus.Persistence.SaveManager.list_slots()
+        {:noreply, assign(socket, save_slots: slots, save_load_status: "✅ Imported: #{info.name}")}
+      {:error, reason} ->
+        {:noreply, assign(socket, save_load_status: "❌ #{reason}")}
+    end
   end
 
   # ── Controls ────────────────────────────────────────────────
@@ -2813,55 +2842,101 @@ defmodule ModusWeb.UniverseLive do
         </div>
       <% end %>
 
-      <%!-- Save/Load Modal --%>
+      <%!-- Save/Load Modal — v3.7.0 Persistentia --%>
       <%= if @save_load_open do %>
         <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div class="bg-[#0A0A0F] border border-white/10 rounded-xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl" phx-click-away="close_save_load">
-            <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
-              <span class="font-bold text-slate-100">💾 Save / Load World</span>
-              <button phx-click="close_save_load" class="text-slate-600 hover:text-slate-400">✕</button>
-            </div>
-            <div class="p-4 space-y-4 overflow-y-auto">
-              <%!-- Save Section --%>
-              <div>
-                <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">Save Current World</h3>
-                <div class="flex gap-2">
-                  <input type="text" name="name" value={@save_name} placeholder="Save name (optional)"
-                    phx-change="set_save_name" phx-debounce="300"
-                    class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-500/50" />
-                  <button phx-click="do_save" class="ctrl-btn ctrl-btn-primary px-4">💾 Save</button>
+          <div class="bg-[#0A0A0F]/95 backdrop-blur-xl border border-white/10 rounded-2xl w-[600px] max-h-[480px] flex flex-col shadow-2xl shadow-cyan-500/5" phx-click-away="close_save_load">
+            <%!-- Header with auto-save indicator --%>
+            <div class="px-5 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
+              <div class="flex items-center gap-3">
+                <span class="font-bold text-slate-100">💾 Save / Load World</span>
+                <%!-- Auto-save pulsing indicator --%>
+                <div class="flex items-center gap-1.5">
+                  <div class={"w-2 h-2 rounded-full #{if @autosave_status.enabled, do: "bg-emerald-400 animate-pulse", else: "bg-slate-600"}"} />
+                  <span class="text-[9px] text-slate-500">
+                    <%= if @autosave_status.last_at do %>
+                      Auto-saved <%= @autosave_status.last_at |> String.slice(11, 5) %>
+                    <% else %>
+                      Auto-save every <%= @autosave_status.interval %> ticks
+                    <% end %>
+                  </span>
                 </div>
+              </div>
+              <button phx-click="close_save_load" class="text-slate-600 hover:text-slate-400 transition-colors">✕</button>
+            </div>
+
+            <div class="p-4 space-y-3 overflow-y-auto flex-1">
+              <%!-- Save name input + buttons --%>
+              <div class="flex gap-2 items-center">
+                <input type="text" name="name" value={@save_name} placeholder="Save name (optional)"
+                  phx-change="set_save_name" phx-debounce="300"
+                  class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors" />
+                <button phx-click="do_save" class="ctrl-btn ctrl-btn-primary px-3 text-xs">💾 Save</button>
+                <button phx-click="do_export_save" class="ctrl-btn px-3 text-xs text-emerald-400 hover:text-emerald-300">📤 Export</button>
               </div>
 
               <%!-- Status --%>
               <%= if @save_load_status do %>
-                <div class="text-sm px-3 py-2 rounded-lg bg-white/5 text-slate-300">
-                  <%= @save_load_status %>
-                </div>
+                <div class="text-xs px-3 py-1.5 rounded-lg bg-white/5 text-slate-300"><%= @save_load_status %></div>
               <% end %>
 
-              <%!-- Load Section --%>
-              <div>
-                <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mb-2">Saved Worlds</h3>
-                <%= if @saved_worlds == [] do %>
-                  <p class="text-xs text-slate-600 italic">No saved worlds yet</p>
-                <% else %>
-                  <div class="space-y-2">
-                    <%= for world <- @saved_worlds do %>
-                      <div class="flex items-center gap-3 p-3 rounded-lg bg-white/3 border border-white/5 hover:border-white/10 transition-all">
-                        <div class="flex-1 min-w-0">
-                          <div class="text-sm font-medium text-slate-200 truncate"><%= world.name %></div>
-                          <div class="text-[10px] text-slate-500">
-                            🗺️ <%= world.template %> · 👥 <%= world.agents %> agents · ⏱️ tick <%= world.tick %>
-                          </div>
+              <%!-- 5 Save Slot Cards --%>
+              <div class="text-[10px] uppercase tracking-wider text-slate-600 mb-1">Save Slots</div>
+              <div class="space-y-2">
+                <%= for slot <- @save_slots do %>
+                  <div
+                    phx-click="select_slot" phx-value-slot={slot.slot}
+                    class={"flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer " <>
+                      if(@selected_slot == slot.slot,
+                        do: "bg-cyan-500/10 border-cyan-500/30 shadow-lg shadow-cyan-500/5",
+                        else: "bg-white/[0.02] border-white/5 hover:border-white/10 hover:bg-white/[0.04]")}>
+                    <%!-- Slot number / thumbnail placeholder --%>
+                    <div class={"w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 " <>
+                      if(Map.get(slot, :empty),
+                        do: "bg-white/5 text-slate-600",
+                        else: "bg-gradient-to-br from-cyan-500/20 to-purple-500/20 text-cyan-400 border border-cyan-500/20")}>
+                      <%= slot.slot %>
+                    </div>
+                    <%!-- Slot info --%>
+                    <div class="flex-1 min-w-0">
+                      <%= if Map.get(slot, :empty) do %>
+                        <div class="text-xs text-slate-600 italic">Empty Slot</div>
+                      <% else %>
+                        <div class="text-sm font-medium text-slate-200 truncate"><%= slot.name %></div>
+                        <div class="text-[10px] text-slate-500 flex items-center gap-2">
+                          <span>🌍 <%= slot.world_name %></span>
+                          <span>👥 <%= slot.population %></span>
+                          <span>📅 Day <%= slot.day_count %></span>
+                          <span>⏱️ t<%= slot.tick %></span>
                         </div>
-                        <button phx-click="do_load" phx-value-id={world.id} class="ctrl-btn ctrl-btn-primary text-[10px] px-3">▶ Load</button>
-                        <button phx-click="do_delete_save" phx-value-id={world.id} class="ctrl-btn text-[10px] px-2 text-red-400 hover:text-red-300">🗑️</button>
+                        <div class="text-[9px] text-slate-600 mt-0.5">
+                          🌱 seed: <%= slot.seed || "?" %> · 💾 <%= if slot.size_bytes, do: "#{div(slot.size_bytes, 1024)}KB", else: "?" %>
+                          <%= if slot.saved_at do %> · <%= slot.saved_at |> String.slice(0, 16) %><% end %>
+                        </div>
+                      <% end %>
+                    </div>
+                    <%!-- Actions --%>
+                    <%= unless Map.get(slot, :empty) do %>
+                      <div class="flex gap-1 shrink-0">
+                        <button phx-click="do_load" phx-value-slot={slot.slot} class="ctrl-btn ctrl-btn-primary text-[10px] px-2.5">▶ Load</button>
+                        <button phx-click="do_delete_save" phx-value-slot={slot.slot} class="ctrl-btn text-[10px] px-2 text-red-400/70 hover:text-red-300">🗑️</button>
                       </div>
                     <% end %>
                   </div>
                 <% end %>
               </div>
+
+              <%!-- Import JSON --%>
+              <details class="group">
+                <summary class="text-[10px] uppercase tracking-wider text-slate-600 cursor-pointer hover:text-slate-400 transition-colors">
+                  📥 Import JSON
+                </summary>
+                <form phx-submit="do_import_save" class="mt-2 flex gap-2">
+                  <textarea name="json" placeholder='Paste exported JSON here...' rows="3"
+                    class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-slate-300 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 font-mono resize-none" />
+                  <button type="submit" class="ctrl-btn px-3 text-xs text-cyan-400 hover:text-cyan-300 self-end">📥 Import</button>
+                </form>
+              </details>
             </div>
           </div>
         </div>

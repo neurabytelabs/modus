@@ -187,6 +187,11 @@ defmodule Modus.Simulation.Ticker do
       end
     end
 
+    # Auto-save check (v3.7.0 Persistentia)
+    if rem(new_tick, 100) == 0 do
+      try do Modus.Persistence.SaveManager.autosave(new_tick) catch _, _ -> :ok end
+    end
+
     # Schedule next tick
     ref = schedule_tick(s.interval_ms)
     {:noreply, %{s | tick: new_tick, timer_ref: ref}}

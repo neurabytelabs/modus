@@ -31,6 +31,7 @@ defmodule Modus.Application do
       Modus.Simulation.AgentSupervisor,
       Modus.Simulation.EventLog,
       Modus.Intelligence.LlmScheduler,
+      Modus.Persistence.SaveManager,
       Modus.Simulation.Ticker,
       Modus.Simulation.Environment,
       Modus.Simulation.ResourceSystem,
