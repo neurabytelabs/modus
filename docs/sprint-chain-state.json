@@ -1,12 +1,13 @@
 {
   "current_sprint": "v4",
-  "chain_depth": 1,
+  "chain_depth": 2,
   "max_chain_depth": 3,
-  "sprints_completed": ["v1", "v2", "v3"],
-  "total_iterations": 46,
-  "total_estimated_cost": 22.50,
+  "sprints_completed": ["v1", "v2", "v3", "v4"],
+  "total_iterations": 61,
+  "total_estimated_cost": 30.00,
   "budget_limit": 30.00,
   "last_human_approval": "2026-02-17T15:00:00Z",
   "started_at": "2026-02-18T05:00:00Z",
+  "completed_at": "2026-02-18T21:00:00Z",
   "paused": false
 }
