@@ -12,7 +12,7 @@ defmodule Modus.Simulation.StoryEngine do
   alias Modus.Simulation.EventLog
 
   @max_chronicle 500
-  @story_interval 50  # Generate story summary every N ticks
+  # story_interval: 50 ticks between story generation
 
   defstruct chronicle: [],
             last_story_tick: 0,

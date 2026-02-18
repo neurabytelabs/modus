@@ -168,12 +168,14 @@ defmodule Modus.Mind.Creativity do
       config = Modus.Intelligence.LlmProvider.get_config()
       case config.provider do
         :antigravity ->
-          case Modus.Intelligence.AntigravityClient.simple_prompt(prompt, config) do
+          messages = [%{role: "user", content: prompt}]
+          case Modus.Intelligence.AntigravityClient.chat_completion_direct(messages, config) do
             {:ok, text} -> {"The Tale of #{agent_id}", String.trim(text)}
             _ -> generate_story_template(agent_id, event_type)
           end
         :ollama ->
-          case Modus.Intelligence.OllamaClient.simple_prompt(prompt, config) do
+          messages = [%{role: "user", content: prompt}]
+          case Modus.Intelligence.OllamaClient.chat_completion_direct(messages, config) do
             {:ok, text} -> {"The Tale of #{agent_id}", String.trim(text)}
             _ -> generate_story_template(agent_id, event_type)
           end

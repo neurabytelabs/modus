@@ -163,7 +163,7 @@ defmodule Modus.Protocol.DialogueSystem do
 
   # ── Message Generation ─────────────────────────────────
 
-  defp generate_opening(agent, partner, topic, trust) do
+  defp generate_opening(agent, _partner, topic, trust) do
     text = case topic do
       :trade ->
         surplus = agent.inventory |> Map.to_list() |> Enum.max_by(fn {_k, v} -> ensure_float(v) end, fn -> {:nothing, 0} end) |> elem(0)

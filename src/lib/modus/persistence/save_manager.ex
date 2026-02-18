@@ -322,7 +322,7 @@ defmodule Modus.Persistence.SaveManager do
 
   defp collect_wildlife do
     try do
-      Modus.Simulation.Wildlife.get_all()
+      Modus.Simulation.Wildlife.get_animals()
       |> Enum.map(fn w ->
         %{
           id: w.id,
@@ -341,7 +341,7 @@ defmodule Modus.Persistence.SaveManager do
     try do
       %{
         trades: Modus.Simulation.TradeSystem.trade_history(100),
-        market_prices: Modus.Simulation.Economy.prices()
+        market_prices: Modus.Simulation.Economy.stats()
       }
     catch
       _, _ -> %{}
@@ -350,7 +350,7 @@ defmodule Modus.Persistence.SaveManager do
 
   defp collect_groups do
     try do
-      Modus.Mind.SocialEngine.list_groups()
+      Modus.Mind.SocialEngine.get_groups()
       |> Enum.map(fn g ->
         %{
           id: g.id,

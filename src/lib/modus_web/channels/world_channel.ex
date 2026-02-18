@@ -523,15 +523,6 @@ defmodule ModusWeb.WorldChannel do
     end
   end
 
-  defp find_walkable({max_x, max_y}, table) do
-    x = :rand.uniform(max_x) - 1
-    y = :rand.uniform(max_y) - 1
-    case :ets.lookup(table, {x, y}) do
-      [{{^x, ^y}, %{terrain: terrain}}] when terrain in [:grass, :forest] -> {x, y}
-      _ -> find_walkable({max_x, max_y}, table)
-    end
-  end
-
   def handle_in("get_agent_detail", %{"agent_id" => agent_id}, socket) do
     try do
       state = Agent.get_state(agent_id)
@@ -665,6 +656,15 @@ defmodule ModusWeb.WorldChannel do
   end
 
   # ── Helpers ───────────────────────────────────────────────
+
+  defp find_walkable({max_x, max_y}, table) do
+    x = :rand.uniform(max_x) - 1
+    y = :rand.uniform(max_y) - 1
+    case :ets.lookup(table, {x, y}) do
+      [{{^x, ^y}, %{terrain: terrain}}] when terrain in [:grass, :forest] -> {x, y}
+      _ -> find_walkable({max_x, max_y}, table)
+    end
+  end
 
   defp build_full_state do
     world_state =

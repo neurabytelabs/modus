@@ -9,8 +9,6 @@ defmodule Modus.Simulation.WorldHistory do
   """
   use GenServer
 
-  alias Modus.Simulation.{StoryEngine, Seasons}
-
   @era_check_interval 200  # Check for era transitions every N ticks
 
   defstruct eras: [],
@@ -175,7 +173,7 @@ defmodule Modus.Simulation.WorldHistory do
   end
 
   @impl true
-  def handle_info({:tick, tick}, state) do
+  def handle_info({:tick, _tick}, state) do
     {:noreply, state}
   end
 
@@ -237,9 +235,9 @@ defmodule Modus.Simulation.WorldHistory do
     current_id = if state.current_era, do: state.current_era.id, else: nil
     tick = metrics.tick
     pop = Map.get(metrics, :population, 0) || 0
-    births = Map.get(metrics, :births, 0) || 0
-    deaths = Map.get(metrics, :deaths, 0) || 0
-    trades = Map.get(metrics, :trades, 0) || 0
+    _births = Map.get(metrics, :births, 0) || 0
+    _deaths = Map.get(metrics, :deaths, 0) || 0
+    _trades = Map.get(metrics, :trades, 0) || 0
     conflicts = Map.get(metrics, :conflicts, 0) || 0
 
     # Calculate rates from metrics window

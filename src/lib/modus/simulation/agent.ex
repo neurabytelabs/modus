@@ -208,6 +208,34 @@ defmodule Modus.Simulation.Agent do
     end
   end
 
+  @impl true
+  def handle_cast({:update_relationships, rels}, agent) do
+    {:noreply, %{agent | relationships: rels}}
+  end
+
+  @impl true
+  def handle_cast({:move_toward, _target}, %{alive?: false} = agent) do
+    {:noreply, agent}
+  end
+
+  def handle_cast({:move_toward, {tx, ty}}, agent) do
+    {ax, ay} = agent.position
+    dx = clamp(tx - ax, -1, 1)
+    dy = clamp(ty - ay, -1, 1)
+    new_pos = {ax + dx, ay + dy}
+    {:noreply, %{agent | position: new_pos, current_action: :moving}}
+  end
+
+  def handle_cast(:kill, agent) do
+    {:noreply, %{agent | alive?: false}}
+  end
+
+  def handle_cast({:boost_need, need, amount}, agent) do
+    current = Map.get(agent.needs, need, 0.0)
+    new_needs = Map.put(agent.needs, need, min(current + amount, 100.0))
+    {:noreply, %{agent | needs: new_needs}}
+  end
+
   defp do_full_tick(agent, tick_number, context) do
     # Build decision context
     nearby = nearby_agents(agent.position)
@@ -285,36 +313,6 @@ defmodule Modus.Simulation.Agent do
     agent = Modus.Performance.StateLimiter.trim(agent)
 
     {:noreply, agent}
-  end
-
-  @impl true
-  def handle_cast({:update_relationships, rels}, agent) do
-    {:noreply, %{agent | relationships: rels}}
-  end
-
-  @impl true
-  def handle_cast({:move_toward, _target}, %{alive?: false} = agent) do
-    {:noreply, agent}
-  end
-
-  def handle_cast({:move_toward, {tx, ty}}, agent) do
-    {ax, ay} = agent.position
-
-    dx = clamp(tx - ax, -1, 1)
-    dy = clamp(ty - ay, -1, 1)
-
-    new_pos = {ax + dx, ay + dy}
-    {:noreply, %{agent | position: new_pos, current_action: :moving}}
-  end
-
-  def handle_cast(:kill, agent) do
-    {:noreply, %{agent | alive?: false}}
-  end
-
-  def handle_cast({:boost_need, need, amount}, agent) do
-    current = Map.get(agent.needs, need, 0.0)
-    new_needs = Map.put(agent.needs, need, min(current + amount, 100.0))
-    {:noreply, %{agent | needs: new_needs}}
   end
 
   # --- Action Application ---

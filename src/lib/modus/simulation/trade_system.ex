@@ -180,7 +180,7 @@ defmodule Modus.Simulation.TradeSystem do
     if available >= amount, do: :ok, else: {:error, :insufficient_resources}
   end
 
-  defp willing_to_trade?(agent_a, agent_b, offer_res, offer_amt, request_res, request_amt) do
+  defp willing_to_trade?(_agent_a, agent_b, offer_res, offer_amt, request_res, request_amt) do
     # Agent B evaluates: is what I'm getting worth what I'm giving?
     offer_value = resource_value(offer_res) * ensure_float(offer_amt)
     request_value = resource_value(request_res) * ensure_float(request_amt)

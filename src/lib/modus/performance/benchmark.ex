@@ -20,7 +20,7 @@ defmodule Modus.Performance.Benchmark do
     start_time = System.monotonic_time(:microsecond)
 
     tick_times =
-      for tick <- 1..tick_count do
+      for _tick <- 1..tick_count do
         t0 = System.monotonic_time(:microsecond)
 
         # Simulate what happens in a tick: rebuild spatial index + process agents

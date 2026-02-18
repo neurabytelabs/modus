@@ -282,10 +282,6 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, phase: phase, dashboard_worlds: sorted)}
   end
 
-  defp sort_worlds(worlds, "oldest"), do: Enum.sort_by(worlds, & &1.saved_at, :asc)
-  defp sort_worlds(worlds, "most_populated"), do: Enum.sort_by(worlds, & &1.agents, :desc)
-  defp sort_worlds(worlds, _newest), do: Enum.sort_by(worlds, & &1.saved_at, :desc)
-
   # ── Onboarding Events ──────────────────────────────────────
 
   @impl true
@@ -708,20 +704,6 @@ defmodule ModusWeb.UniverseLive do
     end
   end
 
-  defp parse_float(val, default) when is_binary(val) do
-    case Float.parse(val) do
-      {f, _} -> f
-      :error ->
-        case Integer.parse(val) do
-          {i, _} -> i / 1
-          :error -> default
-        end
-    end
-  end
-  defp parse_float(val, _default) when is_float(val), do: val
-  defp parse_float(val, _default) when is_integer(val), do: val / 1
-  defp parse_float(_, default), do: default
-
   # ── Save / Load ───────────────────────────────────────────────
 
   def handle_event("open_save_load", _params, socket) do
@@ -937,26 +919,6 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, designer_placing: false)}
   end
 
-  defp maybe_assign(socket, params, key, field) do
-    case Map.get(params, key) do
-      nil -> socket
-      val -> assign(socket, [{field, val}])
-    end
-  end
-
-  defp maybe_assign_int(socket, params, key, field) do
-    case Map.get(params, key) do
-      nil -> socket
-      val when is_binary(val) ->
-        case Integer.parse(val) do
-          {i, _} -> assign(socket, [{field, max(0, min(i, 100))}])
-          :error -> socket
-        end
-      val when is_integer(val) -> assign(socket, [{field, max(0, min(val, 100))}])
-      _ -> socket
-    end
-  end
-
   # ── Creator: Build Mode ──────────────────────────────────────
 
   def handle_event("toggle_build_mode", _params, socket) do
@@ -1122,18 +1084,6 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, push_event(socket, "screenshot_with_overlay", %{world_name: world_name, tick: tick})}
   end
 
-  defp build_channel_state do
-    agents = try do
-      Modus.AgentRegistry
-      |> Registry.select([{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}])
-      |> length()
-    catch
-      _, _ -> 0
-    end
-    tick = try do Modus.Simulation.Ticker.current_tick() catch _, _ -> 0 end
-    %{agents: agents, tick: tick}
-  end
-
   def handle_event("open_stats", _params, socket) do
     alias Modus.Simulation.Observatory
     history = Observatory.population_history()
@@ -1231,6 +1181,58 @@ defmodule ModusWeb.UniverseLive do
     toasts = Enum.take([toast | socket.assigns.toasts], 5)
     Process.send_after(self(), {:dismiss_toast, toast.id}, 10_000)
     {:noreply, assign(socket, toasts: toasts, season_name: name, season_emoji: emoji)}
+  end
+
+  # ── Private Helpers (handle_event) ───────────────────────────
+
+  defp sort_worlds(worlds, "oldest"), do: Enum.sort_by(worlds, & &1.saved_at, :asc)
+  defp sort_worlds(worlds, "most_populated"), do: Enum.sort_by(worlds, & &1.agents, :desc)
+  defp sort_worlds(worlds, _newest), do: Enum.sort_by(worlds, & &1.saved_at, :desc)
+
+  defp parse_float(val, default) when is_binary(val) do
+    case Float.parse(val) do
+      {f, _} -> f
+      :error ->
+        case Integer.parse(val) do
+          {i, _} -> i / 1
+          :error -> default
+        end
+    end
+  end
+  defp parse_float(val, _default) when is_float(val), do: val
+  defp parse_float(val, _default) when is_integer(val), do: val / 1
+  defp parse_float(_, default), do: default
+
+  defp maybe_assign(socket, params, key, field) do
+    case Map.get(params, key) do
+      nil -> socket
+      val -> assign(socket, [{field, val}])
+    end
+  end
+
+  defp maybe_assign_int(socket, params, key, field) do
+    case Map.get(params, key) do
+      nil -> socket
+      val when is_binary(val) ->
+        case Integer.parse(val) do
+          {i, _} -> assign(socket, [{field, max(0, min(i, 100))}])
+          :error -> socket
+        end
+      val when is_integer(val) -> assign(socket, [{field, max(0, min(val, 100))}])
+      _ -> socket
+    end
+  end
+
+  defp build_channel_state do
+    agents = try do
+      Modus.AgentRegistry
+      |> Registry.select([{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}])
+      |> length()
+    catch
+      _, _ -> 0
+    end
+    tick = try do Modus.Simulation.Ticker.current_tick() catch _, _ -> 0 end
+    %{agents: agents, tick: tick}
   end
 
   # ── PubSub Events ───────────────────────────────────────────

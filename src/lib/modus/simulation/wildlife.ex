@@ -18,7 +18,7 @@ defmodule Modus.Simulation.Wildlife do
 
   alias Modus.Simulation.EventLog
 
-  @pubsub Modus.PubSub
+  # PubSub: Modus.PubSub (reserved for future broadcast use)
 
   @population_caps %{
     deer: 20,
