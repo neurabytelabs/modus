@@ -4,6 +4,7 @@ defmodule Modus.Mind.ContextBuilder do
   alias Modus.Mind.{Perception, Cerebro.SocialInsight, Culture}
   alias Modus.Persistence.AgentMemory
   alias Modus.Simulation.{Seasons, WorldHistory}
+  alias Modus.I18n
 
   defp ensure_float(val) when is_float(val), do: val
   defp ensure_float(val) when is_integer(val), do: val / 1
@@ -14,8 +15,14 @@ defmodule Modus.Mind.ContextBuilder do
     perception = Perception.snapshot(agent)
     social = SocialInsight.describe_relationships(agent.id)
     energy_pct = round(ensure_float(perception.conatus_energy) * 100)
+    lang = I18n.current_language()
+    lang_instruction = I18n.language_instruction(lang)
+    identity = I18n.identity_prompt(lang, agent.name, agent.occupation)
 
     """
+    #{lang_instruction}
+    #{identity}
+
     You are #{agent.name}, a #{agent.occupation} in a living world.
 
     Your personality: #{describe_personality_rich(agent.personality)}
@@ -60,8 +67,14 @@ defmodule Modus.Mind.ContextBuilder do
 
     rel_tone = relationship_tone(rel)
     emotional_dynamic = emotional_dynamic(agent_a.affect_state, agent_b.affect_state, agent_a.name, agent_b.name)
+    lang = I18n.current_language()
+    lang_instruction = I18n.language_instruction(lang)
+    conv_instruction = I18n.conversation_instruction(lang)
 
     """
+    #{lang_instruction}
+    #{conv_instruction}
+
     Two people meet in a #{terrain_name(terrain)}. Write a short, natural 3-turn conversation.
 
     #{agent_a.name}: #{agent_a.occupation}. #{describe_personality_rich(agent_a.personality)}

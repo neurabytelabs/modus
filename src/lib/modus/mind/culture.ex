@@ -101,7 +101,10 @@ defmodule Modus.Mind.Culture do
   def maybe_generate_catchphrase(agent_id, event_type, tick) do
     # Only generate with some probability
     if :rand.uniform() < 0.15 do
-      templates = Map.get(@catchphrase_templates, event_type, [])
+      # Use language-specific catchphrases if available
+      lang = try do Modus.I18n.current_language() catch _, _ -> "en" end
+      lang_pool = Modus.I18n.catchphrases(lang)
+      templates = Map.get(lang_pool, event_type) || Map.get(@catchphrase_templates, event_type, [])
       if templates != [] do
         text = Enum.random(templates)
         # Add slight personality-based mutation

@@ -42,6 +42,7 @@ defmodule ModusWeb.UniverseLive do
        danger: "normal",
        world_seed: "",
        grid_size: 100,
+       world_language: "en",
        # Simulation
        status: :paused,
        tick: 0,
@@ -305,6 +306,10 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, world_seed: val)}
   end
 
+  def handle_event("set_language", %{"value" => val}, socket) when val in ~w(en tr de fr es ja) do
+    {:noreply, assign(socket, world_language: val)}
+  end
+
   def handle_event("set_grid_size", %{"value" => val}, socket) do
     {size, _} = Integer.parse(val)
     {:noreply, assign(socket, grid_size: max(20, min(size, 200)))}
@@ -317,6 +322,10 @@ defmodule ModusWeb.UniverseLive do
     danger = socket.assigns.danger
     seed_str = socket.assigns.world_seed
     grid_size = socket.assigns.grid_size
+    language = socket.assigns.world_language
+
+    # Set world language in rules engine
+    Modus.Simulation.RulesEngine.update(%{language: language})
 
     require Logger
     alias Modus.Simulation.{World, Ticker, AgentSupervisor}
@@ -679,6 +688,7 @@ defmodule ModusWeb.UniverseLive do
     changes = if params["mutation_rate"], do: Map.put(changes, :mutation_rate, parse_float(params["mutation_rate"], 0.3)), else: changes
     changes = if params["resource_abundance"], do: Map.put(changes, :resource_abundance, String.to_existing_atom(params["resource_abundance"])), else: changes
     changes = if params["danger_level"], do: Map.put(changes, :danger_level, String.to_existing_atom(params["danger_level"])), else: changes
+    changes = if params["language"] && params["language"] in ~w(en tr de fr es ja), do: Map.put(changes, :language, params["language"]), else: changes
 
     if changes != %{} do
       Modus.Simulation.RulesEngine.update(changes)
@@ -1682,7 +1692,27 @@ defmodule ModusWeb.UniverseLive do
           </div>
         </div>
 
-        <%!-- Step 4: Grid Size --%>
+        <%!-- Step 4: World Language --%>
+        <div class="mb-6">
+          <h3 class="text-[10px] uppercase tracking-wider text-slate-500 mb-3">
+            🌍 World Language: <span class="text-purple-400"><%= Modus.I18n.flag(@world_language) %> <%= Modus.I18n.label(@world_language) %></span>
+          </h3>
+          <div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            <%= for {code, flag, label} <- Modus.I18n.language_options() do %>
+              <button
+                phx-click="set_language"
+                phx-value-value={code}
+                class={"flex flex-col items-center py-2 px-2 rounded-lg border text-center text-xs transition-all #{if @world_language == code, do: "border-purple-500 bg-purple-500/10", else: "border-white/10 bg-white/5 hover:border-white/20"}"}
+              >
+                <div class="text-xl"><%= flag %></div>
+                <div class="mt-0.5 text-[10px]"><%= label %></div>
+              </button>
+            <% end %>
+          </div>
+          <p class="text-[10px] text-slate-600 mt-1">Agents speak, think, and name themselves in this language</p>
+        </div>
+
+        <%!-- Step 5: Grid Size --%>
         <div class="mb-6">
           <h3 class="text-[10px] uppercase tracking-wider text-slate-500 mb-3">
             World Size: <span class="text-purple-400"><%= @grid_size %>×<%= @grid_size %></span>

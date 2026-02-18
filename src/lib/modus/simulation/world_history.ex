@@ -83,9 +83,10 @@ defmodule Modus.Simulation.WorldHistory do
     Phoenix.PubSub.subscribe(Modus.PubSub, "modus:events")
 
     # Start with "The Founding" era
+    lang = try do Modus.I18n.current_language() catch _, _ -> "en" end
     founding = %{
       id: "founding",
-      name: "The Founding",
+      name: Modus.I18n.era_name(lang, :founding),
       emoji: "🏛️",
       start_tick: 0,
       end_tick: nil,
@@ -253,9 +254,10 @@ defmodule Modus.Simulation.WorldHistory do
 
       # Great Famine: high death rate, low population
       current_id != "famine" and death_rate > 0.3 and pop < 8 ->
+        lang = try do Modus.I18n.current_language() catch _, _ -> "en" end
         %{
           id: "famine_#{tick}",
-          name: "The Great Famine",
+          name: Modus.I18n.era_name(lang, :famine),
           emoji: "💀",
           start_tick: tick,
           end_tick: nil,
@@ -265,9 +267,10 @@ defmodule Modus.Simulation.WorldHistory do
 
       # Expansion: growing population, many births
       current_id != "expansion" and birth_rate > 0.25 and pop > 12 ->
+        lang = try do Modus.I18n.current_language() catch _, _ -> "en" end
         %{
           id: "expansion_#{tick}",
-          name: "The Expansion",
+          name: Modus.I18n.era_name(lang, :expansion),
           emoji: "🌱",
           start_tick: tick,
           end_tick: nil,
@@ -277,9 +280,10 @@ defmodule Modus.Simulation.WorldHistory do
 
       # Golden Age: high trade, low conflict, stable population
       current_id != "golden_age" and trade_rate > 0.2 and death_rate < 0.1 and pop > 10 ->
+        lang = try do Modus.I18n.current_language() catch _, _ -> "en" end
         %{
           id: "golden_age_#{tick}",
-          name: "The Golden Age",
+          name: Modus.I18n.era_name(lang, :golden_age),
           emoji: "✨",
           start_tick: tick,
           end_tick: nil,
@@ -289,9 +293,10 @@ defmodule Modus.Simulation.WorldHistory do
 
       # Renaissance: after a famine or conflict era, recovery with trade
       is_binary(current_id) and (String.starts_with?(current_id, "famine_") or String.starts_with?(current_id, "conflict_")) and birth_rate > 0.15 and trade_rate > 0.1 ->
+        lang = try do Modus.I18n.current_language() catch _, _ -> "en" end
         %{
           id: "renaissance_#{tick}",
-          name: "The Renaissance",
+          name: Modus.I18n.era_name(lang, :renaissance),
           emoji: "🎨",
           start_tick: tick,
           end_tick: nil,
@@ -301,9 +306,10 @@ defmodule Modus.Simulation.WorldHistory do
 
       # Age of Conflict: high conflict rate
       current_id != "conflict" and conflicts > 5 and death_rate > 0.2 ->
+        lang = try do Modus.I18n.current_language() catch _, _ -> "en" end
         %{
           id: "conflict_#{tick}",
-          name: "Age of Conflict",
+          name: Modus.I18n.era_name(lang, :conflict),
           emoji: "⚔️",
           start_tick: tick,
           end_tick: nil,
@@ -313,9 +319,10 @@ defmodule Modus.Simulation.WorldHistory do
 
       # Long peace after golden age transitions back to expansion
       current_id not in [nil, "founding", "expansion"] and era_duration > 2000 and pop > 8 and death_rate < 0.15 ->
+        lang = try do Modus.I18n.current_language() catch _, _ -> "en" end
         %{
           id: "expansion_#{tick}",
-          name: "The Expansion",
+          name: Modus.I18n.era_name(lang, :expansion),
           emoji: "🌱",
           start_tick: tick,
           end_tick: nil,

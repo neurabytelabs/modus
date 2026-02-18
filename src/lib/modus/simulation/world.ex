@@ -213,15 +213,8 @@ defmodule Modus.Simulation.World do
     state = get_state(server)
     {max_x, max_y} = state.grid_size
 
-    names = [
-      "Alex", "Maya", "River", "Sage", "Finn", "Luna", "Kai",
-      "Nova", "Zoe", "Atlas", "Iris", "Leo", "Mira", "Jude",
-      "Aria", "Rowan", "Niko", "Ivy", "Theo", "Lila", "Orion",
-      "Jade", "Ravi", "Suki", "Omar", "Nyla", "Ezra", "Cleo",
-      "Amir", "Willow", "Bodhi", "Vera", "Kira", "Dara", "Ren",
-      "Yara", "Soren", "Mika", "Inara", "Leila", "Zephyr", "Priya",
-      "Hugo", "Amara", "Idris", "Noor", "Koda", "Lumi", "Astrid", "Nico"
-    ]
+    lang = try do Modus.I18n.current_language() catch _, _ -> "en" end
+    names = Modus.I18n.names(lang)
 
     occupations = [:farmer, :builder, :explorer, :healer, :trader]
 

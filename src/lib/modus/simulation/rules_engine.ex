@@ -38,6 +38,7 @@ defmodule Modus.Simulation.RulesEngine do
     birth_rate: 1.0,
     building_speed: 1.0,
     mutation_rate: 0.3,
+    language: "en",
     preset: "Custom"
   }
 
@@ -196,6 +197,10 @@ defmodule Modus.Simulation.RulesEngine do
   @spec mutation_rate() :: float()
   def mutation_rate, do: get(:mutation_rate) || 0.3
 
+  @doc "Get world language."
+  @spec language() :: String.t()
+  def language, do: get(:language) || "en"
+
   # ── Serialization ───────────────────────────────────────────
 
   @doc "Serialize rules for JSON transport."
@@ -210,6 +215,7 @@ defmodule Modus.Simulation.RulesEngine do
       birth_rate: rules.birth_rate,
       building_speed: rules.building_speed,
       mutation_rate: rules.mutation_rate,
+      language: rules[:language] || "en",
       preset: rules.preset
     }
   end

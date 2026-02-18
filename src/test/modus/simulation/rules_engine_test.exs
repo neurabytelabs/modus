@@ -14,6 +14,7 @@ defmodule Modus.Simulation.RulesEngineTest do
     assert rules.resource_abundance == :normal
     assert rules.danger_level == :moderate
     assert rules.birth_rate == 1.0
+    assert rules.language == "en"
     assert rules.preset == "Custom"
   end
 
@@ -47,7 +48,15 @@ defmodule Modus.Simulation.RulesEngineTest do
     serialized = RulesEngine.serialize()
     assert serialized.resource_abundance == "normal"
     assert serialized.danger_level == "moderate"
+    assert serialized.language == "en"
     assert is_binary(serialized.preset)
+  end
+
+  test "language can be set and retrieved" do
+    RulesEngine.update(%{language: "tr"})
+    assert RulesEngine.language() == "tr"
+    RulesEngine.update(%{language: "de"})
+    assert RulesEngine.language() == "de"
   end
 
   test "preset_names returns all preset names" do

@@ -147,27 +147,28 @@ defmodule Modus.Simulation.StoryEngine do
   # ── Narrative Generation ────────────────────────────────
 
   defp narrate_event(event) do
+    lang = try do Modus.I18n.current_language() catch _, _ -> "en" end
     narrative = case event.type do
       :birth ->
         name = event.data[:name] || "a new soul"
-        "#{name} was born into the world, a fresh spark of conatus."
+        narrate_birth(lang, name)
 
       :death ->
         name = event.data[:name] || "an agent"
         cause = event.data[:cause] || "the weight of existence"
-        "#{name} perished — #{cause}. Their light fades from the world."
+        narrate_death(lang, name, cause)
 
       :conversation ->
         agents = event.agents
         cond do
           length(agents) >= 2 ->
-            "Two souls crossed paths and shared words, weaving the social fabric tighter."
+            narrate_conversation(lang)
           true ->
-            "A conversation echoed through the world."
+            narrate_conversation(lang)
         end
 
       :conflict ->
-        "Conflict erupted — the eternal tension between preservation and destruction."
+        narrate_conflict(lang)
 
       :resource_gathered ->
         name = event.data[:name] || "Someone"
@@ -199,15 +200,9 @@ defmodule Modus.Simulation.StoryEngine do
 
       :season_change ->
         season = event.data[:season] || :spring
-        emoji = event.data[:emoji] || "🌸"
         year = event.data[:year] || 1
-        case season do
-          :spring -> "#{emoji} Year #{year} — Spring arrives. The world awakens, green shoots push through the soil. Growth accelerates."
-          :summer -> "#{emoji} Summer blazes across the land. The sun hangs high, agents tire under its weight."
-          :autumn -> "#{emoji} Autumn descends. Leaves turn gold and crimson. The harvest season — abundance before the cold."
-          :winter -> "#{emoji} Winter grips the world. Snow and frost, scarce resources, survival at its hardest."
-          _ -> "#{emoji} The seasons turn — #{event.data[:name]} begins."
-        end
+        toast = Modus.I18n.season_toast(lang, season)
+        "Year #{year} — #{toast}"
 
       :world_event ->
         evt_type = event.data[:type] || :unknown
@@ -301,6 +296,36 @@ defmodule Modus.Simulation.StoryEngine do
 
     header <> body <> footer
   end
+
+  # ── Language-Aware Narrative Helpers ─────────────────────
+
+  defp narrate_birth("tr", name), do: "#{name} dünyaya geldi, yeni bir conatus kıvılcımı."
+  defp narrate_birth("de", name), do: "#{name} wurde in die Welt geboren, ein neuer Funke des Conatus."
+  defp narrate_birth("fr", name), do: "#{name} est né(e) dans le monde, une nouvelle étincelle de conatus."
+  defp narrate_birth("es", name), do: "#{name} nació en el mundo, una nueva chispa de conatus."
+  defp narrate_birth("ja", name), do: "#{name}が世界に生まれた。新たなコナトゥスの火花。"
+  defp narrate_birth(_, name), do: "#{name} was born into the world, a fresh spark of conatus."
+
+  defp narrate_death("tr", name, cause), do: "#{name} hayatını kaybetti — #{cause}. Işığı dünyadan silindi."
+  defp narrate_death("de", name, cause), do: "#{name} ist gestorben — #{cause}. Ihr Licht erlischt."
+  defp narrate_death("fr", name, cause), do: "#{name} a péri — #{cause}. Sa lumière s'éteint."
+  defp narrate_death("es", name, cause), do: "#{name} pereció — #{cause}. Su luz se apaga."
+  defp narrate_death("ja", name, cause), do: "#{name}が逝った — #{cause}。その光は消えた。"
+  defp narrate_death(_, name, cause), do: "#{name} perished — #{cause}. Their light fades from the world."
+
+  defp narrate_conversation("tr"), do: "İki ruh karşılaştı ve sözlerini paylaştı."
+  defp narrate_conversation("de"), do: "Zwei Seelen kreuzten ihre Wege und tauschten Worte aus."
+  defp narrate_conversation("fr"), do: "Deux âmes se sont croisées et ont partagé des mots."
+  defp narrate_conversation("es"), do: "Dos almas se cruzaron y compartieron palabras."
+  defp narrate_conversation("ja"), do: "二つの魂が出会い、言葉を交わした。"
+  defp narrate_conversation(_), do: "Two souls crossed paths and shared words, weaving the social fabric tighter."
+
+  defp narrate_conflict("tr"), do: "Çatışma patlak verdi — koruma ve yıkım arasındaki ebedi gerilim."
+  defp narrate_conflict("de"), do: "Ein Konflikt brach aus — die ewige Spannung zwischen Bewahrung und Zerstörung."
+  defp narrate_conflict("fr"), do: "Un conflit a éclaté — la tension éternelle entre préservation et destruction."
+  defp narrate_conflict("es"), do: "Estalló un conflicto — la eterna tensión entre preservación y destrucción."
+  defp narrate_conflict("ja"), do: "争いが勃発した — 保存と破壊の永遠の緊張。"
+  defp narrate_conflict(_), do: "Conflict erupted — the eternal tension between preservation and destruction."
 
   defp format_population_summary(history) do
     case history do
