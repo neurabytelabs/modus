@@ -50,6 +50,7 @@ defmodule ModusWeb.UniverseLive do
        chat_open: false,
        chat_messages: [],
        chat_loading: false,
+       chat_filter: "all",
        # Settings
        settings_open: false,
        settings_provider: if(System.get_env("ANTIGRAVITY_API_KEY"), do: "antigravity", else: "ollama"),
@@ -416,7 +417,8 @@ defmodule ModusWeb.UniverseLive do
   end
 
   def handle_event("open_chat", _params, socket), do: {:noreply, assign(socket, chat_open: true)}
-  def handle_event("close_chat", _params, socket), do: {:noreply, assign(socket, chat_open: false)}
+  def handle_event("close_chat", _params, socket), do: {:noreply, assign(socket, chat_open: false, chat_filter: "all")}
+  def handle_event("chat_filter", %{"topic" => topic}, socket), do: {:noreply, assign(socket, chat_filter: topic)}
 
   def handle_event("send_chat", %{"message" => msg}, socket) when msg != "" do
     require Logger
@@ -433,9 +435,10 @@ defmodule ModusWeb.UniverseLive do
   end
   def handle_event("send_chat", _params, socket), do: {:noreply, socket}
 
-  def handle_event("chat_response", %{"reply" => reply}, socket) do
+  def handle_event("chat_response", %{"reply" => reply} = params, socket) do
     agent_name = if socket.assigns.selected_agent, do: socket.assigns.selected_agent["name"], else: "Agent"
-    messages = socket.assigns.chat_messages ++ [%{role: "agent", text: reply, name: agent_name}]
+    topic = params["topic"] || "general"
+    messages = socket.assigns.chat_messages ++ [%{role: "agent", text: reply, name: agent_name, topic: topic}]
     {:noreply, assign(socket, chat_messages: messages, chat_loading: false)}
   end
 
@@ -2669,45 +2672,133 @@ defmodule ModusWeb.UniverseLive do
         </div>
       <% end %>
 
-      <%!-- Chat Modal --%>
+      <%!-- Chat & Conversation Panel (v3.4.0 Nexus) --%>
       <%= if @chat_open && @selected_agent do %>
-        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div class="bg-[#0A0A0F] border border-white/10 rounded-xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl" phx-click-away="close_chat">
-            <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
-              <div>
-                <span class="font-bold text-slate-100"><%= @selected_agent["name"] %></span>
-                <span class="text-xs text-slate-500 ml-2"><%= @selected_agent["occupation"] %></span>
-              </div>
-              <button phx-click="close_chat" class="text-slate-600 hover:text-slate-400">✕</button>
+        <div class="fixed top-0 right-0 bottom-0 w-[350px] z-50 flex flex-col
+          bg-[#0A0A0F]/80 backdrop-blur-xl border-l border-white/10
+          shadow-[-8px_0_32px_rgba(139,92,246,0.08)]"
+          phx-click-away="close_chat">
+
+          <%!-- Header --%>
+          <div class="px-4 py-3 border-b border-white/[0.06] flex items-center gap-3 shrink-0
+            bg-gradient-to-r from-purple-500/[0.04] to-cyan-500/[0.04]">
+            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500/30 to-cyan-500/30 border border-white/10
+              flex items-center justify-center text-lg shrink-0">
+              <%= chat_mood_emoji(@selected_agent) %>
             </div>
-            <div class="flex-1 overflow-y-auto p-4 space-y-3" id="chat-messages">
-              <%= if @chat_messages == [] do %>
-                <p class="text-xs text-slate-600 text-center italic">Say something to <%= @selected_agent["name"] %>...</p>
-              <% end %>
-              <%= for msg <- @chat_messages do %>
-                <div class={"flex #{if msg.role == "user", do: "justify-end", else: "justify-start"}"}>
-                  <div class={"max-w-[80%] px-3 py-2 rounded-lg text-sm #{if msg.role == "user", do: "bg-purple-500/20 text-purple-200", else: "bg-white/5 text-slate-300"}"}>
-                    <%= if msg.role == "agent" do %>
-                      <span class="text-[10px] text-cyan-400 block mb-0.5"><%= msg.name %></span>
-                    <% end %>
+            <div class="flex-1 min-w-0">
+              <div class="font-bold text-sm text-slate-100 truncate"><%= @selected_agent["name"] %></div>
+              <div class="text-[10px] text-slate-500 flex items-center gap-1.5">
+                <span><%= @selected_agent["occupation"] %></span>
+                <span class="text-slate-700">·</span>
+                <span class="text-emerald-400/70">online</span>
+              </div>
+            </div>
+            <button phx-click="close_chat"
+              class="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-slate-500 hover:text-slate-300
+                flex items-center justify-center transition-all text-xs">✕</button>
+          </div>
+
+          <%!-- Conversation Type Filter --%>
+          <div class="px-3 py-2 border-b border-white/[0.04] flex items-center gap-1.5 shrink-0">
+            <%= for {topic, icon, label} <- [{"all", "💬", "All"}, {"trade", "💰", "Trade"}, {"alliance", "🤝", "Alliance"}, {"gossip", "👂", "Gossip"}, {"warning", "⚠️", "Warning"}] do %>
+              <button phx-click="chat_filter" phx-value-topic={topic}
+                class={"px-2 py-1 rounded-md text-[10px] border transition-all #{if Map.get(assigns, :chat_filter, "all") == topic, do: "border-purple-500/40 bg-purple-500/10 text-purple-300", else: "border-transparent bg-white/[0.03] text-slate-500 hover:bg-white/[0.06]"}"}>
+                <span class="mr-0.5"><%= icon %></span><%= label %>
+              </button>
+            <% end %>
+          </div>
+
+          <%!-- Message List --%>
+          <div class="flex-1 overflow-y-auto px-3 py-3 space-y-3 scroll-smooth" id="chat-messages">
+            <%= if @chat_messages == [] do %>
+              <div class="flex flex-col items-center justify-center h-full text-center px-4">
+                <div class="text-3xl mb-3 opacity-40"><%= chat_mood_emoji(@selected_agent) %></div>
+                <p class="text-xs text-slate-600 italic">Start a conversation with <%= @selected_agent["name"] %>...</p>
+                <p class="text-[10px] text-slate-700 mt-1">They seem <%= @selected_agent["affect_state"] || "neutral" %> right now.</p>
+              </div>
+            <% end %>
+            <%= for {msg, idx} <- Enum.with_index(@chat_messages) do %>
+              <div class={"flex #{if msg.role == "user", do: "justify-end", else: "justify-start"}"}>
+                <%!-- Agent avatar (left side) --%>
+                <%= if msg.role == "agent" do %>
+                  <div class="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20
+                    border border-white/10 flex items-center justify-center text-xs shrink-0 mr-2 mt-1">
+                    <%= chat_mood_emoji(@selected_agent) %>
+                  </div>
+                <% end %>
+                <div class={"max-w-[78%] group"}>
+                  <%!-- Topic icon + name --%>
+                  <%= if msg.role == "agent" do %>
+                    <div class="flex items-center gap-1 mb-0.5 px-1">
+                      <%= if msg[:topic] do %>
+                        <span class="text-[10px]"><%= topic_icon(msg[:topic]) %></span>
+                      <% end %>
+                      <span class="text-[10px] font-medium text-cyan-400/80"><%= msg[:name] || @selected_agent["name"] %></span>
+                      <span class="text-[9px] text-slate-700 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                        <%= chat_timestamp(idx) %>
+                      </span>
+                    </div>
+                  <% end %>
+                  <%!-- Message bubble --%>
+                  <div class={"px-3 py-2 rounded-2xl text-[13px] leading-relaxed
+                    #{if msg.role == "user",
+                      do: "bg-gradient-to-br from-purple-500/20 to-purple-600/10 text-purple-100 border border-purple-500/10 rounded-br-md",
+                      else: "bg-white/[0.04] text-slate-300 border border-white/[0.06] rounded-bl-md backdrop-blur-sm"}"}>
                     <%= msg.text %>
                   </div>
+                  <%= if msg.role == "user" do %>
+                    <div class="flex justify-end mt-0.5 px-1">
+                      <span class="text-[9px] text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <%= chat_timestamp(idx) %>
+                      </span>
+                    </div>
+                  <% end %>
                 </div>
-              <% end %>
-              <%= if @chat_loading do %>
-                <div class="flex justify-start">
-                  <div class="bg-white/5 px-3 py-2 rounded-lg text-sm text-slate-500 animate-pulse">thinking...</div>
-                </div>
-              <% end %>
-            </div>
-            <form phx-submit="send_chat" id="chat-form" class="p-3 border-t border-white/5 shrink-0">
-              <div class="flex gap-2">
-                <input type="text" name="message" id="chat-input" placeholder={"Talk to #{@selected_agent["name"]}..."} autocomplete="off"
-                  class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-500/50" />
-                <button type="submit" class="ctrl-btn ctrl-btn-primary px-4">Send</button>
               </div>
-            </form>
+            <% end %>
+            <%= if @chat_loading do %>
+              <div class="flex justify-start">
+                <div class="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-xs shrink-0 mr-2">
+                  <%= chat_mood_emoji(@selected_agent) %>
+                </div>
+                <div class="bg-white/[0.04] border border-white/[0.06] px-4 py-2.5 rounded-2xl rounded-bl-md">
+                  <div class="flex gap-1">
+                    <div class="w-1.5 h-1.5 rounded-full bg-slate-500 animate-bounce" style="animation-delay: 0ms"></div>
+                    <div class="w-1.5 h-1.5 rounded-full bg-slate-500 animate-bounce" style="animation-delay: 150ms"></div>
+                    <div class="w-1.5 h-1.5 rounded-full bg-slate-500 animate-bounce" style="animation-delay: 300ms"></div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
           </div>
+
+          <%!-- Input Area --%>
+          <form phx-submit="send_chat" id="chat-form"
+            class="px-3 py-3 border-t border-white/[0.06] shrink-0
+              bg-gradient-to-t from-[#0A0A0F] to-transparent">
+            <div class="flex gap-2 items-end">
+              <div class="flex-1 relative">
+                <input type="text" name="message" id="chat-input"
+                  placeholder={"Talk to #{@selected_agent["name"]}..."}
+                  autocomplete="off"
+                  class="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-[13px]
+                    text-slate-200 placeholder-slate-600
+                    focus:outline-none focus:border-purple-500/30 focus:bg-white/[0.06]
+                    transition-all" />
+              </div>
+              <button type="submit"
+                class="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-cyan-500
+                  text-white flex items-center justify-center shrink-0
+                  hover:from-purple-400 hover:to-cyan-400 transition-all
+                  shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30
+                  active:scale-95">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                </svg>
+              </button>
+            </div>
+          </form>
         </div>
       <% end %>
     </div>
@@ -3380,6 +3471,50 @@ defmodule ModusWeb.UniverseLive do
   end
 
   # ── Helpers ─────────────────────────────────────────────────
+
+  # ── Chat Panel Helpers (v3.4.0 Nexus) ────────────────────
+
+  defp chat_mood_emoji(agent) when is_map(agent) do
+    case agent["affect_state"] || agent[:affect_state] do
+      "joy" -> "😊"
+      :joy -> "😊"
+      "sadness" -> "😢"
+      :sadness -> "😢"
+      "fear" -> "😨"
+      :fear -> "😨"
+      "anger" -> "😠"
+      :anger -> "😠"
+      "desire" -> "😏"
+      :desire -> "😏"
+      "surprise" -> "😲"
+      :surprise -> "😲"
+      _ -> "🤖"
+    end
+  end
+  defp chat_mood_emoji(_), do: "🤖"
+
+  defp topic_icon(topic) do
+    case topic do
+      :trade -> "💰"
+      "trade" -> "💰"
+      :alliance -> "🤝"
+      "alliance" -> "🤝"
+      :gossip -> "👂"
+      "gossip" -> "👂"
+      :warning -> "⚠️"
+      "warning" -> "⚠️"
+      _ -> "💬"
+    end
+  end
+
+  defp chat_timestamp(idx) do
+    # Simple relative timestamp based on message index
+    cond do
+      idx == 0 -> "now"
+      idx < 3 -> "just now"
+      true -> "#{idx}m ago"
+    end
+  end
 
   defp resolve_agent_names(agent_ids) when is_list(agent_ids) do
     agent_ids

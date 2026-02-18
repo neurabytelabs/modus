@@ -5,6 +5,7 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
   alias Modus.Mind.AffectMemory
   alias Modus.Intelligence.LlmProvider
   alias Modus.Simulation.{Agent, EventLog}
+  alias Modus.Protocol.{DialogueSystem, Persuasion, InformationSharing, RumorSystem, SecretKeeping}
   require Logger
 
   @cooldown_table :conversation_cooldowns
@@ -116,12 +117,46 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
             fallback_dialogue(agent.name, partner.name)
         end
 
+        # v3.4.0 Nexus: Structured dialogue with topic
+        topic = DialogueSystem.determine_topic(agent, partner)
+        DialogueSystem.start_dialogue(agent, partner, tick)
+
+        # v3.4.0: Share spatial knowledge based on trust
+        trust = if relationship, do: ensure_float(relationship.strength), else: 0.0
+        InformationSharing.share_knowledge(agent.id, partner.id, trust)
+        InformationSharing.share_knowledge(partner.id, agent.id, trust)
+
+        # v3.4.0: Spread rumors during gossip
+        if topic == :gossip do
+          spreadable = RumorSystem.get_spreadable(agent.id)
+          case List.first(spreadable) do
+            nil -> :ok
+            rumor -> RumorSystem.spread_rumor(agent.id, partner.id, rumor.id, tick)
+          end
+        end
+
+        # v3.4.0: Share secrets with close friends
+        if trust > 0.6 do
+          shareable = SecretKeeping.shareable_secrets(agent.id, trust)
+          case List.first(shareable) do
+            nil -> :ok
+            secret -> SecretKeeping.try_share(agent.id, partner.id, secret.id, trust)
+          end
+        end
+
+        # v3.4.0: Persuasion during trade/alliance topics
+        if topic in [:trade, :alliance] do
+          Persuasion.attempt(agent, partner, topic)
+        end
+
         # Apply effects
         apply_conversation_effects(agent, partner, relationship, tick)
 
-        # Log event
+        # Log event with topic info
         EventLog.log(:conversation, tick, [agent.id, partner_id], %{
-          type: :agent_chat,
+          type: :structured_dialogue,
+          topic: topic,
+          icon: DialogueSystem.topic_icon(topic),
           dialogue: dialogue
         })
 
