@@ -6,6 +6,204 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v3.8.0 · **Harmonia** — _Integration & Polish_
+_18 Şubat 2026_
+
+### 🎯 Sprint v3 Final
+- **Full integration pass** — All 15 iterations compiled and tested together
+- **505 tests, 0 failures** — Complete test suite passes
+- **22 compile warnings** — All non-critical (unused variables, clause grouping)
+- **CHANGELOG update** — Full history from v2.4→v3.8
+- **Docker rebuild** — Clean build with all Sprint v3 features
+- **Sprint Genesis** — Automated Sprint v4 planning and scheduling
+
+---
+
+## v3.8.5 · **Lingua Mundi** — _World Language System_
+_18 Şubat 2026_
+
+### ✨ Features
+- **Born-in-Language system** — Agents speak their native language (TR/EN/DE/FR/ES/JA)
+- **Cultural catchphrases** — Language-specific sayings and idioms
+- **Localized stories** — Narrative generation in agent's native tongue
+- **6 languages** — Turkish, English, German, French, Spanish, Japanese
+
+---
+
+## v3.7.0 · **Persistentia** — _Robust World Persistence_
+_18 Şubat 2026_
+
+### ✨ Features
+- **SaveManager** — Full world state serialization (agents + buildings + wildlife + economy + history + groups)
+- **Save slots** — 5 named saves per world with timestamps
+- **Auto-save** — Configurable interval auto-save (default: every 200 ticks)
+- **Crash recovery** — Last auto-save loads automatically on restart
+- **Save/Load UI modal** — Visual save slot management with load/delete
+- **Save file optimization** — Compact JSON serialization
+
+---
+
+## v3.6.0 · **Speculum** — _Data Dashboard_
+_18 Şubat 2026_
+
+### ✨ Features
+- **6 SVG charts** — Population, happiness, trade volume, resource distribution, mood, ecosystem
+- **Glassmorphism panels** — Modern frosted-glass UI design
+- **Pure LiveView/SVG** — No JavaScript chart libraries
+- **Real-time updates** — Charts refresh with simulation ticks
+
+---
+
+## v3.5.0 · **Eventus** — _Dynamic World Events v2_
+_18 Şubat 2026_
+
+### ✨ Features
+- **Complex event chains** — Drought → famine → migration → conflict
+- **God Mode triggers** — Player-triggered events (plague, treasure, meteor)
+- **Discovery events** — Agents find hidden locations
+- **Festivals** — Happy agents organize celebrations
+- **Event probability system** — Season/situation-based probabilities
+- **Event notification UI** — Toast + log + timeline integration
+
+---
+
+## v3.4.0 · **Nexus** — _Communication v2_
+_18 Şubat 2026_
+
+### ✨ Features
+- **Structured dialogue** — Topic-based conversations (trade, alliance, gossip, warning)
+- **Persuasion system** — Skill-based agent persuasion with success/resist outcomes
+- **Information sharing** — Spatial knowledge transfer between agents
+- **Rumor system** — Information spreads and mutates (telephone game effect)
+- **Secret keeping** — Trust-based information sharing
+- **Redesigned chat UI** — Conversation type icons and topic indicators
+
+---
+
+## v3.3.0 · **Optimum** — _Performance Optimization_
+_18 Şubat 2026_
+
+### ✨ Features
+- **Memory audit** — Per-agent memory measurement (~4.4 KB/agent)
+- **ETS consolidation** — Reduced table count
+- **Tick optimization** — O(n) agent interactions
+- **Lazy evaluation** — Distant agents skip detailed computation
+- **Performance monitor UI** — Real-time memory/CPU/tick metrics panel
+- **Benchmark** — 50/100/200 agent performance profiling
+
+---
+
+## v3.2.0 · **Ratio** — _LLM Intelligence Optimization_
+_17 Şubat 2026_
+
+### ✨ Features
+- **LLM call batching** — Multiple agents in single prompt
+- **Response caching** — ETS-based with TTL (100 ticks)
+- **Prompt compression** — Minimized context for token savings
+- **Fallback chain** — Antigravity → Gemini → Ollama → hardcoded behavior
+- **LLM budget tracking** — Per-tick call limits with priority queue
+- **LLM metrics UI** — Calls/tick, latency, cache hit rate panel
+
+---
+
+## v3.1.0 · **Fabrica** — _Crafting & Skill Trees_
+_17 Şubat 2026_
+
+### ✨ Features
+- **Recipe-based crafting** — Sword, bread, medicine, tools from components
+- **Skill levels** — Novice → Apprentice → Expert → Master progression
+- **Skill XP** — Practice improves quality
+- **Teaching system** — Master→apprentice knowledge transfer
+- **Tool quality** — Expert crafters produce better items
+- **Crafting log** — Production history tracking
+
+---
+
+## v3.0.0 · **Societas** — _Social Structures_ ⭐ MAJOR
+_17 Şubat 2026_
+
+### ✨ Features
+- **Clan/tribe formation** — Nearby agents form groups organically
+- **Leadership** — Highest social influence becomes leader
+- **Group decisions** — Leaders decide for the group
+- **Alliance/rivalry** — Inter-group relationships
+- **Shared resources** — Group resource pooling
+- **Group identity** — LLM-generated group names and culture
+- **Social panel** — Group list, members, relationships UI
+
+---
+
+## v2.9.0 · **Natura** — _Ecology & Wildlife Depth_
+_17 Şubat 2026_
+
+### ✨ Features
+- **Wildlife breeding** — Animals reproduce with population caps
+- **Food chain** — Predator/prey dynamics (wolves hunt deer)
+- **Seasonal migration** — Animals move with seasons
+- **Plant growth cycle** — Trees regrow after harvesting
+- **Ecosystem balance** — Overhunting causes scarcity
+- **Nature events** — Forest fires, floods, locust swarms
+
+---
+
+## v2.8.0 · **Ars** — _Agent Creativity_
+_17 Şubat 2026_
+
+### ✨ Features
+- **Story generation** — Agents create narratives from experience (LLM)
+- **Naming** — Agents name places and groups
+- **Invention** — Random crafting recipe discovery
+- **Art** — Agent "paintings" as descriptions added to culture
+- **Oral tradition** — Stories pass between agents, evolving over time
+
+---
+
+## v2.7.0 · **Mercatura** — _Trade & Economy_
+_17 Şubat 2026_
+
+### ✨ Features
+- **Agent-to-agent barter** — Trade surplus for needed resources
+- **Value assessment** — Personality-based resource valuation
+- **Market building bonus** — Markets enhance nearby trade
+- **Trade history** — Full transaction log
+- **Supply/demand** — Abundance lowers value, scarcity raises it
+
+---
+
+## v2.6.0 · **Consilium** — _Agent Planning & Goals_
+_17 Şubat 2026_
+
+### ✨ Features
+- **Multi-step planner** — Goal decomposition ("build home" → gather wood → gather stone → build)
+- **Priority queue** — Urgent needs override long-term goals
+- **Plan execution tracking** — Step progress monitoring
+- **Plan revision** — Obstacle detection triggers replanning
+
+---
+
+## v2.5.0 · **Memoria** — _Deep Agent Memory_
+_17 Şubat 2026_
+
+### ✨ Features
+- **Episodic memory** — Agents record experiences (event, social, spatial, emotional)
+- **Memory decay** — Old memories fade, important ones persist
+- **Memory recall** — Most relevant memories injected into LLM context
+- **Database-backed** — SQLite persistence via Ecto
+- **Memory types** — Death, friendship, discovery, conversation, trade
+
+---
+
+## v2.4.0 · **Veritas** — _Test Stabilization & Foundation_
+_17 Şubat 2026_
+
+### ✨ Features
+- **37→0 test failures** — Complete test suite stabilization
+- **TestHelper module** — Shared setup for PubSub/ETS isolation
+- **Performance baseline** — Memory per agent measurement (~4.4 KB)
+- **CI-ready** — `mix test` = 0 failures
+
+---
+
 ## v2.3.0 · **Amor** — _Final Polish_
 _17 Şubat 2026_
 
