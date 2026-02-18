@@ -21,6 +21,11 @@
     - Use browser tool: navigate to http://localhost:4000, wait 3 seconds, take screenshot
     - Save screenshot to /Users/morty/Developer/neurabytelabs/modus/demo/screenshots/vX.Y.Z.png
     - Send to Telegram group -5191394304 with Turkish caption describing what's new
+    - IMPORTANT: Do NOT screenshot the onboarding/landing page! Navigate past it:
+      1. browser navigate to http://localhost:4000
+      2. browser snapshot → find "CREATE WORLD" or "Skip" button → click it
+      3. Wait 5 seconds for simulation to load
+      4. THEN take the screenshot of the RUNNING SIMULATION
     - If browser tool unavailable, use: `curl -s http://localhost:4000 > /dev/null && echo 'App running'` and note in report
 18. Iteration completion report format (TURKISH):
     ```
