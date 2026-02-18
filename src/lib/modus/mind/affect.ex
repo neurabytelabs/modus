@@ -12,7 +12,8 @@ defmodule Modus.Mind.Affect do
     end
   end
 
-  defp determine_transition(_current, :action_success, _personality, conatus) when conatus > 0.7 do
+  defp determine_transition(_current, :action_success, _personality, conatus)
+       when conatus > 0.7 do
     {:joy, "successful action with high conatus"}
   end
 
@@ -24,13 +25,15 @@ defmodule Modus.Mind.Affect do
     {:joy, "successful action"}
   end
 
-  defp determine_transition(_current, :action_success_minor, %{openness: o}, _conatus) when o > 0.6 do
+  defp determine_transition(_current, :action_success_minor, %{openness: o}, _conatus)
+       when o > 0.6 do
     {:desire, "exploring new areas"}
   end
 
   defp determine_transition(_current, :action_success_minor, _personality, _conatus), do: nil
 
-  defp determine_transition(_current, :action_failure, _personality, conatus) when conatus < 0.3 do
+  defp determine_transition(_current, :action_failure, _personality, conatus)
+       when conatus < 0.3 do
     {:fear, "failure with low conatus"}
   end
 
@@ -38,7 +41,8 @@ defmodule Modus.Mind.Affect do
     {:sadness, "action failed"}
   end
 
-  defp determine_transition(_current, :social_positive, %{extraversion: e}, _conatus) when e > 0.5 do
+  defp determine_transition(_current, :social_positive, %{extraversion: e}, _conatus)
+       when e > 0.5 do
     {:joy, "social success (extravert)"}
   end
 

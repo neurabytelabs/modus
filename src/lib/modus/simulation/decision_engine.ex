@@ -76,6 +76,7 @@ defmodule Modus.Simulation.DecisionEngine do
           resolved = resolve(action, find_agent(agent_id, batch), context, params)
           DecisionCache.put(agent_id, resolved)
         end
+
         :ok
     end
   end
@@ -85,7 +86,17 @@ defmodule Modus.Simulation.DecisionEngine do
   def llm_tick?(tick), do: rem(tick, @llm_interval) == 0 and tick > 0
 
   defp find_agent(id, agents) do
-    Enum.find(agents, %Agent{id: id, position: {0, 0}, personality: %{}, needs: %{hunger: 50, social: 50, rest: 50}, current_action: :idle}, fn a -> a.id == id end)
+    Enum.find(
+      agents,
+      %Agent{
+        id: id,
+        position: {0, 0},
+        personality: %{},
+        needs: %{hunger: 50, social: 50, rest: 50},
+        current_action: :idle
+      },
+      fn a -> a.id == id end
+    )
   end
 
   # ── Action Resolution ───────────────────────────────────────
@@ -114,6 +125,7 @@ defmodule Modus.Simulation.DecisionEngine do
 
   defp resolve(:go_home, agent, _context) do
     alias Modus.Simulation.Building
+
     case Building.get_home(agent.id) do
       nil -> {:idle, %{}}
       home -> {:move_to, %{target: home.position, intent: :go_home}}
@@ -133,8 +145,11 @@ defmodule Modus.Simulation.DecisionEngine do
 
   defp resolve(:help_nearby, agent, context) do
     case Map.get(context, :nearby_agents, []) do
-      [] -> {:idle, %{}}
-      agents -> {:move_to, %{target: agent.position, intent: :help, target_agent: Enum.random(agents)}}
+      [] ->
+        {:idle, %{}}
+
+      agents ->
+        {:move_to, %{target: agent.position, intent: :help, target_agent: Enum.random(agents)}}
     end
   end
 
@@ -174,9 +189,12 @@ defmodule Modus.Simulation.DecisionEngine do
     |> Enum.filter(fn {rtype, _pos, amount} ->
       amount > 0 and (type == :any or rtype == type)
     end)
-    |> Enum.min_by(fn {_type, {rx, ry}, _amount} ->
-      abs(rx - ax) + abs(ry - ay)
-    end, fn -> nil end)
+    |> Enum.min_by(
+      fn {_type, {rx, ry}, _amount} ->
+        abs(rx - ax) + abs(ry - ay)
+      end,
+      fn -> nil end
+    )
     |> case do
       nil -> nil
       {_type, pos, _amount} -> pos

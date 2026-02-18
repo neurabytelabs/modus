@@ -64,7 +64,9 @@ defmodule Modus.Mind.Perception do
     |> Enum.filter(fn
       {id, {ax, ay, true}} ->
         id != agent_id and abs(ax - px) <= radius and abs(ay - py) <= radius
-      _ -> false
+
+      _ ->
+        false
     end)
     |> Enum.map(fn {id, {ax, ay, _}} ->
       distance = abs(ax - px) + abs(ay - py)
@@ -73,18 +75,20 @@ defmodule Modus.Mind.Perception do
     |> Enum.sort_by(fn {_id, d} -> d end)
     |> Enum.take(5)
     |> Enum.map(fn {id, distance} ->
-      {name, affect} = try do
-        state = Agent.get_state(id)
-        {state.name, state.affect_state}
-      catch
-        :exit, _ -> {"Unknown", :neutral}
-      end
+      {name, affect} =
+        try do
+          state = Agent.get_state(id)
+          {state.name, state.affect_state}
+        catch
+          :exit, _ -> {"Unknown", :neutral}
+        end
 
-      rel_type = case SocialNetwork.get_relationship(agent_id, id) do
-        nil -> :stranger
-        %{type: type} -> type
-        _ -> :stranger
-      end
+      rel_type =
+        case SocialNetwork.get_relationship(agent_id, id) do
+          nil -> :stranger
+          %{type: type} -> type
+          _ -> :stranger
+        end
 
       %{id: id, name: name, distance: distance, affect: affect, relationship_type: rel_type}
     end)

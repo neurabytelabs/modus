@@ -10,6 +10,7 @@ defmodule Modus.Mind.PerceptionTest do
     if Process.whereis(Modus.AgentRegistry) == nil do
       start_supervised!({Registry, keys: :unique, name: Modus.AgentRegistry})
     end
+
     :ok
   end
 
@@ -18,7 +19,13 @@ defmodule Modus.Mind.PerceptionTest do
       id: "test-agent-1",
       name: "TestAgent",
       position: {25, 25},
-      personality: %{openness: 0.5, conscientiousness: 0.5, extraversion: 0.5, agreeableness: 0.5, neuroticism: 0.5},
+      personality: %{
+        openness: 0.5,
+        conscientiousness: 0.5,
+        extraversion: 0.5,
+        agreeableness: 0.5,
+        neuroticism: 0.5
+      },
       needs: %{hunger: 40.0, social: 60.0, rest: 80.0, shelter: 70.0},
       occupation: :explorer,
       relationships: %{},

@@ -7,10 +7,10 @@ defmodule Modus.Schema.World do
   import Ecto.Changeset
 
   schema "worlds" do
-    field :name, :string
-    field :template, :string, default: "village"
-    field :config_json, :string
-    field :state_json, :string
+    field(:name, :string)
+    field(:template, :string, default: "village")
+    field(:config_json, :string)
+    field(:state_json, :string)
 
     timestamps()
   end

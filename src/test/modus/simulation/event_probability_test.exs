@@ -55,7 +55,9 @@ defmodule Modus.Simulation.EventProbabilityTest do
 
   describe "roll/1" do
     test "returns nil or {event, severity} tuple" do
-      results = for _ <- 1..200, do: EventProbability.roll(%{ticks_since_last_event: 1000, population: 50})
+      results =
+        for _ <- 1..200,
+            do: EventProbability.roll(%{ticks_since_last_event: 1000, population: 50})
 
       non_nil = Enum.reject(results, &is_nil/1)
 

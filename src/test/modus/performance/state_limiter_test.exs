@@ -11,6 +11,7 @@ defmodule Modus.Performance.StateLimiterTest do
         conatus_history: Enum.map(1..30, fn i -> {0.5, i} end),
         inventory: %{}
       }
+
       trimmed = StateLimiter.trim(agent)
       assert length(trimmed.memory) == 15
       assert length(trimmed.affect_history) == 10
@@ -25,14 +26,20 @@ defmodule Modus.Performance.StateLimiterTest do
     end
 
     test "leaves small state untouched" do
-      agent = %{memory: [{1, :idle}], affect_history: [], conatus_history: [], inventory: %{wood: 5}}
+      agent = %{
+        memory: [{1, :idle}],
+        affect_history: [],
+        conatus_history: [],
+        inventory: %{wood: 5}
+      }
+
       assert StateLimiter.trim(agent) == agent
     end
   end
 
   describe "estimate_size/1" do
     test "returns positive integer for any term" do
-      assert StateLimiter.estimate_size(%{a: 1, b: [1,2,3]}) > 0
+      assert StateLimiter.estimate_size(%{a: 1, b: [1, 2, 3]}) > 0
     end
   end
 end

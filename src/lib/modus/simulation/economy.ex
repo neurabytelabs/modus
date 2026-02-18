@@ -17,6 +17,7 @@ defmodule Modus.Simulation.Economy do
     if :ets.whereis(@table) == :undefined do
       :ets.new(@table, [:set, :public, :named_table, read_concurrency: true])
     end
+
     :ets.insert(@table, {:stats, %{trades: 0, total_transferred: 0.0}})
     :ok
   end
@@ -64,6 +65,7 @@ defmodule Modus.Simulation.Economy do
             resource: :food,
             amount: amount
           })
+
           :ok
 
         error ->
@@ -92,12 +94,14 @@ defmodule Modus.Simulation.Economy do
 
     # Find hungry agents (hunger > 60) and nearby traders/farmers
     hungry = Enum.filter(agents, fn a -> a.needs.hunger > 60.0 end)
-    helpers = Enum.filter(agents, fn a -> a.occupation in [:trader, :farmer] and a.needs.hunger < 50.0 end)
+
+    helpers =
+      Enum.filter(agents, fn a -> a.occupation in [:trader, :farmer] and a.needs.hunger < 50.0 end)
 
     Enum.each(hungry, fn hungry_agent ->
       case Enum.find(helpers, fn h ->
-        h.id != hungry_agent.id and in_trade_radius?(h.position, hungry_agent.position)
-      end) do
+             h.id != hungry_agent.id and in_trade_radius?(h.position, hungry_agent.position)
+           end) do
         nil -> :ok
         helper -> try_trade(helper, hungry_agent, tick)
       end
@@ -123,11 +127,13 @@ defmodule Modus.Simulation.Economy do
   defp increment_stats(amount) do
     case :ets.lookup(@table, :stats) do
       [{:stats, s}] ->
-        :ets.insert(@table, {:stats, %{s | trades: s.trades + 1, total_transferred: s.total_transferred + amount}})
+        :ets.insert(
+          @table,
+          {:stats, %{s | trades: s.trades + 1, total_transferred: s.total_transferred + amount}}
+        )
 
       _ ->
         :ok
     end
   end
-
 end

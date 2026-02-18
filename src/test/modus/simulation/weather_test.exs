@@ -92,6 +92,7 @@ defmodule Modus.Simulation.WeatherTest do
 
     test "forecast entries have required fields" do
       fc = Weather.forecast(100)
+
       for entry <- fc do
         assert Map.has_key?(entry, :weather)
         assert Map.has_key?(entry, :emoji)

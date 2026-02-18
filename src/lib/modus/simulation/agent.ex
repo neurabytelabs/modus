@@ -94,13 +94,14 @@ defmodule Modus.Simulation.Agent do
   @doc "Create a new agent with custom personality and mood."
   @spec new_custom(String.t(), {integer(), integer()}, atom(), map(), atom()) :: t()
   def new_custom(name, position, occupation, personality, mood \\ :neutral) do
-    affect = case mood do
-      :happy -> :joy
-      :calm -> :neutral
-      :anxious -> :fear
-      :eager -> :desire
-      _ -> :neutral
-    end
+    affect =
+      case mood do
+        :happy -> :joy
+        :calm -> :neutral
+        :anxious -> :fear
+        :eager -> :desire
+        _ -> :neutral
+      end
 
     %__MODULE__{
       id: generate_id(),
@@ -152,6 +153,7 @@ defmodule Modus.Simulation.Agent do
       _, _ ->
         # Fallback to registry scan
         {px, py} = position
+
         Modus.AgentRegistry
         |> Registry.select([{{:"$1", :_, :"$3"}, [], [{{:"$1", :"$3"}}]}])
         |> Enum.filter(fn
@@ -200,9 +202,10 @@ defmodule Modus.Simulation.Agent do
   def handle_cast({:tick, tick_number, context}, agent) do
     # Lazy evaluation: distant agents get simplified processing (skip if critical needs)
     critical = agent.needs.hunger > 90.0 or agent.needs.rest < 5.0 or agent.conatus_energy < 0.1
+
     if not critical and
-       Modus.Performance.LazyEval.distant?(agent.position, tick_number) and
-       Modus.Performance.LazyEval.lazy?(agent.id, agent.position, tick_number) do
+         Modus.Performance.LazyEval.distant?(agent.position, tick_number) and
+         Modus.Performance.LazyEval.lazy?(agent.id, agent.position, tick_number) do
       agent = Modus.Performance.LazyEval.simplified_tick(agent)
       {:noreply, agent}
     else
@@ -213,6 +216,27 @@ defmodule Modus.Simulation.Agent do
   @impl true
   def handle_cast({:update_relationships, rels}, agent) do
     {:noreply, %{agent | relationships: rels}}
+  end
+
+  @impl true
+  def handle_cast({:divine_intervention, :heal}, agent) do
+    {:noreply, %{agent | conatus_energy: 1.0, current_affect: :joy}}
+  end
+
+  def handle_cast({:divine_intervention, :boost_mood}, agent) do
+    {:noreply, %{agent | current_affect: :joy}}
+  end
+
+  def handle_cast({:divine_intervention, :drain_mood}, agent) do
+    {:noreply, %{agent | current_affect: :sadness}}
+  end
+
+  def handle_cast({:divine_intervention, :max_conatus}, agent) do
+    {:noreply, %{agent | conatus_energy: 1.0}}
+  end
+
+  def handle_cast({:update_name, name}, agent) do
+    {:noreply, %{agent | name: name}}
   end
 
   @impl true
@@ -241,42 +265,56 @@ defmodule Modus.Simulation.Agent do
   defp do_full_tick(agent, tick_number, context) do
     # Build decision context
     nearby = nearby_agents(agent.position)
-    decision_context = Map.merge(context, %{
-      tick: tick_number,
-      nearby_agents: nearby,
-      nearby_resources: Map.get(context, :nearby_resources, []),
-      world_size: Map.get(context, :world_size, {50, 50})
-    })
+
+    decision_context =
+      Map.merge(context, %{
+        tick: tick_number,
+        nearby_agents: nearby,
+        nearby_resources: Map.get(context, :nearby_resources, []),
+        world_size: Map.get(context, :world_size, {50, 50})
+      })
 
     # Decide action via DecisionEngine
     {action, params} = Modus.Simulation.DecisionEngine.decide(agent, decision_context)
 
     # Group following: non-leader members follow their leader
-    {action, params} = case Modus.Mind.Cerebro.Group.get_group_target(agent.id) do
-      nil -> {action, params}
-      leader_pos ->
-        # Override action to follow leader
-        {:move_to, Map.put(params, :target, leader_pos)}
-    end
+    {action, params} =
+      case Modus.Mind.Cerebro.Group.get_group_target(agent.id) do
+        nil ->
+          {action, params}
+
+        leader_pos ->
+          # Override action to follow leader
+          {:move_to, Map.put(params, :target, leader_pos)}
+      end
 
     # Persist explore target for smoother movement (10-20 ticks per direction)
-    {action, params, agent} = case action do
-      :explore ->
-        if agent.explore_ticks > 0 and agent.explore_target != nil do
-          # Keep current explore target
-          {action, %{params | target: agent.explore_target}, %{agent | explore_ticks: agent.explore_ticks - 1}}
-        else
-          # Pick new target and persist it
-          target = params[:target] || params.target
-          # Bias explore target via spatial memory
-          target = Modus.Mind.Cerebro.SpatialMemory.bias_explore_target(agent.id, agent.position, target)
-          ticks = Enum.random(10..20)
-          {action, params, %{agent | explore_target: target, explore_ticks: ticks}}
-        end
-      _ ->
-        # Non-explore action clears explore state
-        {action, params, %{agent | explore_target: nil, explore_ticks: 0}}
-    end
+    {action, params, agent} =
+      case action do
+        :explore ->
+          if agent.explore_ticks > 0 and agent.explore_target != nil do
+            # Keep current explore target
+            {action, %{params | target: agent.explore_target},
+             %{agent | explore_ticks: agent.explore_ticks - 1}}
+          else
+            # Pick new target and persist it
+            target = params[:target] || params.target
+            # Bias explore target via spatial memory
+            target =
+              Modus.Mind.Cerebro.SpatialMemory.bias_explore_target(
+                agent.id,
+                agent.position,
+                target
+              )
+
+            ticks = Enum.random(10..20)
+            {action, params, %{agent | explore_target: target, explore_ticks: ticks}}
+          end
+
+        _ ->
+          # Non-explore action clears explore state
+          {action, params, %{agent | explore_target: nil, explore_ticks: 0}}
+      end
 
     params = Map.put(params, :tick, tick_number)
 
@@ -284,10 +322,11 @@ defmodule Modus.Simulation.Agent do
     agent = apply_terrain_effects(agent, action)
 
     # Daily routine: sleep cycles, energy, and schedule overrides
-    {action, params} = case Modus.Simulation.DailyRoutine.recommend_action(agent) do
-      {:override, new_action, new_params} -> {new_action, Map.merge(params, new_params)}
-      :no_override -> maybe_force_sleep(agent, action, params)
-    end
+    {action, params} =
+      case Modus.Simulation.DailyRoutine.recommend_action(agent) do
+        {:override, new_action, new_params} -> {new_action, Map.merge(params, new_params)}
+        :no_override -> maybe_force_sleep(agent, action, params)
+      end
 
     agent =
       agent
@@ -300,6 +339,7 @@ defmodule Modus.Simulation.Agent do
         # Age-based learning rate modifier
         age_mods = Modus.Simulation.Aging.modifiers(Modus.Simulation.Aging.stage(a.age))
         lr = Map.get(age_mods, :learning_rate, 1.0)
+
         if lr != 1.0 do
           # Temporarily boost XP via multiple awards for fast learners
           times = max(1, round(lr))
@@ -309,7 +349,9 @@ defmodule Modus.Simulation.Agent do
         end
       end)
       |> Modus.Mind.MindEngine.process_tick(action, params, tick_number)
-      |> tap(fn a -> Modus.Mind.Cerebro.AgentConversation.maybe_converse(a, nearby, tick_number) end)
+      |> tap(fn a ->
+        Modus.Mind.Cerebro.AgentConversation.maybe_converse(a, nearby, tick_number)
+      end)
       |> tap(fn a -> Modus.Simulation.Aging.maybe_teach(a.id, tick_number, nearby) end)
       |> increment_age(tick_number)
       |> Modus.Simulation.Aging.process_tick(tick_number)
@@ -360,34 +402,46 @@ defmodule Modus.Simulation.Agent do
     resource_type = if resource_types == [], do: :food, else: List.first(resource_types)
 
     # Map resource_type to ResourceSystem types
-    gather_type = case resource_type do
-      :fish -> :fish
-      :fresh_water -> :fish  # water tiles have fish
-      :crops -> :food
-      :wild_berries -> :food
-      :herbs -> :food  # fallback
-      other -> other
-    end
-
-    gathered = try do
-      case Modus.Simulation.ResourceSystem.gather(agent.position, gather_type, 2.0) do
-        {:ok, amount} -> amount
-        _ -> 0.0
+    gather_type =
+      case resource_type do
+        :fish -> :fish
+        # water tiles have fish
+        :fresh_water -> :fish
+        :crops -> :food
+        :wild_berries -> :food
+        # fallback
+        :herbs -> :food
+        other -> other
       end
-    catch
-      :exit, _ -> 0.0
-    end
+
+    gathered =
+      try do
+        case Modus.Simulation.ResourceSystem.gather(agent.position, gather_type, 2.0) do
+          {:ok, amount} -> amount
+          _ -> 0.0
+        end
+      catch
+        :exit, _ -> 0.0
+      end
 
     # Add to inventory
     inventory = Map.update(agent.inventory, resource_type, gathered, &(&1 + gathered))
 
     # Food-like resources reduce hunger
-    hunger_relief = case resource_type do
-      t when t in [:food, :fish, :crops, :wild_berries] -> if gathered > 0, do: 5.0, else: 1.0
-      _ -> 1.0
-    end
+    hunger_relief =
+      case resource_type do
+        t when t in [:food, :fish, :crops, :wild_berries] -> if gathered > 0, do: 5.0, else: 1.0
+        _ -> 1.0
+      end
+
     needs = %{agent.needs | hunger: max(agent.needs.hunger - hunger_relief, 0.0)}
-    Modus.Simulation.EventLog.log(:resource_gathered, Map.get(params, :tick, 0), [agent.id], %{name: agent.name, amount: gathered, resource: resource_type})
+
+    Modus.Simulation.EventLog.log(:resource_gathered, Map.get(params, :tick, 0), [agent.id], %{
+      name: agent.name,
+      amount: gathered,
+      resource: resource_type
+    })
+
     %{agent | needs: needs, current_action: :gathering, inventory: inventory}
   end
 
@@ -398,7 +452,14 @@ defmodule Modus.Simulation.Agent do
 
   defp apply_action(agent, :talk, params) do
     needs = %{agent.needs | social: min(agent.needs.social + 8.0, 100.0)}
-    Modus.Simulation.EventLog.log(:conversation, Map.get(params, :tick, 0), [agent.id, Map.get(params, :target_agent, "unknown")], %{type: :social_chat, name: agent.name})
+
+    Modus.Simulation.EventLog.log(
+      :conversation,
+      Map.get(params, :tick, 0),
+      [agent.id, Map.get(params, :target_agent, "unknown")],
+      %{type: :social_chat, name: agent.name}
+    )
+
     %{agent | needs: needs, current_action: :talking}
   end
 
@@ -414,28 +475,35 @@ defmodule Modus.Simulation.Agent do
     alias Modus.Simulation.Building
 
     # Determine best building type agent can afford (prefer hut for homeless)
-    build_type = cond do
-      !Building.has_home?(agent.id) and Building.can_build?(agent.inventory, :house) -> :house
-      !Building.has_home?(agent.id) and Building.can_build?(agent.inventory, :hut) -> :hut
-      Building.can_build?(agent.inventory, :farm) -> :farm
-      Building.can_build?(agent.inventory, :well) -> :well
-      Building.can_build?(agent.inventory, :market) -> :market
-      Building.can_build?(agent.inventory, :watchtower) -> :watchtower
-      true -> nil
-    end
+    build_type =
+      cond do
+        !Building.has_home?(agent.id) and Building.can_build?(agent.inventory, :house) -> :house
+        !Building.has_home?(agent.id) and Building.can_build?(agent.inventory, :hut) -> :hut
+        Building.can_build?(agent.inventory, :farm) -> :farm
+        Building.can_build?(agent.inventory, :well) -> :well
+        Building.can_build?(agent.inventory, :market) -> :market
+        Building.can_build?(agent.inventory, :watchtower) -> :watchtower
+        true -> nil
+      end
 
     if build_type do
       # Try to build near a friend's home (social proximity)
-      build_pos = case Building.friend_build_position(agent.id) do
-        nil -> agent.position
-        pos -> pos
-      end
+      build_pos =
+        case Building.friend_build_position(agent.id) do
+          nil -> agent.position
+          pos -> pos
+        end
 
       inventory = Building.deduct_costs(agent.inventory, build_type)
       building = Building.place(build_type, build_pos, agent.id, Map.get(params, :tick, 0))
+
       Modus.Simulation.EventLog.log(:building, Map.get(params, :tick, 0), [agent.id], %{
-        name: agent.name, type: build_type, position: build_pos, building_id: building.id
+        name: agent.name,
+        type: build_type,
+        position: build_pos,
+        building_id: building.id
       })
+
       needs = %{agent.needs | shelter: min(agent.needs.shelter + 20.0, 100.0)}
       %{agent | inventory: inventory, needs: needs, current_action: :building}
     else
@@ -450,8 +518,9 @@ defmodule Modus.Simulation.Agent do
     tick = Map.get(params, :tick, 0)
 
     if home != nil and Building.can_upgrade?(home, agent.conatus_energy, tick) and
-       Building.can_afford_upgrade?(agent.inventory, home) do
+         Building.can_afford_upgrade?(agent.inventory, home) do
       inventory = Building.deduct_upgrade_costs(agent.inventory, home)
+
       case Building.upgrade(home.id, tick) do
         {:ok, upgraded} ->
           Modus.Simulation.EventLog.log(:building_upgrade, tick, [agent.id], %{
@@ -461,7 +530,9 @@ defmodule Modus.Simulation.Agent do
             level: upgraded.level,
             position: home.position
           })
+
           %{agent | inventory: inventory, current_action: :building}
+
         :error ->
           %{agent | current_action: :idle}
       end
@@ -497,6 +568,7 @@ defmodule Modus.Simulation.Agent do
         %{agent | conatus_energy: max(agent.conatus_energy - drain, 0.0)}
     end
   end
+
   defp apply_terrain_effects(agent, _action), do: agent
 
   defp get_terrain_at({x, y}) do
@@ -511,11 +583,12 @@ defmodule Modus.Simulation.Agent do
   end
 
   defp maybe_force_sleep(agent, action, params) do
-    is_night = try do
-      Modus.Simulation.Environment.is_night?()
-    catch
-      :exit, _ -> false
-    end
+    is_night =
+      try do
+        Modus.Simulation.Environment.is_night?()
+      catch
+        :exit, _ -> false
+      end
 
     if is_night and agent.needs.rest < 30.0 and action not in [:sleep, :flee] do
       {:sleep, params}
@@ -532,11 +605,16 @@ defmodule Modus.Simulation.Agent do
     # Auto-survival: agents with critical needs take care of themselves
     # Hunger recovery kicks in earlier (>70) to prevent conatus death spiral
     hunger_delta = if needs.hunger > 60.0, do: 0.005, else: 0.02
-    hunger_recovery = cond do
-      needs.hunger > 80.0 -> -3.0   # urgent recovery
-      needs.hunger > 70.0 -> -1.5   # moderate recovery
-      true -> 0.0
-    end
+
+    hunger_recovery =
+      cond do
+        # urgent recovery
+        needs.hunger > 80.0 -> -3.0
+        # moderate recovery
+        needs.hunger > 70.0 -> -1.5
+        true -> 0.0
+      end
+
     rest_recovery = if needs.rest < 15.0, do: 3.0, else: 0.0
 
     new_needs = %{
@@ -556,6 +634,7 @@ defmodule Modus.Simulation.Agent do
 
   defp apply_neighborhood_bonus(agent) do
     bonus = Modus.Simulation.Building.neighborhood_social_bonus(agent.id)
+
     if bonus > 0.0 do
       new_social = min(100.0, agent.needs.social + bonus)
       %{agent | needs: %{agent.needs | social: new_social}}
@@ -567,10 +646,19 @@ defmodule Modus.Simulation.Agent do
   # --- Death Check ---
 
   defp check_age_death(%{alive?: false} = agent, _tick), do: agent
+
   defp check_age_death(agent, tick) do
     if Modus.Simulation.Aging.should_die_of_age?(agent.id, agent.age) do
-      Modus.Simulation.EventLog.log(:death, tick, [agent.id], %{cause: "old_age", name: agent.name, age: agent.age})
-      Modus.Persistence.AgentMemory.maybe_record_from_event(agent.id, agent.name, :death, tick, %{cause: "old_age"})
+      Modus.Simulation.EventLog.log(:death, tick, [agent.id], %{
+        cause: "old_age",
+        name: agent.name,
+        age: agent.age
+      })
+
+      Modus.Persistence.AgentMemory.maybe_record_from_event(agent.id, agent.name, :death, tick, %{
+        cause: "old_age"
+      })
+
       Modus.Simulation.Lifecycle.record_death()
       Modus.Simulation.Aging.on_death(agent.id, agent.age, tick)
       %{agent | alive?: false, current_action: :dead}
@@ -582,20 +670,53 @@ defmodule Modus.Simulation.Agent do
   defp check_death(agent, tick) do
     cond do
       agent.conatus_energy <= 0.0 ->
-        Modus.Simulation.EventLog.log(:death, tick, [agent.id], %{cause: "loss_of_will", name: agent.name})
-        Modus.Persistence.AgentMemory.maybe_record_from_event(agent.id, agent.name, :death, tick, %{cause: "loss_of_will"})
+        Modus.Simulation.EventLog.log(:death, tick, [agent.id], %{
+          cause: "loss_of_will",
+          name: agent.name
+        })
+
+        Modus.Persistence.AgentMemory.maybe_record_from_event(
+          agent.id,
+          agent.name,
+          :death,
+          tick,
+          %{cause: "loss_of_will"}
+        )
+
         Modus.Simulation.Lifecycle.record_death()
         %{agent | alive?: false, current_action: :dead}
 
       agent.needs.hunger > 100.0 ->
-        Modus.Simulation.EventLog.log(:death, tick, [agent.id], %{cause: "starvation", name: agent.name})
-        Modus.Persistence.AgentMemory.maybe_record_from_event(agent.id, agent.name, :death, tick, %{cause: "starvation"})
+        Modus.Simulation.EventLog.log(:death, tick, [agent.id], %{
+          cause: "starvation",
+          name: agent.name
+        })
+
+        Modus.Persistence.AgentMemory.maybe_record_from_event(
+          agent.id,
+          agent.name,
+          :death,
+          tick,
+          %{cause: "starvation"}
+        )
+
         Modus.Simulation.Lifecycle.record_death()
         %{agent | alive?: false, current_action: :dead}
 
       agent.needs.rest < 0.0 ->
-        Modus.Simulation.EventLog.log(:death, tick, [agent.id], %{cause: "exhaustion", name: agent.name})
-        Modus.Persistence.AgentMemory.maybe_record_from_event(agent.id, agent.name, :death, tick, %{cause: "exhaustion"})
+        Modus.Simulation.EventLog.log(:death, tick, [agent.id], %{
+          cause: "exhaustion",
+          name: agent.name
+        })
+
+        Modus.Persistence.AgentMemory.maybe_record_from_event(
+          agent.id,
+          agent.name,
+          :death,
+          tick,
+          %{cause: "exhaustion"}
+        )
+
         Modus.Simulation.Lifecycle.record_death()
         %{agent | alive?: false, current_action: :dead}
 

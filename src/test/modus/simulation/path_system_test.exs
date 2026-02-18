@@ -109,7 +109,12 @@ defmodule Modus.Simulation.PathSystemTest do
         _ -> :ok
       end
 
-      :ets.insert(:modus_water, {{10, 10}, %{type: :river, flow_dir: {1, 0}, depth: 0.5, pollution: 0.0, fishing_spot: false}})
+      :ets.insert(
+        :modus_water,
+        {{10, 10},
+         %{type: :river, flow_dir: {1, 0}, depth: 0.5, pollution: 0.0, fishing_spot: false}}
+      )
+
       :ok
     end
 

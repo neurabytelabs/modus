@@ -48,7 +48,9 @@ defmodule Modus.Simulation.EventChain do
   end
 
   @doc "Evaluate and schedule chain reactions for a completed/active event."
-  @spec evaluate(atom(), non_neg_integer(), non_neg_integer()) :: [{atom(), non_neg_integer(), non_neg_integer()}]
+  @spec evaluate(atom(), non_neg_integer(), non_neg_integer()) :: [
+          {atom(), non_neg_integer(), non_neg_integer()}
+        ]
   def evaluate(event_type, current_tick, severity) do
     @chains
     |> Map.get(event_type, [])

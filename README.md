@@ -5,11 +5,11 @@
     An AI universe simulation where autonomous agents develop emotions, build civilizations, and write their own history.
   </p>
   <p align="center">
-    <img src="https://img.shields.io/badge/version-v2.3.0_Amor-purple" alt="Version" />
+    <img src="https://img.shields.io/badge/version-v5.2.0_Probatio-purple" alt="Version" />
     <img src="https://img.shields.io/badge/Elixir-1.17+-4B275F?logo=elixir" alt="Elixir" />
     <img src="https://img.shields.io/badge/license-MIT-blue" alt="License" />
-    <img src="https://img.shields.io/badge/modules-62-green" alt="Modules" />
-    <img src="https://img.shields.io/badge/tests-130+-brightgreen" alt="Tests" />
+    <img src="https://img.shields.io/badge/modules-100-green" alt="Modules" />
+    <img src="https://img.shields.io/badge/tests-686-brightgreen" alt="Tests" />
   </p>
 </p>
 

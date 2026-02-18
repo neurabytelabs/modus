@@ -21,11 +21,13 @@ defmodule Modus.Mind.Cerebro.SocialNetwork do
     if :ets.whereis(@table) == :undefined do
       :ets.new(@table, [:set, :public, :named_table, read_concurrency: true])
     end
+
     :ok
   end
 
   def get_relationship(id1, id2) do
     key = canonical_key(id1, id2)
+
     case :ets.lookup(@table, key) do
       [{^key, rel}] -> rel
       [] -> nil
@@ -36,19 +38,21 @@ defmodule Modus.Mind.Cerebro.SocialNetwork do
     key = canonical_key(id1, id2)
     delta = Map.get(@event_deltas, event_type, 0.04)
 
-    rel = case :ets.lookup(@table, key) do
-      [{^key, existing}] -> existing
-      [] -> %{strength: 0.0, type: :stranger, last_interaction: 0, convo_count: 0}
-    end
+    rel =
+      case :ets.lookup(@table, key) do
+        [{^key, existing}] -> existing
+        [] -> %{strength: 0.0, type: :stranger, last_interaction: 0, convo_count: 0}
+      end
 
     new_strength = min(rel.strength + delta, 1.0)
     new_type = classify_type(new_strength)
 
-    updated = %{rel |
-      strength: new_strength,
-      type: new_type,
-      last_interaction: System.monotonic_time(:millisecond),
-      convo_count: rel.convo_count + 1
+    updated = %{
+      rel
+      | strength: new_strength,
+        type: new_type,
+        last_interaction: System.monotonic_time(:millisecond),
+        convo_count: rel.convo_count + 1
     }
 
     :ets.insert(@table, {key, updated})
@@ -72,6 +76,7 @@ defmodule Modus.Mind.Cerebro.SocialNetwork do
     :ets.tab2list(@table)
     |> Enum.each(fn {key, rel} ->
       new_strength = max(rel.strength - amount, 0.0)
+
       if new_strength < 0.01 do
         :ets.delete(@table, key)
       else
@@ -79,6 +84,7 @@ defmodule Modus.Mind.Cerebro.SocialNetwork do
         :ets.insert(@table, {key, %{rel | strength: new_strength, type: new_type}})
       end
     end)
+
     :ok
   end
 

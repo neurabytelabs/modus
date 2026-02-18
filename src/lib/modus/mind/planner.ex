@@ -34,9 +34,12 @@ defmodule Modus.Mind.Planner do
     defstruct [
       :action,
       :params,
-      :status,       # :pending | :in_progress | :completed | :failed | :blocked
-      :started_at,   # tick
-      :completed_at, # tick
+      # :pending | :in_progress | :completed | :failed | :blocked
+      :status,
+      # tick
+      :started_at,
+      # tick
+      :completed_at,
       attempts: 0,
       max_attempts: 10
     ]
@@ -51,8 +54,10 @@ defmodule Modus.Mind.Planner do
       :agent_id,
       :goal,
       :steps,
-      :priority,     # higher = more urgent (0-100)
-      :status,       # :active | :completed | :failed | :blocked | :revised
+      # higher = more urgent (0-100)
+      :priority,
+      # :active | :completed | :failed | :blocked | :revised
+      :status,
       :created_at,
       :completed_at,
       revision: 0,
@@ -74,6 +79,7 @@ defmodule Modus.Mind.Planner do
     if :ets.whereis(@table) == :undefined do
       :ets.new(@table, [:named_table, :bag, :public, read_concurrency: true])
     end
+
     :ok
   end
 
@@ -109,6 +115,7 @@ defmodule Modus.Mind.Planner do
   @spec get_plans(String.t()) :: [Plan.t()]
   def get_plans(agent_id) do
     init()
+
     :ets.lookup(@table, agent_id)
     |> Enum.map(fn {_id, plan} -> plan end)
   end
@@ -163,11 +170,14 @@ defmodule Modus.Mind.Planner do
 
     # Check if all steps are done
     case get_plan(agent_id, plan_id) do
-      nil -> :ok
+      nil ->
+        :ok
+
       plan ->
         if Enum.all?(plan.steps, &(&1.status == :completed)) do
           complete_plan(agent_id, plan_id, tick)
         end
+
         :ok
     end
   end
@@ -255,6 +265,7 @@ defmodule Modus.Mind.Planner do
     if :ets.whereis(@table) != :undefined do
       :ets.delete_all_objects(@table)
     end
+
     :ok
   end
 
@@ -410,11 +421,12 @@ defmodule Modus.Mind.Planner do
         end
       end)
 
-    %{plan |
-      steps: new_steps,
-      revision: plan.revision + 1,
-      status: :active,
-      metadata: Map.put(plan.metadata, :last_revision_at, tick)
+    %{
+      plan
+      | steps: new_steps,
+        revision: plan.revision + 1,
+        status: :active,
+        metadata: Map.put(plan.metadata, :last_revision_at, tick)
     }
   end
 
@@ -499,7 +511,9 @@ defmodule Modus.Mind.Planner do
 
   defp complete_plan(agent_id, plan_id, tick) do
     case get_plan(agent_id, plan_id) do
-      nil -> :ok
+      nil ->
+        :ok
+
       plan ->
         updated = %{plan | status: :completed, completed_at: tick}
         persist_plan(agent_id, plan_id, updated)

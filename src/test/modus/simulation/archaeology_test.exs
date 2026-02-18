@@ -8,6 +8,7 @@ defmodule Modus.Simulation.ArchaeologyTest do
     for table <- [:archaeology_ruins, :archaeology_artifacts, :archaeology_museums] do
       if :ets.whereis(table) != :undefined, do: :ets.delete_all_objects(table)
     end
+
     Archaeology.init_table()
     :ok
   end
@@ -105,6 +106,7 @@ defmodule Modus.Simulation.ArchaeologyTest do
       # Bol deneme
       results = for _ <- 1..30, do: Archaeology.excavate(ruin.id, "agent_x", 500)
       ok_results = Enum.filter(results, fn {status, _} -> status == :ok end)
+
       if length(ok_results) > 0 do
         {:ok, artifact} = hd(ok_results)
         assert artifact.discovered_by == "agent_x"
@@ -138,6 +140,7 @@ defmodule Modus.Simulation.ArchaeologyTest do
         %{id: "b1", type: :hut, position: {1, 1}, owner_id: nil, built_tick: 0},
         %{id: "b2", type: :farm, position: {2, 2}, owner_id: "agent_1", built_tick: 0}
       ]
+
       ruins = Archaeology.check_building_decay(buildings, 3000)
       assert length(ruins) == 1
       assert hd(ruins).original_building_id == "b1"

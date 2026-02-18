@@ -77,7 +77,8 @@ defmodule Modus.Persistence.SaveManager do
   def autosave_status do
     GenServer.call(__MODULE__, :autosave_status)
   catch
-    :exit, _ -> %{enabled: false, last_tick: 0, last_at: nil, interval: @default_autosave_interval}
+    :exit, _ ->
+      %{enabled: false, last_tick: 0, last_at: nil, interval: @default_autosave_interval}
   end
 
   @doc "Set auto-save interval."
@@ -88,11 +89,13 @@ defmodule Modus.Persistence.SaveManager do
   @doc "Try crash recovery from last auto-save."
   def recover do
     path = autosave_path()
+
     if File.exists?(path) do
       case read_gzip(path) do
         {:ok, data} ->
           Logger.info("Crash recovery: found auto-save, restoring...")
           restore_full_state(data)
+
         {:error, reason} ->
           Logger.warning("Crash recovery failed: #{reason}")
           {:error, reason}
@@ -123,28 +126,33 @@ defmodule Modus.Persistence.SaveManager do
   end
 
   def handle_call(:list_slots, _from, state) do
-    slots = Enum.map(1..@max_slots, fn slot ->
-      path = slot_path(slot)
-      if File.exists?(path) do
-        case read_gzip(path) do
-          {:ok, data} ->
-            %{
-              slot: slot,
-              name: data["meta"]["name"] || "Slot #{slot}",
-              world_name: get_in(data, ["world", "name"]) || "Unknown",
-              tick: get_in(data, ["world", "tick"]) || 0,
-              population: length(data["agents"] || []),
-              day_count: div(get_in(data, ["world", "tick"]) || 0, 100) + 1,
-              saved_at: data["meta"]["saved_at"],
-              seed: get_in(data, ["world", "config", "seed"]),
-              size_bytes: File.stat!(path).size
-            }
-          _ -> %{slot: slot, empty: true}
+    slots =
+      Enum.map(1..@max_slots, fn slot ->
+        path = slot_path(slot)
+
+        if File.exists?(path) do
+          case read_gzip(path) do
+            {:ok, data} ->
+              %{
+                slot: slot,
+                name: data["meta"]["name"] || "Slot #{slot}",
+                world_name: get_in(data, ["world", "name"]) || "Unknown",
+                tick: get_in(data, ["world", "tick"]) || 0,
+                population: length(data["agents"] || []),
+                day_count: div(get_in(data, ["world", "tick"]) || 0, 100) + 1,
+                saved_at: data["meta"]["saved_at"],
+                seed: get_in(data, ["world", "config", "seed"]),
+                size_bytes: File.stat!(path).size
+              }
+
+            _ ->
+              %{slot: slot, empty: true}
+          end
+        else
+          %{slot: slot, empty: true}
         end
-      else
-        %{slot: slot, empty: true}
-      end
-    end)
+      end)
+
     {:reply, slots, state}
   end
 
@@ -155,12 +163,13 @@ defmodule Modus.Persistence.SaveManager do
   end
 
   def handle_call(:autosave_status, _from, state) do
-    {:reply, %{
-      enabled: state.enabled,
-      last_tick: state.last_autosave_tick,
-      last_at: state.last_autosave_at,
-      interval: state.autosave_interval
-    }, state}
+    {:reply,
+     %{
+       enabled: state.enabled,
+       last_tick: state.last_autosave_tick,
+       last_at: state.last_autosave_at,
+       interval: state.autosave_interval
+     }, state}
   end
 
   def handle_call({:set_interval, ticks}, _from, state) do
@@ -183,18 +192,23 @@ defmodule Modus.Persistence.SaveManager do
   defp do_save_slot(slot, name) do
     try do
       state = collect_full_state()
-      state = put_in(state, [:meta], %{
-        name: name || "Slot #{slot}",
-        saved_at: DateTime.utc_now() |> DateTime.to_iso8601(),
-        slot: slot
-      })
+
+      state =
+        put_in(state, [:meta], %{
+          name: name || "Slot #{slot}",
+          saved_at: DateTime.utc_now() |> DateTime.to_iso8601(),
+          slot: slot
+        })
+
       write_gzip(slot_path(slot), state)
+
       info = %{
         slot: slot,
         name: name || "Slot #{slot}",
         tick: get_in(state, [:world, :tick]) || 0,
         population: length(state[:agents] || [])
       }
+
       Logger.info("Saved to slot #{slot}: #{info.name}")
       {:ok, info}
     catch
@@ -206,6 +220,7 @@ defmodule Modus.Persistence.SaveManager do
 
   defp do_load_slot(slot) do
     path = slot_path(slot)
+
     if File.exists?(path) do
       case read_gzip(path) do
         {:ok, data} -> restore_full_state(data)
@@ -219,12 +234,15 @@ defmodule Modus.Persistence.SaveManager do
   defp do_autosave(tick) do
     try do
       state = collect_full_state()
-      state = Map.put(state, :meta, %{
-        name: "Auto-save",
-        saved_at: DateTime.utc_now() |> DateTime.to_iso8601(),
-        auto: true,
-        tick: tick
-      })
+
+      state =
+        Map.put(state, :meta, %{
+          name: "Auto-save",
+          saved_at: DateTime.utc_now() |> DateTime.to_iso8601(),
+          auto: true,
+          tick: tick
+        })
+
       write_gzip(autosave_path(), state)
       Logger.debug("Auto-saved at tick #{tick}")
     catch
@@ -235,41 +253,82 @@ defmodule Modus.Persistence.SaveManager do
 
   @doc false
   def collect_full_state do
-    world_state = try do
-      Modus.Simulation.World.get_state()
-    catch
-      _, _ -> %{name: "Unknown", config: %{}, grid_size: {50, 50}}
-    end
+    world_state =
+      try do
+        Modus.Simulation.World.get_state()
+      catch
+        _, _ -> %{name: "Unknown", config: %{}, grid_size: {50, 50}}
+      end
 
-    tick = try do
-      Modus.Simulation.Ticker.current_tick()
-    catch
-      _, _ -> 0
-    end
+    tick =
+      try do
+        Modus.Simulation.Ticker.current_tick()
+      catch
+        _, _ -> 0
+      end
 
-    {gx, gy} = case world_state do
-      %{grid_size: {x, y}} -> {x, y}
-      _ -> {50, 50}
-    end
+    {gx, gy} =
+      case world_state do
+        %{grid_size: {x, y}} -> {x, y}
+        _ -> {50, 50}
+      end
 
-    config = try do
-      %{
-        template: to_string(world_state.config.template),
-        danger_level: to_string(world_state.config.danger_level),
-        resource_abundance: to_string(world_state.config.resource_abundance),
-        seed: world_state.config[:seed] || world_state.config.seed,
-        grid_size: %{x: gx, y: gy}
-      }
-    catch
-      _, _ -> %{template: "village", danger_level: "normal", resource_abundance: "medium", seed: 42, grid_size: %{x: gx, y: gy}}
-    end
+    config =
+      try do
+        %{
+          template: to_string(world_state.config.template),
+          danger_level: to_string(world_state.config.danger_level),
+          resource_abundance: to_string(world_state.config.resource_abundance),
+          seed: world_state.config[:seed] || world_state.config.seed,
+          grid_size: %{x: gx, y: gy}
+        }
+      catch
+        _, _ ->
+          %{
+            template: "village",
+            danger_level: "normal",
+            resource_abundance: "medium",
+            seed: 42,
+            grid_size: %{x: gx, y: gy}
+          }
+      end
 
     agents = collect_agents()
-    buildings = try do Modus.Simulation.Building.serialize_all() catch _, _ -> [] end
-    wildlife = try do collect_wildlife() catch _, _ -> [] end
-    economy = try do collect_economy() catch _, _ -> %{} end
-    history = try do Modus.Simulation.WorldHistory.export_chronicle(world_state.name) catch _, _ -> "" end
-    groups = try do collect_groups() catch _, _ -> [] end
+
+    buildings =
+      try do
+        Modus.Simulation.Building.serialize_all()
+      catch
+        _, _ -> []
+      end
+
+    wildlife =
+      try do
+        collect_wildlife()
+      catch
+        _, _ -> []
+      end
+
+    economy =
+      try do
+        collect_economy()
+      catch
+        _, _ -> %{}
+      end
+
+    history =
+      try do
+        Modus.Simulation.WorldHistory.export_chronicle(world_state.name)
+      catch
+        _, _ -> ""
+      end
+
+    groups =
+      try do
+        collect_groups()
+      catch
+        _, _ -> []
+      end
 
     %{
       modus_version: "3.7.0",
@@ -293,12 +352,17 @@ defmodule Modus.Persistence.SaveManager do
     |> Enum.reduce([], fn {_id, pid}, acc ->
       try do
         state = GenServer.call(pid, :get_state, 2_000)
+
         agent = %{
           id: state.id,
           name: state.name,
           position: %{x: elem(state.position, 0), y: elem(state.position, 1)},
           occupation: to_string(state.occupation),
-          personality: (if is_struct(state.personality), do: Map.from_struct(state.personality), else: state.personality)
+          personality:
+            if(is_struct(state.personality),
+              do: Map.from_struct(state.personality),
+              else: state.personality
+            )
             |> Map.new(fn {k, v} -> {k, ensure_float(v)} end),
           needs: %{
             hunger: ensure_float(state.needs.hunger),
@@ -313,6 +377,7 @@ defmodule Modus.Persistence.SaveManager do
           age: state.age,
           inventory: state.inventory || %{}
         }
+
         [agent | acc]
       catch
         :exit, _ -> acc
@@ -372,7 +437,9 @@ defmodule Modus.Persistence.SaveManager do
         {:ok, info} ->
           Logger.info("State restored: #{info.name} (#{info.agents} agents)")
           {:ok, info}
-        {:error, _} = err -> err
+
+        {:error, _} = err ->
+          err
       end
     catch
       kind, reason ->
@@ -394,6 +461,7 @@ defmodule Modus.Persistence.SaveManager do
       {:ok, compressed} ->
         json = :zlib.gunzip(compressed)
         Jason.decode(json)
+
       {:error, reason} ->
         {:error, "Read failed: #{inspect(reason)}"}
     end
@@ -427,5 +495,6 @@ defmodule Modus.Persistence.SaveManager do
       %{agent_id: id, type: to_string(type), strength: ensure_float(strength)}
     end)
   end
+
   defp serialize_relationships(_), do: []
 end

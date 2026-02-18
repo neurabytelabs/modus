@@ -63,7 +63,9 @@ defmodule Modus.Persistence.WorldExport do
   @doc "Export world as base64-encoded string for URL sharing."
   def export_base64 do
     case export() do
-      {:error, _} = err -> err
+      {:error, _} = err ->
+        err
+
       data ->
         json = Jason.encode!(data)
         compressed = :zlib.compress(json)
@@ -75,12 +77,13 @@ defmodule Modus.Persistence.WorldExport do
   def import_world(data) when is_map(data) do
     with :ok <- validate_import(data),
          :ok <- do_import(data) do
-      {:ok, %{
-        name: get_in(data, ["world", "name"]) || "Imported World",
-        agents: length(data["agents"] || []),
-        buildings: length(data["buildings"] || []),
-        tick: get_in(data, ["world", "tick"]) || 0
-      }}
+      {:ok,
+       %{
+         name: get_in(data, ["world", "name"]) || "Imported World",
+         agents: length(data["agents"] || []),
+         buildings: length(data["buildings"] || []),
+         tick: get_in(data, ["world", "tick"]) || 0
+       }}
     end
   end
 
@@ -109,12 +112,16 @@ defmodule Modus.Persistence.WorldExport do
     cond do
       !is_map(data) ->
         {:error, "Data must be a JSON object"}
+
       !is_map(data["world"]) ->
         {:error, "Missing 'world' section"}
+
       !is_map(get_in(data, ["world", "config"])) ->
         {:error, "Missing 'world.config' section"}
+
       !is_list(data["agents"]) && data["agents"] != nil ->
         {:error, "'agents' must be an array"}
+
       true ->
         :ok
     end
@@ -139,14 +146,15 @@ defmodule Modus.Persistence.WorldExport do
       grid_x = get_in(config, ["grid_size", "x"]) || 100
       grid_y = get_in(config, ["grid_size", "y"]) || 100
 
-      world = World.new(
-        world_data["name"] || "Imported World",
-        template: template,
-        danger_level: danger,
-        resource_abundance: abundance,
-        seed: config["seed"] || :rand.uniform(1_000_000),
-        grid_size: {grid_x, grid_y}
-      )
+      world =
+        World.new(
+          world_data["name"] || "Imported World",
+          template: template,
+          danger_level: danger,
+          resource_abundance: abundance,
+          seed: config["seed"] || :rand.uniform(1_000_000),
+          grid_size: {grid_x, grid_y}
+        )
 
       {:ok, _pid} = World.start_link(world)
 
@@ -184,9 +192,14 @@ defmodule Modus.Persistence.WorldExport do
           [{{^x, ^y}, %{terrain: terrain} = cell}] ->
             nodes = Map.get(cell, :resource_nodes, [])
             entry = %{x: x, y: y, t: to_string(terrain)}
-            entry = if nodes != [], do: Map.put(entry, :r, Enum.map(nodes, &to_string/1)), else: entry
+
+            entry =
+              if nodes != [], do: Map.put(entry, :r, Enum.map(nodes, &to_string/1)), else: entry
+
             [entry | acc]
-          _ -> acc
+
+          _ ->
+            acc
         end
     end
   end
@@ -197,6 +210,7 @@ defmodule Modus.Persistence.WorldExport do
     |> Enum.reduce([], fn {_id, pid}, acc ->
       try do
         state = GenServer.call(pid, :get_state, 2_000)
+
         agent_map = %{
           id: state.id,
           name: state.name,
@@ -224,6 +238,7 @@ defmodule Modus.Persistence.WorldExport do
           age: state.age,
           inventory: state.inventory || %{}
         }
+
         [agent_map | acc]
       catch
         :exit, _ -> acc
@@ -273,11 +288,13 @@ defmodule Modus.Persistence.WorldExport do
   # ── Import Helpers ─────────────────────────────────────────
 
   defp apply_terrain(nil), do: :ok
+
   defp apply_terrain(terrain) when is_list(terrain) do
     for tile <- terrain do
       x = tile["x"]
       y = tile["y"]
       t = tile["t"]
+
       if x && y && t do
         try do
           World.paint_terrain({x, y}, String.to_existing_atom(t))
@@ -287,7 +304,7 @@ defmodule Modus.Persistence.WorldExport do
       end
 
       # Restore resource nodes
-      for node <- (tile["r"] || []) do
+      for node <- tile["r"] || [] do
         try do
           World.place_resource_node({x, y}, String.to_existing_atom(node))
         catch
@@ -295,21 +312,24 @@ defmodule Modus.Persistence.WorldExport do
         end
       end
     end
+
     :ok
   end
+
   defp apply_terrain(_), do: :ok
 
   defp restore_agents(agents_data) do
     Enum.reduce(agents_data, [], fn data, acc ->
       try do
         agent = %Agent{
-          id: data["id"] || (:crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)),
+          id: data["id"] || :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower),
           name: data["name"] || "Unknown",
           position: {data["position"]["x"] || 25, data["position"]["y"] || 25},
           occupation: safe_atom(data["occupation"], :explorer),
           personality: %{
             openness: get_in(data, ["personality", "openness"]) || :rand.uniform(),
-            conscientiousness: get_in(data, ["personality", "conscientiousness"]) || :rand.uniform(),
+            conscientiousness:
+              get_in(data, ["personality", "conscientiousness"]) || :rand.uniform(),
             extraversion: get_in(data, ["personality", "extraversion"]) || :rand.uniform(),
             agreeableness: get_in(data, ["personality", "agreeableness"]) || :rand.uniform(),
             neuroticism: get_in(data, ["personality", "neuroticism"]) || :rand.uniform()
@@ -341,6 +361,7 @@ defmodule Modus.Persistence.WorldExport do
 
   defp restore_buildings(buildings) when is_list(buildings) do
     tick = if Process.whereis(Ticker), do: Ticker.current_tick(), else: 0
+
     for b <- buildings do
       try do
         type = safe_atom(b["type"] || b[:type], :hut)
@@ -352,20 +373,49 @@ defmodule Modus.Persistence.WorldExport do
       end
     end
   end
+
   defp restore_buildings(_), do: :ok
 
   defp restore_rules(nil), do: :ok
+
   defp restore_rules(rules) when is_map(rules) do
     changes = %{}
-    changes = if rules["time_speed"], do: Map.put(changes, :time_speed, ensure_float(rules["time_speed"])), else: changes
-    changes = if rules["resource_abundance"], do: Map.put(changes, :resource_abundance, safe_atom(rules["resource_abundance"], :medium)), else: changes
-    changes = if rules["danger_level"], do: Map.put(changes, :danger_level, safe_atom(rules["danger_level"], :normal)), else: changes
-    changes = if rules["social_tendency"], do: Map.put(changes, :social_tendency, ensure_float(rules["social_tendency"])), else: changes
-    changes = if rules["birth_rate"], do: Map.put(changes, :birth_rate, ensure_float(rules["birth_rate"])), else: changes
-    changes = if rules["building_speed"], do: Map.put(changes, :building_speed, ensure_float(rules["building_speed"])), else: changes
+
+    changes =
+      if rules["time_speed"],
+        do: Map.put(changes, :time_speed, ensure_float(rules["time_speed"])),
+        else: changes
+
+    changes =
+      if rules["resource_abundance"],
+        do:
+          Map.put(changes, :resource_abundance, safe_atom(rules["resource_abundance"], :medium)),
+        else: changes
+
+    changes =
+      if rules["danger_level"],
+        do: Map.put(changes, :danger_level, safe_atom(rules["danger_level"], :normal)),
+        else: changes
+
+    changes =
+      if rules["social_tendency"],
+        do: Map.put(changes, :social_tendency, ensure_float(rules["social_tendency"])),
+        else: changes
+
+    changes =
+      if rules["birth_rate"],
+        do: Map.put(changes, :birth_rate, ensure_float(rules["birth_rate"])),
+        else: changes
+
+    changes =
+      if rules["building_speed"],
+        do: Map.put(changes, :building_speed, ensure_float(rules["building_speed"])),
+        else: changes
+
     if map_size(changes) > 0, do: RulesEngine.update(changes)
     :ok
   end
+
   defp restore_rules(_), do: :ok
 
   # ── Shared Helpers ─────────────────────────────────────────
@@ -375,14 +425,21 @@ defmodule Modus.Persistence.WorldExport do
       %{agent_id: id, type: to_string(type), strength: ensure_float(strength)}
     end)
   end
+
   defp serialize_relationships(_), do: []
 
   defp deserialize_relationships(nil), do: %{}
+
   defp deserialize_relationships(rels) when is_list(rels) do
     Enum.reduce(rels, %{}, fn rel, acc ->
-      Map.put(acc, rel["agent_id"], {safe_atom(rel["type"], :acquaintance), rel["strength"] || 0.0})
+      Map.put(
+        acc,
+        rel["agent_id"],
+        {safe_atom(rel["type"], :acquaintance), rel["strength"] || 0.0}
+      )
     end)
   end
+
   defp deserialize_relationships(_), do: %{}
 
   @valid_atoms ~w(village desert island arctic forest grassland normal easy hard peaceful medium scarce abundant
@@ -396,12 +453,14 @@ defmodule Modus.Persistence.WorldExport do
     hut house market well watchtower)a
 
   defp safe_atom(nil, default), do: default
+
   defp safe_atom(val, default) when is_binary(val) do
     atom = String.to_atom(val)
     if atom in @valid_atoms, do: atom, else: default
   rescue
     _ -> default
   end
+
   defp safe_atom(val, _default) when is_atom(val), do: val
   defp safe_atom(_, default), do: default
 end

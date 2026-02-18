@@ -16,6 +16,7 @@ defmodule Modus.Performance.SpatialIndex do
     if :ets.whereis(@table) == :undefined do
       :ets.new(@table, [:bag, :public, :named_table, read_concurrency: true])
     end
+
     :ok
   end
 
@@ -31,7 +32,9 @@ defmodule Modus.Performance.SpatialIndex do
       {id, {x, y, true}} ->
         cell = cell_key(x, y)
         :ets.insert(@table, {cell, id})
-      _ -> :ok
+
+      _ ->
+        :ok
     end)
 
     :ok

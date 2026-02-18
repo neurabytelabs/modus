@@ -62,7 +62,13 @@ defmodule Modus.Simulation.Seasons do
       growth_modifier: 0.3,
       tint: 0xCCDDFF,
       tint_alpha: 0.12,
-      terrain_shift: %{grass: 0xC8D8D0, forest: 0x5A7A6A, farm: 0xAABBA0, mountain: 0xBBBBCC, flowers: 0xDDDDEE},
+      terrain_shift: %{
+        grass: 0xC8D8D0,
+        forest: 0x5A7A6A,
+        farm: 0xAABBA0,
+        mountain: 0xBBBBCC,
+        flowers: 0xDDDDEE
+      },
       mood_effect: :sadness,
       mood_delta: -0.08,
       hunger_rate: 1.5,
@@ -132,21 +138,24 @@ defmodule Modus.Simulation.Seasons do
 
   def handle_call(:serialize, _from, state) do
     config = Map.fetch!(@season_config, state.season)
-    terrain_shift = config.terrain_shift
+
+    terrain_shift =
+      config.terrain_shift
       |> Enum.map(fn {k, v} -> {Atom.to_string(k), v} end)
       |> Enum.into(%{})
 
-    {:reply, %{
-      season: Atom.to_string(state.season),
-      season_name: config.name,
-      emoji: config.emoji,
-      year: state.year,
-      progress: Float.round(state.season_tick / @season_length, 4),
-      tint: config.tint,
-      tint_alpha: config.tint_alpha,
-      terrain_shift: terrain_shift,
-      growth_modifier: config.growth_modifier
-    }, state}
+    {:reply,
+     %{
+       season: Atom.to_string(state.season),
+       season_name: config.name,
+       emoji: config.emoji,
+       year: state.year,
+       progress: Float.round(state.season_tick / @season_length, 4),
+       tint: config.tint,
+       tint_alpha: config.tint_alpha,
+       terrain_shift: terrain_shift,
+       growth_modifier: config.growth_modifier
+     }, state}
   end
 
   @impl true
@@ -161,11 +170,12 @@ defmodule Modus.Simulation.Seasons do
       next_season = Enum.at(@seasons, next_idx)
       new_year = if next_season == :spring, do: state.year + 1, else: state.year
 
-      new_state = %{state |
-        season: next_season,
-        season_tick: 0,
-        year: new_year,
-        total_ticks: new_total
+      new_state = %{
+        state
+        | season: next_season,
+          season_tick: 0,
+          year: new_year,
+          total_ticks: new_total
       }
 
       config = Map.fetch!(@season_config, next_season)

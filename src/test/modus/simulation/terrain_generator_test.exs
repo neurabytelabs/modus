@@ -179,6 +179,7 @@ defmodule Modus.Simulation.TerrainGeneratorTest do
 
     test "plains is walkable" do
       TerrainGenerator.generate(@width, @height, @seed)
+
       plains_pos =
         Enum.find(for(x <- 0..(@width - 1), y <- 0..(@height - 1), do: {x, y}), fn {x, y} ->
           TerrainGenerator.biome_at(x, y) == :plains

@@ -63,7 +63,8 @@ defmodule Modus.Mind.LearningTest do
 
     test "efficiency increases with level", %{agent_id: agent_id} do
       Learning.init_skills(agent_id)
-      Learning.add_xp(agent_id, :farming, 500.0)  # level 3
+      # level 3
+      Learning.add_xp(agent_id, :farming, 500.0)
       assert Learning.efficiency(agent_id, :farming) == 1.6
     end
   end

@@ -12,12 +12,19 @@ defmodule Modus.Protocol.InformationSharing do
   defp ensure_float(val) when is_integer(val), do: val * 1.0
   defp ensure_float(_), do: 0.0
 
-  @knowledge_types [:resource_location, :danger_zone, :building_location, :wildlife_sighting, :safe_area]
+  @knowledge_types [
+    :resource_location,
+    :danger_zone,
+    :building_location,
+    :wildlife_sighting,
+    :safe_area
+  ]
 
   def init do
     if :ets.whereis(@table) == :undefined do
       :ets.new(@table, [:set, :public, :named_table, read_concurrency: true])
     end
+
     :ok
   end
 
@@ -25,6 +32,7 @@ defmodule Modus.Protocol.InformationSharing do
   @spec record_knowledge(String.t(), atom(), {integer(), integer()}, map()) :: :ok
   def record_knowledge(agent_id, type, position, metadata \\ %{}) when type in @knowledge_types do
     init()
+
     entry = %{
       type: type,
       position: position,
@@ -34,6 +42,7 @@ defmodule Modus.Protocol.InformationSharing do
       tick_observed: Map.get(metadata, :tick, 0),
       timestamp: System.system_time(:second)
     }
+
     existing = get_knowledge(agent_id)
     # Deduplicate by type+position
     filtered = Enum.reject(existing, fn k -> k.type == type and k.position == position end)
@@ -50,33 +59,42 @@ defmodule Modus.Protocol.InformationSharing do
     target_knowledge = get_knowledge(to_id)
 
     # Only share knowledge the target doesn't already have (better version of)
-    new_items = source_knowledge
-    |> Enum.filter(fn k ->
-      existing = Enum.find(target_knowledge, fn tk ->
-        tk.type == k.type and tk.position == k.position
+    new_items =
+      source_knowledge
+      |> Enum.filter(fn k ->
+        existing =
+          Enum.find(target_knowledge, fn tk ->
+            tk.type == k.type and tk.position == k.position
+          end)
+
+        # Share if target doesn't have it or source has higher accuracy
+        is_nil(existing) or existing.accuracy < k.accuracy * degrade_factor(trust_level)
       end)
-      # Share if target doesn't have it or source has higher accuracy
-      is_nil(existing) or (existing.accuracy < k.accuracy * degrade_factor(trust_level))
-    end)
-    |> Enum.map(fn k ->
-      %{k |
-        source: :shared,
-        accuracy: min(1.0, ensure_float(k.accuracy) * degrade_factor(trust_level))
-      }
-    end)
-    |> Enum.take(5)  # Max 5 items per sharing event
+      |> Enum.map(fn k ->
+        %{
+          k
+          | source: :shared,
+            accuracy: min(1.0, ensure_float(k.accuracy) * degrade_factor(trust_level))
+        }
+      end)
+      # Max 5 items per sharing event
+      |> Enum.take(5)
 
     if new_items != [] do
       existing_target = get_knowledge(to_id)
       # Merge: replace existing with better accuracy, add new
-      merged = Enum.reduce(new_items, existing_target, fn item, acc ->
-        idx = Enum.find_index(acc, fn k -> k.type == item.type and k.position == item.position end)
-        if idx do
-          List.replace_at(acc, idx, item)
-        else
-          [item | acc]
-        end
-      end)
+      merged =
+        Enum.reduce(new_items, existing_target, fn item, acc ->
+          idx =
+            Enum.find_index(acc, fn k -> k.type == item.type and k.position == item.position end)
+
+          if idx do
+            List.replace_at(acc, idx, item)
+          else
+            [item | acc]
+          end
+        end)
+
       updated = Enum.take(merged, @max_knowledge)
       :ets.insert(@table, {to_id, updated})
     end
@@ -88,6 +106,7 @@ defmodule Modus.Protocol.InformationSharing do
   @spec get_knowledge(String.t()) :: [map()]
   def get_knowledge(agent_id) do
     init()
+
     case :ets.lookup(@table, agent_id) do
       [{_, knowledge}] -> knowledge
       [] -> []
@@ -104,8 +123,11 @@ defmodule Modus.Protocol.InformationSharing do
   @spec format_for_context(String.t()) :: String.t()
   def format_for_context(agent_id) do
     knowledge = get_knowledge(agent_id) |> Enum.take(10)
+
     case knowledge do
-      [] -> ""
+      [] ->
+        ""
+
       items ->
         items
         |> Enum.map(fn k ->

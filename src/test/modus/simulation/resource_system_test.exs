@@ -30,6 +30,7 @@ defmodule Modus.Simulation.ResourceSystemTest do
 
   defp find_cell_with_terrain(world_state, terrain) do
     {max_x, max_y} = world_state.grid_size
+
     Enum.find_value(0..(max_x - 1), fn x ->
       Enum.find_value(0..(max_y - 1), fn y ->
         case :ets.lookup(world_state.grid_table, {x, y}) do
@@ -42,12 +43,15 @@ defmodule Modus.Simulation.ResourceSystemTest do
 
   defp find_cell_with_resource(world_state, resource_type) do
     {max_x, max_y} = world_state.grid_size
+
     Enum.find_value(0..(max_x - 1), fn x ->
       Enum.find_value(0..(max_y - 1), fn y ->
         case :ets.lookup(world_state.grid_table, {x, y}) do
           [{{^x, ^y}, %{resources: res}}] when is_map(res) ->
             if Map.get(res, resource_type, 0) > 0, do: {x, y}, else: nil
-          _ -> nil
+
+          _ ->
+            nil
         end
       end)
     end)
@@ -55,6 +59,7 @@ defmodule Modus.Simulation.ResourceSystemTest do
 
   test "gather depletes resources from a cell", %{world_state: ws} do
     pos = find_cell_with_resource(ws, :food)
+
     if pos do
       [{{_, _}, cell}] = :ets.lookup(ws.grid_table, pos)
       initial_food = cell.resources.food
@@ -67,6 +72,7 @@ defmodule Modus.Simulation.ResourceSystemTest do
 
   test "gather returns only available amount", %{world_state: ws} do
     pos = find_cell_with_resource(ws, :food)
+
     if pos do
       [{{_, _}, cell}] = :ets.lookup(ws.grid_table, pos)
       initial = cell.resources.food
@@ -78,6 +84,7 @@ defmodule Modus.Simulation.ResourceSystemTest do
 
   test "forest cells have wood and food resources", %{world_state: ws} do
     pos = find_cell_with_terrain(ws, :forest)
+
     if pos do
       [{{_, _}, cell}] = :ets.lookup(ws.grid_table, pos)
       assert is_map(cell.resources)
@@ -88,6 +95,7 @@ defmodule Modus.Simulation.ResourceSystemTest do
 
   test "gather from non-existent resource returns 0", %{world_state: ws} do
     pos = find_cell_with_terrain(ws, :grass)
+
     if pos do
       # Grass typically has no stone
       {:ok, gathered} = ResourceSystem.gather(pos, :stone, 1.0)

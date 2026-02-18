@@ -5,12 +5,20 @@ defmodule Modus.Protocol.InformationSharingTest do
 
   setup do
     InformationSharing.init()
-    try do :ets.delete_all_objects(:shared_knowledge) catch _, _ -> :ok end
+
+    try do
+      :ets.delete_all_objects(:shared_knowledge)
+    catch
+      _, _ -> :ok
+    end
+
     :ok
   end
 
   test "record_knowledge stores spatial knowledge" do
-    :ok = InformationSharing.record_knowledge("a1", :resource_location, {10, 20}, %{resource: :wood})
+    :ok =
+      InformationSharing.record_knowledge("a1", :resource_location, {10, 20}, %{resource: :wood})
+
     knowledge = InformationSharing.get_knowledge("a1")
     assert length(knowledge) == 1
     assert hd(knowledge).type == :resource_location

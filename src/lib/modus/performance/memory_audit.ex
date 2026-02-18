@@ -10,17 +10,20 @@ defmodule Modus.Performance.MemoryAudit do
     case Registry.lookup(Modus.AgentRegistry, agent_id) do
       [{pid, _}] ->
         info = Process.info(pid, [:memory, :heap_size, :stack_size, :message_queue_len])
+
         if info do
-          {:ok, %{
-            agent_id: agent_id,
-            memory_bytes: Keyword.get(info, :memory, 0),
-            heap_words: Keyword.get(info, :heap_size, 0),
-            stack_words: Keyword.get(info, :stack_size, 0),
-            message_queue: Keyword.get(info, :message_queue_len, 0)
-          }}
+          {:ok,
+           %{
+             agent_id: agent_id,
+             memory_bytes: Keyword.get(info, :memory, 0),
+             heap_words: Keyword.get(info, :heap_size, 0),
+             stack_words: Keyword.get(info, :stack_size, 0),
+             message_queue: Keyword.get(info, :message_queue_len, 0)
+           }}
         else
           {:error, :not_found}
         end
+
       _ ->
         {:error, :not_found}
     end
@@ -33,6 +36,7 @@ defmodule Modus.Performance.MemoryAudit do
     |> Registry.select([{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}])
     |> Enum.map(fn {id, pid} ->
       info = Process.info(pid, [:memory, :heap_size])
+
       %{
         agent_id: id,
         memory_bytes: (info && Keyword.get(info, :memory, 0)) || 0,
@@ -53,6 +57,7 @@ defmodule Modus.Performance.MemoryAudit do
     else
       memories = Enum.map(agents, & &1.memory_bytes)
       total = Enum.sum(memories)
+
       %{
         count: count,
         total_bytes: total,
@@ -71,6 +76,7 @@ defmodule Modus.Performance.MemoryAudit do
     |> Enum.map(fn table ->
       try do
         info = :ets.info(table)
+
         %{
           name: info[:name] || table,
           size: info[:size] || 0,
@@ -90,6 +96,7 @@ defmodule Modus.Performance.MemoryAudit do
   @spec system_report() :: map()
   def system_report do
     mem = :erlang.memory()
+
     %{
       total_bytes: mem[:total],
       processes_bytes: mem[:processes],

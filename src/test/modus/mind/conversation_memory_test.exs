@@ -20,9 +20,11 @@ defmodule Modus.Mind.ConversationMemoryTest do
   test "max entries cap at 10" do
     ConversationMemory.init()
     agent_id = "test_max_#{:rand.uniform(99999)}"
+
     for i <- 1..15 do
       ConversationMemory.record(agent_id, "Agent#{i}", [{"Agent#{i}", "Hi"}], i)
     end
+
     assert length(ConversationMemory.get_all(agent_id)) == 10
     ConversationMemory.clear(agent_id)
   end
@@ -38,9 +40,11 @@ defmodule Modus.Mind.ConversationMemoryTest do
   test "get_recent returns limited entries" do
     ConversationMemory.init()
     agent_id = "test_recent_#{:rand.uniform(99999)}"
+
     for i <- 1..5 do
       ConversationMemory.record(agent_id, "Agent#{i}", [{"Agent#{i}", "Hi"}], i)
     end
+
     assert length(ConversationMemory.get_recent(agent_id, 2)) == 2
     ConversationMemory.clear(agent_id)
   end

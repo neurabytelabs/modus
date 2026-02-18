@@ -34,9 +34,10 @@ defmodule Modus.Simulation.EventChainTest do
   describe "evaluate/3" do
     test "returns list of triggered chain events" do
       # Run many times to get at least some results (probabilistic)
-      results = for _ <- 1..100, reduce: [] do
-        acc -> acc ++ EventChain.evaluate(:drought, 100, 2)
-      end
+      results =
+        for _ <- 1..100, reduce: [] do
+          acc -> acc ++ EventChain.evaluate(:drought, 100, 2)
+        end
 
       # Should get at least some results over 100 trials
       assert length(results) > 0
@@ -57,6 +58,7 @@ defmodule Modus.Simulation.EventChainTest do
     test "severity is clamped between 1 and 3" do
       for _ <- 1..50 do
         results = EventChain.evaluate(:golden_age, 0, 3)
+
         for {_type, _tick, severity} <- results do
           assert severity >= 1 and severity <= 3
         end

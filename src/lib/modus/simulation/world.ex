@@ -110,6 +110,7 @@ defmodule Modus.Simulation.World do
   @doc "Place a resource node at a position, adding its resources to the cell."
   def place_resource_node({x, y}, node_type) do
     node_resources = Modus.Simulation.Resource.node_resources(node_type)
+
     case get_cell(__MODULE__, {x, y}) do
       {:ok, cell} ->
         merged = Map.merge(cell.resources, node_resources, fn _k, v1, v2 -> v1 + v2 end)
@@ -117,7 +118,9 @@ defmodule Modus.Simulation.World do
         nodes = Map.get(cell, :resource_nodes, [])
         new_nodes = [node_type | nodes] |> Enum.uniq()
         set_cell(__MODULE__, {x, y}, %{resources: merged, resource_nodes: new_nodes})
-      _ -> {:error, :out_of_bounds}
+
+      _ ->
+        {:error, :out_of_bounds}
     end
   end
 
@@ -225,7 +228,13 @@ defmodule Modus.Simulation.World do
     state = get_state(server)
     {max_x, max_y} = state.grid_size
 
-    lang = try do Modus.I18n.current_language() catch _, _ -> "en" end
+    lang =
+      try do
+        Modus.I18n.current_language()
+      catch
+        _, _ -> "en"
+      end
+
     names = Modus.I18n.names(lang)
 
     occupations = [:farmer, :builder, :explorer, :healer, :trader]
@@ -244,10 +253,13 @@ defmodule Modus.Simulation.World do
     x = :rand.uniform(max_x) - 1
     y = :rand.uniform(max_y) - 1
 
-    walkable = Modus.Simulation.TerrainGenerator.walkable?(x, y) and
-                not Modus.Simulation.WaterSystem.blocks_movement?(x, y)
+    walkable =
+      Modus.Simulation.TerrainGenerator.walkable?(x, y) and
+        not Modus.Simulation.WaterSystem.blocks_movement?(x, y)
+
     case :ets.lookup(table, {x, y}) do
-      [{{^x, ^y}, %{terrain: terrain}}] when terrain in [:grass, :forest, :desert, :swamp, :tundra] ->
+      [{{^x, ^y}, %{terrain: terrain}}]
+      when terrain in [:grass, :forest, :desert, :swamp, :tundra] ->
         if walkable, do: {x, y}, else: find_walkable_position(table, max_x, max_y)
 
       _ ->
@@ -326,6 +338,7 @@ defmodule Modus.Simulation.World do
     dx = x2 - x1
     dy = y2 - y1
     len_sq = dx * dx + dy * dy
+
     if len_sq == 0 do
       abs(px - x1) + abs(py - y1) <= tolerance
     else
@@ -362,10 +375,18 @@ defmodule Modus.Simulation.World do
       terrain =
         cond do
           # WaterSystem rivers/lakes take priority
-          WaterSystem.water?(x, y) -> :water
-          on_river?(x, y, seed, max_x, max_y) -> :water
-          on_road?(x, y, villages) -> :grass
-          near_village?(x, y, villages) -> :grass
+          WaterSystem.water?(x, y) ->
+            :water
+
+          on_river?(x, y, seed, max_x, max_y) ->
+            :water
+
+          on_road?(x, y, villages) ->
+            :grass
+
+          near_village?(x, y, villages) ->
+            :grass
+
           true ->
             case TerrainGenerator.biome_at(x, y) do
               nil -> :grass

@@ -46,6 +46,7 @@ defmodule Modus.Simulation.CraftingSystem do
   @spec skill_level(number()) :: atom()
   def skill_level(xp) when is_number(xp) do
     xp = ensure_float(xp)
+
     Enum.find_value(@skill_thresholds, :novice, fn {level, threshold} ->
       if xp >= threshold, do: level
     end)

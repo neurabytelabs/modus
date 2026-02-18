@@ -36,12 +36,14 @@ defmodule Modus.Simulation.AgentSupervisor do
   @doc "Terminate all agent processes."
   @spec terminate_all() :: :ok
   def terminate_all do
-    for {id, _} <- Registry.select(Modus.AgentRegistry, [{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}]) do
+    for {id, _} <-
+          Registry.select(Modus.AgentRegistry, [{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}]) do
       case Registry.lookup(Modus.AgentRegistry, id) do
         [{pid, _}] -> DynamicSupervisor.terminate_child(__MODULE__, pid)
         _ -> :ok
       end
     end
+
     :ok
   end
 

@@ -19,11 +19,12 @@ defmodule ModusWeb.UniverseLive do
     end
 
     # Load saved worlds for dashboard
-    saved_worlds = try do
-      Modus.Persistence.WorldPersistence.list()
-    catch
-      _, _ -> []
-    end
+    saved_worlds =
+      try do
+        Modus.Persistence.WorldPersistence.list()
+      catch
+        _, _ -> []
+      end
 
     # Always start at landing page
     initial_phase = :landing
@@ -57,9 +58,18 @@ defmodule ModusWeb.UniverseLive do
        chat_filter: "all",
        # Settings
        settings_open: false,
-       settings_provider: if(System.get_env("ANTIGRAVITY_API_KEY"), do: "antigravity", else: "ollama"),
-       settings_model: if(System.get_env("ANTIGRAVITY_API_KEY"), do: "gemini-3-flash", else: "llama3.2:3b-instruct-q4_K_M"),
-       settings_base_url: if(System.get_env("ANTIGRAVITY_API_KEY"), do: "http://host.docker.internal:8045", else: "http://modus-llm:11434"),
+       settings_provider:
+         if(System.get_env("ANTIGRAVITY_API_KEY"), do: "antigravity", else: "ollama"),
+       settings_model:
+         if(System.get_env("ANTIGRAVITY_API_KEY"),
+           do: "gemini-3-flash",
+           else: "llama3.2:3b-instruct-q4_K_M"
+         ),
+       settings_base_url:
+         if(System.get_env("ANTIGRAVITY_API_KEY"),
+           do: "http://host.docker.internal:8045",
+           else: "http://modus-llm:11434"
+         ),
        settings_api_key: System.get_env("ANTIGRAVITY_API_KEY") || "",
        settings_test_result: nil,
        settings_saved: false,
@@ -114,7 +124,15 @@ defmodule ModusWeb.UniverseLive do
        import_status: nil,
        stats_open: false,
        population_history: [],
-       obs_world: %{population: 0, buildings: 0, trades: 0, births: 0, deaths: 0, avg_happiness: 0.0, avg_conatus: 0.0},
+       obs_world: %{
+         population: 0,
+         buildings: 0,
+         trades: 0,
+         births: 0,
+         deaths: 0,
+         avg_happiness: 0.0,
+         avg_conatus: 0.0
+       },
        obs_buildings: [],
        obs_leaderboards: %{most_social: [], wealthiest: [], oldest: [], happiest: []},
        obs_net_nodes: [],
@@ -154,10 +172,26 @@ defmodule ModusWeb.UniverseLive do
        zen_mode: false,
        # LLM Metrics
        llm_metrics_open: false,
-       llm_metrics: %{calls_this_tick: 0, total_calls: 0, cache_hit_rate: 0.0, avg_latency_ms: 0, active_model: "none", sparkline: []},
+       llm_metrics: %{
+         calls_this_tick: 0,
+         total_calls: 0,
+         cache_hit_rate: 0.0,
+         avg_latency_ms: 0,
+         active_model: "none",
+         sparkline: []
+       },
        # Performance Monitor
        perf_monitor_open: false,
-       perf_metrics: %{agent_count: 0, tick: 0, tick_state: :paused, memory_total_mb: 0.0, memory_processes_mb: 0.0, memory_ets_mb: 0.0, cpu_percent: 0.0, health: :healthy},
+       perf_metrics: %{
+         agent_count: 0,
+         tick: 0,
+         tick_state: :paused,
+         memory_total_mb: 0.0,
+         memory_processes_mb: 0.0,
+         memory_ets_mb: 0.0,
+         cpu_percent: 0.0,
+         health: :healthy
+       },
        # Eventus — Event Notification System
        event_timeline: [],
        event_timeline_open: false,
@@ -204,29 +238,45 @@ defmodule ModusWeb.UniverseLive do
     send(self(), :toggle_perf_monitor)
     {:noreply, socket}
   end
+
   def handle_event("keypress", %{"key" => "P"}, socket) do
     send(self(), :toggle_perf_monitor)
     {:noreply, socket}
   end
+
   def handle_event("keypress", _params, socket), do: {:noreply, socket}
 
   def handle_event("toggle_perf_monitor", _params, socket) do
     open = !socket.assigns.perf_monitor_open
-    metrics = if open do
-      try do Modus.Performance.Monitor.metrics() catch _, _ -> socket.assigns.perf_metrics end
-    else
-      socket.assigns.perf_metrics
-    end
+
+    metrics =
+      if open do
+        try do
+          Modus.Performance.Monitor.metrics()
+        catch
+          _, _ -> socket.assigns.perf_metrics
+        end
+      else
+        socket.assigns.perf_metrics
+      end
+
     {:noreply, assign(socket, perf_monitor_open: open, perf_metrics: metrics)}
   end
 
   def handle_event("toggle_llm_metrics", _params, socket) do
     open = !socket.assigns.llm_metrics_open
-    metrics = if open do
-      try do Modus.Intelligence.LlmMetrics.get_metrics() catch _, _ -> socket.assigns.llm_metrics end
-    else
-      socket.assigns.llm_metrics
-    end
+
+    metrics =
+      if open do
+        try do
+          Modus.Intelligence.LlmMetrics.get_metrics()
+        catch
+          _, _ -> socket.assigns.llm_metrics
+        end
+      else
+        socket.assigns.llm_metrics
+      end
+
     {:noreply, assign(socket, llm_metrics_open: open, llm_metrics: metrics)}
   end
 
@@ -253,13 +303,16 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("dashboard_load", %{"id" => id_str}, socket) do
     {id, _} = Integer.parse(id_str)
+
     case Modus.Persistence.WorldPersistence.load(id) do
       {:ok, info} ->
         Modus.Simulation.Ticker.run()
+
         {:noreply,
          socket
          |> assign(phase: :simulation, status: :running)
          |> push_event("world_loaded", %{agents: info.agents, tick: info.tick})}
+
       {:error, reason} ->
         {:noreply, assign(socket, save_load_status: "❌ #{reason}")}
     end
@@ -280,11 +333,19 @@ defmodule ModusWeb.UniverseLive do
     worlds = Modus.Persistence.WorldPersistence.list()
     sorted = sort_worlds(worlds, socket.assigns.dashboard_sort)
     phase = if sorted == [], do: :onboarding, else: :dashboard
-    {:noreply, assign(socket, dashboard_worlds: sorted, dashboard_delete_confirm: nil, phase: phase)}
+
+    {:noreply,
+     assign(socket, dashboard_worlds: sorted, dashboard_delete_confirm: nil, phase: phase)}
   end
 
   def handle_event("dashboard_back", _params, socket) do
-    worlds = try do Modus.Persistence.WorldPersistence.list() catch _, _ -> [] end
+    worlds =
+      try do
+        Modus.Persistence.WorldPersistence.list()
+      catch
+        _, _ -> []
+      end
+
     sorted = sort_worlds(worlds, socket.assigns.dashboard_sort)
     phase = if sorted == [], do: :onboarding, else: :dashboard
     {:noreply, assign(socket, phase: phase, dashboard_worlds: sorted)}
@@ -334,7 +395,9 @@ defmodule ModusWeb.UniverseLive do
     require Logger
     alias Modus.Simulation.{World, Ticker, AgentSupervisor}
 
-    Logger.info("MODUS launch_world: template=#{template} pop=#{pop} danger=#{danger} grid=#{grid_size}")
+    Logger.info(
+      "MODUS launch_world: template=#{template} pop=#{pop} danger=#{danger} grid=#{grid_size}"
+    )
 
     # Clean up if already running
     try do
@@ -357,14 +420,15 @@ defmodule ModusWeb.UniverseLive do
       grid_size: {grid_size, grid_size}
     ]
 
-    opts = if seed_str != "" do
-      case Integer.parse(seed_str) do
-        {seed_int, _} -> Keyword.put(opts, :seed, seed_int)
-        :error -> opts
+    opts =
+      if seed_str != "" do
+        case Integer.parse(seed_str) do
+          {seed_int, _} -> Keyword.put(opts, :seed, seed_int)
+          :error -> opts
+        end
+      else
+        opts
       end
-    else
-      opts
-    end
 
     world = World.new("Genesis", opts)
 
@@ -373,6 +437,7 @@ defmodule ModusWeb.UniverseLive do
         Logger.info("MODUS World started: #{inspect(pid)}")
         agents = World.spawn_initial_agents(max(2, min(pop, 50)))
         Logger.info("MODUS spawned #{length(agents)} agents")
+
       {:error, reason} ->
         Logger.error("MODUS World.start_link failed: #{inspect(reason)}")
     end
@@ -394,20 +459,32 @@ defmodule ModusWeb.UniverseLive do
     alias Modus.Simulation.{World, Ticker, AgentSupervisor}
     Logger.info("MODUS skip_onboarding")
 
-    try do AgentSupervisor.terminate_all() catch _, _ -> :ok end
+    try do
+      AgentSupervisor.terminate_all()
+    catch
+      _, _ -> :ok
+    end
+
     if Process.whereis(World) do
-      try do GenServer.stop(World) catch :exit, _ -> :ok end
+      try do
+        GenServer.stop(World)
+      catch
+        :exit, _ -> :ok
+      end
     end
 
     world = World.new("Genesis")
+
     case World.start_link(world) do
       {:ok, pid} ->
         Logger.info("MODUS World started: #{inspect(pid)}")
         agents = World.spawn_initial_agents(10)
         Logger.info("MODUS spawned #{length(agents)} agents")
+
       {:error, reason} ->
         Logger.error("MODUS World failed: #{inspect(reason)}")
     end
+
     Ticker.run()
 
     {:noreply, assign(socket, phase: :simulation, status: :running)}
@@ -428,7 +505,9 @@ defmodule ModusWeb.UniverseLive do
   def handle_event("select_agent", %{"agent" => agent_data}, socket) do
     require Logger
     Logger.info("MODUS select_agent received: #{inspect(agent_data["name"])}")
-    {:noreply, assign(socket, selected_agent: agent_data, chat_messages: [], mobile_panel: :agent)}
+
+    {:noreply,
+     assign(socket, selected_agent: agent_data, chat_messages: [], mobile_panel: :agent)}
   end
 
   def handle_event("deselect_agent", _params, socket) do
@@ -444,6 +523,7 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("add_goal", %{"type" => type}, socket) do
     agent_id = socket.assigns.selected_agent["id"]
+
     if agent_id do
       Modus.Mind.Goals.add_goal(agent_id, String.to_existing_atom(type))
       {:noreply, assign(socket, show_add_goal: false)}
@@ -454,21 +534,28 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("remove_goal", %{"goal-id" => goal_id}, socket) do
     agent_id = socket.assigns.selected_agent["id"]
+
     if agent_id do
       Modus.Mind.Goals.remove_goal(agent_id, goal_id)
     end
+
     {:noreply, socket}
   end
 
   def handle_event("open_chat", _params, socket), do: {:noreply, assign(socket, chat_open: true)}
-  def handle_event("close_chat", _params, socket), do: {:noreply, assign(socket, chat_open: false, chat_filter: "all")}
-  def handle_event("chat_filter", %{"topic" => topic}, socket), do: {:noreply, assign(socket, chat_filter: topic)}
+
+  def handle_event("close_chat", _params, socket),
+    do: {:noreply, assign(socket, chat_open: false, chat_filter: "all")}
+
+  def handle_event("chat_filter", %{"topic" => topic}, socket),
+    do: {:noreply, assign(socket, chat_filter: topic)}
 
   def handle_event("send_chat", %{"message" => msg}, socket) when msg != "" do
     require Logger
     agent_id = socket.assigns.selected_agent["id"]
     Logger.info("MODUS send_chat: agent_id=#{inspect(agent_id)} msg=#{inspect(msg)}")
     messages = socket.assigns.chat_messages ++ [%{role: "user", text: msg}]
+
     {:noreply,
      socket
      |> assign(chat_messages: messages, chat_loading: true)
@@ -477,12 +564,19 @@ defmodule ModusWeb.UniverseLive do
        message: msg
      })}
   end
+
   def handle_event("send_chat", _params, socket), do: {:noreply, socket}
 
   def handle_event("chat_response", %{"reply" => reply} = params, socket) do
-    agent_name = if socket.assigns.selected_agent, do: socket.assigns.selected_agent["name"], else: "Agent"
+    agent_name =
+      if socket.assigns.selected_agent, do: socket.assigns.selected_agent["name"], else: "Agent"
+
     topic = params["topic"] || "general"
-    messages = socket.assigns.chat_messages ++ [%{role: "agent", text: reply, name: agent_name, topic: topic}]
+
+    messages =
+      socket.assigns.chat_messages ++
+        [%{role: "agent", text: reply, name: agent_name, topic: topic}]
+
     {:noreply, assign(socket, chat_messages: messages, chat_loading: false)}
   end
 
@@ -497,75 +591,109 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("tick_update", params, socket) do
     # Refresh economy/lifecycle stats every tick update
-    eco = try do Modus.Simulation.Economy.stats() catch _, _ -> %{trades: 0} end
-    life = try do Modus.Simulation.Lifecycle.stats() catch _, _ -> %{births: 0, deaths: 0} end
+    eco =
+      try do
+        Modus.Simulation.Economy.stats()
+      catch
+        _, _ -> %{trades: 0}
+      end
+
+    life =
+      try do
+        Modus.Simulation.Lifecycle.stats()
+      catch
+        _, _ -> %{births: 0, deaths: 0}
+      end
 
     season_data = params["season"]
-    season_assigns = if season_data do
-      [
-        season_name: season_data["season_name"] || "Spring",
-        season_emoji: season_data["emoji"] || "🌸",
-        season_year: season_data["year"] || 1,
-        day_phase: params["day_phase"] || "day"
-      ]
-    else
-      []
-    end
+
+    season_assigns =
+      if season_data do
+        [
+          season_name: season_data["season_name"] || "Spring",
+          season_emoji: season_data["emoji"] || "🌸",
+          season_year: season_data["year"] || 1,
+          day_phase: params["day_phase"] || "day"
+        ]
+      else
+        []
+      end
 
     weather_data = params["weather"]
-    weather_assigns = if weather_data do
-      [
-        weather_name: weather_data["name"] || "Clear",
-        weather_emoji: weather_data["emoji"] || "☀️"
-      ]
-    else
-      []
-    end
+
+    weather_assigns =
+      if weather_data do
+        [
+          weather_name: weather_data["name"] || "Clear",
+          weather_emoji: weather_data["emoji"] || "☀️"
+        ]
+      else
+        []
+      end
 
     tick = params["tick"] || socket.assigns.tick
 
     # Auto-refresh observatory every 50 ticks when open
-    obs_assigns = if socket.assigns.stats_open and is_integer(tick) and rem(tick, 50) == 0 do
-      alias Modus.Simulation.Observatory
-      history = Observatory.population_history()
-      world = Observatory.world_stats()
-      [
-        population_history: history,
-        obs_world: world,
-        obs_buildings: Observatory.building_breakdown(),
-        obs_leaderboards: Observatory.leaderboards(),
-        obs_happiness: Observatory.happiness_timeline(history),
-        obs_trades: Observatory.trade_timeline(history)
-      ]
-    else
-      []
-    end
+    obs_assigns =
+      if socket.assigns.stats_open and is_integer(tick) and rem(tick, 50) == 0 do
+        alias Modus.Simulation.Observatory
+        history = Observatory.population_history()
+        world = Observatory.world_stats()
+
+        [
+          population_history: history,
+          obs_world: world,
+          obs_buildings: Observatory.building_breakdown(),
+          obs_leaderboards: Observatory.leaderboards(),
+          obs_happiness: Observatory.happiness_timeline(history),
+          obs_trades: Observatory.trade_timeline(history)
+        ]
+      else
+        []
+      end
 
     # Refresh perf monitor if open
-    perf_assigns = if socket.assigns.perf_monitor_open and is_integer(tick) and rem(tick, 10) == 0 do
-      metrics = try do Modus.Performance.Monitor.metrics() catch _, _ -> socket.assigns.perf_metrics end
-      [perf_metrics: metrics]
-    else
-      []
-    end
+    perf_assigns =
+      if socket.assigns.perf_monitor_open and is_integer(tick) and rem(tick, 10) == 0 do
+        metrics =
+          try do
+            Modus.Performance.Monitor.metrics()
+          catch
+            _, _ -> socket.assigns.perf_metrics
+          end
+
+        [perf_metrics: metrics]
+      else
+        []
+      end
 
     # Refresh LLM metrics if panel is open
-    llm_assigns = if socket.assigns.llm_metrics_open do
-      metrics = try do Modus.Intelligence.LlmMetrics.get_metrics() catch _, _ -> socket.assigns.llm_metrics end
-      [llm_metrics: metrics]
-    else
-      []
-    end
+    llm_assigns =
+      if socket.assigns.llm_metrics_open do
+        metrics =
+          try do
+            Modus.Intelligence.LlmMetrics.get_metrics()
+          catch
+            _, _ -> socket.assigns.llm_metrics
+          end
+
+        [llm_metrics: metrics]
+      else
+        []
+      end
 
     {:noreply,
-     assign(socket,
-       [{:tick, tick},
-        {:agent_count, params["agent_count"] || socket.assigns.agent_count},
-        {:time_of_day, params["time_of_day"] || socket.assigns.time_of_day},
-        {:trades_count, eco.trades},
-        {:births_count, life.births},
-        {:deaths_count, life.deaths}
-        | season_assigns ++ weather_assigns ++ obs_assigns ++ llm_assigns ++ perf_assigns]
+     assign(
+       socket,
+       [
+         {:tick, tick},
+         {:agent_count, params["agent_count"] || socket.assigns.agent_count},
+         {:time_of_day, params["time_of_day"] || socket.assigns.time_of_day},
+         {:trades_count, eco.trades},
+         {:births_count, life.births},
+         {:deaths_count, life.deaths}
+         | season_assigns ++ weather_assigns ++ obs_assigns ++ llm_assigns ++ perf_assigns
+       ]
      )}
   end
 
@@ -578,14 +706,16 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("open_settings", _params, socket) do
     config = Modus.Intelligence.LlmProvider.get_config()
-    {:noreply, assign(socket,
-      settings_open: true,
-      settings_provider: to_string(config.provider),
-      settings_model: config.model || "",
-      settings_base_url: config.base_url || "",
-      settings_api_key: config.api_key || "",
-      settings_test_result: nil
-    )}
+
+    {:noreply,
+     assign(socket,
+       settings_open: true,
+       settings_provider: to_string(config.provider),
+       settings_model: config.model || "",
+       settings_base_url: config.base_url || "",
+       settings_api_key: config.api_key || "",
+       settings_test_result: nil
+     )}
   end
 
   def handle_event("close_settings", _params, socket) do
@@ -599,50 +729,61 @@ defmodule ModusWeb.UniverseLive do
     # Only reset model/url when provider actually changes
     provider_changed = provider != socket.assigns.settings_provider
 
-    {base_url, model} = if provider_changed do
-      case provider do
-        "antigravity" -> {"http://host.docker.internal:8045", "gemini-3-flash"}
-        _ -> {"http://modus-llm:11434", "llama3.2:3b-instruct-q4_K_M"}
+    {base_url, model} =
+      if provider_changed do
+        case provider do
+          "antigravity" -> {"http://host.docker.internal:8045", "gemini-3-flash"}
+          _ -> {"http://modus-llm:11434", "llama3.2:3b-instruct-q4_K_M"}
+        end
+      else
+        {socket.assigns.settings_base_url, socket.assigns.settings_model}
       end
-    else
-      {socket.assigns.settings_base_url, socket.assigns.settings_model}
-    end
 
-    api_key = if provider_changed and provider == "antigravity" do
-      System.get_env("ANTIGRAVITY_API_KEY") || socket.assigns.settings_api_key
-    else
-      params["api_key"] || socket.assigns.settings_api_key
-    end
+    api_key =
+      if provider_changed and provider == "antigravity" do
+        System.get_env("ANTIGRAVITY_API_KEY") || socket.assigns.settings_api_key
+      else
+        params["api_key"] || socket.assigns.settings_api_key
+      end
 
-    selected_model = if provider_changed do
-      model
-    else
-      m = params["model"] || model
-      if m == "__custom__", do: "", else: m
-    end
+    selected_model =
+      if provider_changed do
+        model
+      else
+        m = params["model"] || model
+        if m == "__custom__", do: "", else: m
+      end
 
-    {:noreply, assign(socket,
-      settings_provider: provider,
-      settings_model: selected_model,
-      settings_base_url: params["base_url"] || base_url,
-      settings_api_key: api_key,
-      settings_test_result: nil
-    )}
+    {:noreply,
+     assign(socket,
+       settings_provider: provider,
+       settings_model: selected_model,
+       settings_base_url: params["base_url"] || base_url,
+       settings_api_key: api_key,
+       settings_test_result: nil
+     )}
   end
 
   def handle_event("save_settings", _params, socket) do
     require Logger
-    Logger.info("SAVE_SETTINGS provider=#{socket.assigns.settings_provider} model=#{socket.assigns.settings_model} url=#{socket.assigns.settings_base_url}")
-    provider = case socket.assigns.settings_provider do
-      "antigravity" -> :antigravity
-      _ -> :ollama
-    end
 
-    api_key = if provider == :antigravity and (socket.assigns.settings_api_key == nil or socket.assigns.settings_api_key == "") do
-      System.get_env("ANTIGRAVITY_API_KEY") || ""
-    else
-      socket.assigns.settings_api_key
-    end
+    Logger.info(
+      "SAVE_SETTINGS provider=#{socket.assigns.settings_provider} model=#{socket.assigns.settings_model} url=#{socket.assigns.settings_base_url}"
+    )
+
+    provider =
+      case socket.assigns.settings_provider do
+        "antigravity" -> :antigravity
+        _ -> :ollama
+      end
+
+    api_key =
+      if provider == :antigravity and
+           (socket.assigns.settings_api_key == nil or socket.assigns.settings_api_key == "") do
+        System.get_env("ANTIGRAVITY_API_KEY") || ""
+      else
+        socket.assigns.settings_api_key
+      end
 
     Modus.Intelligence.LlmProvider.set_config(%{
       provider: provider,
@@ -657,10 +798,11 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("test_llm", _params, socket) do
     # Save config first temporarily
-    provider = case socket.assigns.settings_provider do
-      "antigravity" -> :antigravity
-      _ -> :ollama
-    end
+    provider =
+      case socket.assigns.settings_provider do
+        "antigravity" -> :antigravity
+        _ -> :ollama
+      end
 
     Modus.Intelligence.LlmProvider.set_config(%{
       provider: provider,
@@ -671,11 +813,14 @@ defmodule ModusWeb.UniverseLive do
 
     # Run test async to show loading state
     pid = self()
+
     Task.start(fn ->
-      result = case Modus.Intelligence.LlmProvider.test_connection() do
-        :ok -> "ok"
-        {:error, reason} -> "error: #{inspect(reason)}"
-      end
+      result =
+        case Modus.Intelligence.LlmProvider.test_connection() do
+          :ok -> "ok"
+          {:error, reason} -> "error: #{inspect(reason)}"
+        end
+
       send(pid, {:test_llm_result, result})
     end)
 
@@ -695,14 +840,51 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("rules_change", params, socket) do
     changes = %{}
-    changes = if params["time_speed"], do: Map.put(changes, :time_speed, parse_float(params["time_speed"], 1.0)), else: changes
-    changes = if params["social_tendency"], do: Map.put(changes, :social_tendency, parse_float(params["social_tendency"], 0.5)), else: changes
-    changes = if params["birth_rate"], do: Map.put(changes, :birth_rate, parse_float(params["birth_rate"], 1.0)), else: changes
-    changes = if params["building_speed"], do: Map.put(changes, :building_speed, parse_float(params["building_speed"], 1.0)), else: changes
-    changes = if params["mutation_rate"], do: Map.put(changes, :mutation_rate, parse_float(params["mutation_rate"], 0.3)), else: changes
-    changes = if params["resource_abundance"], do: Map.put(changes, :resource_abundance, String.to_existing_atom(params["resource_abundance"])), else: changes
-    changes = if params["danger_level"], do: Map.put(changes, :danger_level, String.to_existing_atom(params["danger_level"])), else: changes
-    changes = if params["language"] && params["language"] in ~w(en tr de fr es ja), do: Map.put(changes, :language, params["language"]), else: changes
+
+    changes =
+      if params["time_speed"],
+        do: Map.put(changes, :time_speed, parse_float(params["time_speed"], 1.0)),
+        else: changes
+
+    changes =
+      if params["social_tendency"],
+        do: Map.put(changes, :social_tendency, parse_float(params["social_tendency"], 0.5)),
+        else: changes
+
+    changes =
+      if params["birth_rate"],
+        do: Map.put(changes, :birth_rate, parse_float(params["birth_rate"], 1.0)),
+        else: changes
+
+    changes =
+      if params["building_speed"],
+        do: Map.put(changes, :building_speed, parse_float(params["building_speed"], 1.0)),
+        else: changes
+
+    changes =
+      if params["mutation_rate"],
+        do: Map.put(changes, :mutation_rate, parse_float(params["mutation_rate"], 0.3)),
+        else: changes
+
+    changes =
+      if params["resource_abundance"],
+        do:
+          Map.put(
+            changes,
+            :resource_abundance,
+            String.to_existing_atom(params["resource_abundance"])
+          ),
+        else: changes
+
+    changes =
+      if params["danger_level"],
+        do: Map.put(changes, :danger_level, String.to_existing_atom(params["danger_level"])),
+        else: changes
+
+    changes =
+      if params["language"] && params["language"] in ~w(en tr de fr es ja),
+        do: Map.put(changes, :language, params["language"]),
+        else: changes
 
     if changes != %{} do
       Modus.Simulation.RulesEngine.update(changes)
@@ -717,6 +899,7 @@ defmodule ModusWeb.UniverseLive do
       {:ok, _} ->
         rules = Modus.Simulation.RulesEngine.serialize()
         {:noreply, assign(socket, rules: rules)}
+
       {:error, _} ->
         {:noreply, socket}
     end
@@ -725,9 +908,29 @@ defmodule ModusWeb.UniverseLive do
   # ── Save / Load ───────────────────────────────────────────────
 
   def handle_event("open_save_load", _params, socket) do
-    slots = try do Modus.Persistence.SaveManager.list_slots() catch _, _ -> [] end
-    autosave = try do Modus.Persistence.SaveManager.autosave_status() catch _, _ -> %{enabled: false, last_tick: 0, last_at: nil, interval: 500} end
-    {:noreply, assign(socket, save_load_open: true, save_slots: slots, save_load_status: nil, save_name: "", selected_slot: 1, autosave_status: autosave)}
+    slots =
+      try do
+        Modus.Persistence.SaveManager.list_slots()
+      catch
+        _, _ -> []
+      end
+
+    autosave =
+      try do
+        Modus.Persistence.SaveManager.autosave_status()
+      catch
+        _, _ -> %{enabled: false, last_tick: 0, last_at: nil, interval: 500}
+      end
+
+    {:noreply,
+     assign(socket,
+       save_load_open: true,
+       save_slots: slots,
+       save_load_status: nil,
+       save_name: "",
+       selected_slot: 1,
+       autosave_status: autosave
+     )}
   end
 
   def handle_event("close_save_load", _params, socket) do
@@ -746,10 +949,18 @@ defmodule ModusWeb.UniverseLive do
   def handle_event("do_save", _params, socket) do
     slot = socket.assigns[:selected_slot] || 1
     name = if socket.assigns.save_name == "", do: nil, else: socket.assigns.save_name
+
     case Modus.Persistence.SaveManager.save_slot(slot, name) do
       {:ok, info} ->
         slots = Modus.Persistence.SaveManager.list_slots()
-        {:noreply, assign(socket, save_slots: slots, save_load_status: "✅ Saved: #{info.name}", save_name: "")}
+
+        {:noreply,
+         assign(socket,
+           save_slots: slots,
+           save_load_status: "✅ Saved: #{info.name}",
+           save_name: ""
+         )}
+
       {:error, reason} ->
         {:noreply, assign(socket, save_load_status: "❌ #{reason}")}
     end
@@ -757,13 +968,20 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("do_load", %{"slot" => slot_str}, socket) do
     {slot, _} = Integer.parse(slot_str)
+
     case Modus.Persistence.SaveManager.load_slot(slot) do
       {:ok, info} ->
-        try do Modus.Simulation.Ticker.run() catch _, _ -> :ok end
+        try do
+          Modus.Simulation.Ticker.run()
+        catch
+          _, _ -> :ok
+        end
+
         {:noreply,
          socket
          |> assign(save_load_open: false, save_load_status: nil, status: :running)
          |> push_event("world_loaded", %{agents: info.agents, tick: 0})}
+
       {:error, reason} ->
         {:noreply, assign(socket, save_load_status: "❌ #{inspect(reason)}")}
     end
@@ -779,7 +997,14 @@ defmodule ModusWeb.UniverseLive do
   def handle_event("do_export_save", _params, socket) do
     case Modus.Persistence.SaveManager.export_json() do
       {:ok, json} ->
-        {:noreply, assign(socket, save_load_status: "✅ Exported") |> push_event("download", %{data: json, filename: "modus_world.json", content_type: "application/json"})}
+        {:noreply,
+         assign(socket, save_load_status: "✅ Exported")
+         |> push_event("download", %{
+           data: json,
+           filename: "modus_world.json",
+           content_type: "application/json"
+         })}
+
       {:error, reason} ->
         {:noreply, assign(socket, save_load_status: "❌ #{reason}")}
     end
@@ -789,7 +1014,10 @@ defmodule ModusWeb.UniverseLive do
     case Modus.Persistence.SaveManager.import_json(json) do
       {:ok, info} ->
         slots = Modus.Persistence.SaveManager.list_slots()
-        {:noreply, assign(socket, save_slots: slots, save_load_status: "✅ Imported: #{info.name}")}
+
+        {:noreply,
+         assign(socket, save_slots: slots, save_load_status: "✅ Imported: #{info.name}")}
+
       {:error, reason} ->
         {:noreply, assign(socket, save_load_status: "❌ #{reason}")}
     end
@@ -811,6 +1039,7 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("set_speed", %{"speed" => speed}, socket) do
     {s, _} = Integer.parse(speed)
+
     {:noreply,
      socket
      |> assign(speed: s)
@@ -820,20 +1049,26 @@ defmodule ModusWeb.UniverseLive do
   # ── Event Injection ────────────────────────────────────────
 
   def handle_event("inject_event", %{"type" => event_type}, socket) do
-    emoji = case event_type do
-      "natural_disaster" -> "🌋"
-      "migrant" -> "🚶"
-      "resource_bonus" -> "🌾"
-      _ -> "⚡"
-    end
-    label = case event_type do
-      "natural_disaster" -> "Natural Disaster"
-      "migrant" -> "Migrant Arrived"
-      "resource_bonus" -> "Resource Bonus"
-      _ -> event_type
-    end
+    emoji =
+      case event_type do
+        "natural_disaster" -> "🌋"
+        "migrant" -> "🚶"
+        "resource_bonus" -> "🌾"
+        _ -> "⚡"
+      end
 
-    feed = [%{emoji: emoji, label: label, tick: socket.assigns.tick} | Enum.take(socket.assigns.event_feed, 9)]
+    label =
+      case event_type do
+        "natural_disaster" -> "Natural Disaster"
+        "migrant" -> "Migrant Arrived"
+        "resource_bonus" -> "Resource Bonus"
+        _ -> event_type
+      end
+
+    feed = [
+      %{emoji: emoji, label: label, tick: socket.assigns.tick}
+      | Enum.take(socket.assigns.event_feed, 9)
+    ]
 
     {:noreply,
      socket
@@ -845,24 +1080,28 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("trigger_world_event", %{"type" => event_type}, socket)
       when event_type in @valid_world_events do
-    emoji = case event_type do
-      "storm" -> "🌩️"
-      "earthquake" -> "🌍"
-      "meteor_shower" -> "☄️"
-      "plague" -> "🦠"
-      "golden_age" -> "✨"
-      "flood" -> "🌊"
-      "fire" -> "🔥"
-      "drought" -> "🏜️"
-      "famine" -> "💀🌾"
-      "festival" -> "🎉"
-      "discovery" -> "🗺️"
-      "migration_wave" -> "🚶"
-      "conflict" -> "⚔️"
-      _ -> "🌍"
-    end
+    emoji =
+      case event_type do
+        "storm" -> "🌩️"
+        "earthquake" -> "🌍"
+        "meteor_shower" -> "☄️"
+        "plague" -> "🦠"
+        "golden_age" -> "✨"
+        "flood" -> "🌊"
+        "fire" -> "🔥"
+        "drought" -> "🏜️"
+        "famine" -> "💀🌾"
+        "festival" -> "🎉"
+        "discovery" -> "🗺️"
+        "migration_wave" -> "🚶"
+        "conflict" -> "⚔️"
+        _ -> "🌍"
+      end
 
-    feed = [%{emoji: emoji, label: "World Event: #{event_type}", tick: socket.assigns.tick} | Enum.take(socket.assigns.event_feed, 9)]
+    feed = [
+      %{emoji: emoji, label: "World Event: #{event_type}", tick: socket.assigns.tick}
+      | Enum.take(socket.assigns.event_feed, 9)
+    ]
 
     {:noreply,
      socket
@@ -874,6 +1113,7 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("toggle_mind_view", _params, socket) do
     new_val = !socket.assigns.mind_view_active
+
     {:noreply,
      socket
      |> assign(mind_view_active: new_val)
@@ -882,14 +1122,21 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("toggle_panel", %{"panel" => panel}, socket) do
     current = socket.assigns.mobile_panel
-    new_panel = if current == String.to_existing_atom(panel), do: nil, else: String.to_existing_atom(panel)
+
+    new_panel =
+      if current == String.to_existing_atom(panel), do: nil, else: String.to_existing_atom(panel)
+
     {:noreply, assign(socket, mobile_panel: new_panel)}
   end
 
   # ── Creator: Agent Designer ──────────────────────────────────
 
   def handle_event("toggle_agent_designer", _params, socket) do
-    {:noreply, assign(socket, agent_designer_open: !socket.assigns.agent_designer_open, designer_placing: false)}
+    {:noreply,
+     assign(socket,
+       agent_designer_open: !socket.assigns.agent_designer_open,
+       designer_placing: false
+     )}
   end
 
   def handle_event("set_designer_mode", %{"mode" => mode}, socket) do
@@ -897,16 +1144,18 @@ defmodule ModusWeb.UniverseLive do
   end
 
   def handle_event("designer_change", params, socket) do
-    socket = socket
-    |> maybe_assign(params, "name", :designer_name)
-    |> maybe_assign(params, "occupation", :designer_occupation)
-    |> maybe_assign(params, "mood", :designer_mood)
-    |> maybe_assign(params, "animal", :designer_animal)
-    |> maybe_assign_int(params, "o", :designer_o)
-    |> maybe_assign_int(params, "c", :designer_c)
-    |> maybe_assign_int(params, "e", :designer_e)
-    |> maybe_assign_int(params, "a", :designer_a)
-    |> maybe_assign_int(params, "n", :designer_n)
+    socket =
+      socket
+      |> maybe_assign(params, "name", :designer_name)
+      |> maybe_assign(params, "occupation", :designer_occupation)
+      |> maybe_assign(params, "mood", :designer_mood)
+      |> maybe_assign(params, "animal", :designer_animal)
+      |> maybe_assign_int(params, "o", :designer_o)
+      |> maybe_assign_int(params, "c", :designer_c)
+      |> maybe_assign_int(params, "e", :designer_e)
+      |> maybe_assign_int(params, "a", :designer_a)
+      |> maybe_assign_int(params, "n", :designer_n)
+
     {:noreply, socket}
   end
 
@@ -941,6 +1190,7 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("toggle_build_mode", _params, socket) do
     new_val = !socket.assigns.build_mode
+
     {:noreply,
      socket
      |> assign(build_mode: new_val)
@@ -958,6 +1208,7 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("toggle_god_mode", _params, socket) do
     new_val = !socket.assigns.god_mode
+
     {:noreply,
      socket
      |> assign(god_mode: new_val, mind_view_active: new_val)
@@ -967,6 +1218,7 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("toggle_cinematic", _params, socket) do
     new_val = !socket.assigns.cinematic_mode
+
     {:noreply,
      socket
      |> assign(cinematic_mode: new_val)
@@ -981,23 +1233,55 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("toggle_timeline", _params, socket) do
     open = !socket.assigns.timeline_open
-    entries = if open do
-      try do Modus.Simulation.StoryEngine.get_timeline(limit: 50) catch _, _ -> [] end
-    else
-      []
-    end
+
+    entries =
+      if open do
+        try do
+          Modus.Simulation.StoryEngine.get_timeline(limit: 50)
+        catch
+          _, _ -> []
+        end
+      else
+        []
+      end
+
     {:noreply, assign(socket, timeline_open: open, timeline_entries: entries)}
   end
 
   def handle_event("open_chronicle", _params, socket) do
-    md = try do Modus.Simulation.StoryEngine.export_markdown() catch _, _ -> "No chronicle data yet." end
+    md =
+      try do
+        Modus.Simulation.StoryEngine.export_markdown()
+      catch
+        _, _ -> "No chronicle data yet."
+      end
+
     {:noreply, assign(socket, chronicle_open: true, chronicle_md: md)}
   end
 
   def handle_event("open_history", _params, socket) do
-    eras = try do Modus.Simulation.WorldHistory.get_eras() catch _, _ -> [] end
-    figures = try do Modus.Simulation.WorldHistory.key_figures() catch _, _ -> [] end
-    {:noreply, assign(socket, history_open: true, history_eras: eras, history_figures: figures, history_selected_era: nil, history_era_events: [])}
+    eras =
+      try do
+        Modus.Simulation.WorldHistory.get_eras()
+      catch
+        _, _ -> []
+      end
+
+    figures =
+      try do
+        Modus.Simulation.WorldHistory.key_figures()
+      catch
+        _, _ -> []
+      end
+
+    {:noreply,
+     assign(socket,
+       history_open: true,
+       history_eras: eras,
+       history_figures: figures,
+       history_selected_era: nil,
+       history_era_events: []
+     )}
   end
 
   def handle_event("close_history", _params, socket) do
@@ -1005,12 +1289,24 @@ defmodule ModusWeb.UniverseLive do
   end
 
   def handle_event("select_history_era", %{"era-id" => era_id}, socket) do
-    events = try do Modus.Simulation.WorldHistory.era_events(era_id) catch _, _ -> [] end
+    events =
+      try do
+        Modus.Simulation.WorldHistory.era_events(era_id)
+      catch
+        _, _ -> []
+      end
+
     {:noreply, assign(socket, history_selected_era: era_id, history_era_events: events)}
   end
 
   def handle_event("export_world_chronicle", _params, socket) do
-    md = try do Modus.Simulation.WorldHistory.export_chronicle("This World") catch _, _ -> "No history yet." end
+    md =
+      try do
+        Modus.Simulation.WorldHistory.export_chronicle("This World")
+      catch
+        _, _ -> "No history yet."
+      end
+
     {:noreply, assign(socket, chronicle_open: true, chronicle_md: md)}
   end
 
@@ -1020,17 +1316,25 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("download_chronicle", _params, socket) do
     md = socket.assigns.chronicle_md
-    {:noreply, push_event(socket, "download_file", %{
-      filename: "modus-chronicle-#{System.system_time(:second)}.md",
-      content: md,
-      mime: "text/markdown"
-    })}
+
+    {:noreply,
+     push_event(socket, "download_file", %{
+       filename: "modus-chronicle-#{System.system_time(:second)}.md",
+       content: md,
+       mime: "text/markdown"
+     })}
   end
 
   # ── Export & Share ──────────────────────────────────────────
 
   def handle_event("open_export", _params, socket) do
-    {:noreply, assign(socket, export_open: true, export_tab: :export, export_status: nil, import_status: nil)}
+    {:noreply,
+     assign(socket,
+       export_open: true,
+       export_tab: :export,
+       export_status: nil,
+       import_status: nil
+     )}
   end
 
   def handle_event("close_export", _params, socket) do
@@ -1052,6 +1356,7 @@ defmodule ModusWeb.UniverseLive do
            content: json,
            mime: "application/json"
          })}
+
       {:error, reason} ->
         {:noreply, assign(socket, export_status: "❌ #{reason}")}
     end
@@ -1061,6 +1366,7 @@ defmodule ModusWeb.UniverseLive do
     case Modus.Persistence.WorldExport.export_base64() do
       {:ok, b64} ->
         {:noreply, assign(socket, export_base64: b64, export_status: "✅ Share link ready!")}
+
       {:error, reason} ->
         {:noreply, assign(socket, export_status: "❌ #{reason}")}
     end
@@ -1070,10 +1376,16 @@ defmodule ModusWeb.UniverseLive do
     case Modus.Persistence.WorldExport.import_json(json) do
       {:ok, info} ->
         state = build_channel_state()
+
         {:noreply,
          socket
-         |> assign(phase: :simulation, status: :running, import_status: "✅ Imported #{info.name} (#{info.agents} agents)")
+         |> assign(
+           phase: :simulation,
+           status: :running,
+           import_status: "✅ Imported #{info.name} (#{info.agents} agents)"
+         )
          |> push_event("world_loaded", state)}
+
       {:error, reason} ->
         {:noreply, assign(socket, import_status: "❌ #{reason}")}
     end
@@ -1083,23 +1395,38 @@ defmodule ModusWeb.UniverseLive do
     case Modus.Persistence.WorldExport.import_base64(code) do
       {:ok, info} ->
         state = build_channel_state()
+
         {:noreply,
          socket
-         |> assign(phase: :simulation, status: :running, import_status: "✅ Imported #{info.name} (#{info.agents} agents)")
+         |> assign(
+           phase: :simulation,
+           status: :running,
+           import_status: "✅ Imported #{info.name} (#{info.agents} agents)"
+         )
          |> push_event("world_loaded", state)}
+
       {:error, reason} ->
         {:noreply, assign(socket, import_status: "❌ #{reason}")}
     end
   end
 
   def handle_event("screenshot_with_overlay", _params, socket) do
-    world_name = try do
-      Modus.Simulation.World.get_state().name
-    catch
-      _, _ -> "MODUS"
-    end
-    tick = try do Modus.Simulation.Ticker.current_tick() catch _, _ -> 0 end
-    {:noreply, push_event(socket, "screenshot_with_overlay", %{world_name: world_name, tick: tick})}
+    world_name =
+      try do
+        Modus.Simulation.World.get_state().name
+      catch
+        _, _ -> "MODUS"
+      end
+
+    tick =
+      try do
+        Modus.Simulation.Ticker.current_tick()
+      catch
+        _, _ -> 0
+      end
+
+    {:noreply,
+     push_event(socket, "screenshot_with_overlay", %{world_name: world_name, tick: tick})}
   end
 
   def handle_event("open_stats", _params, socket) do
@@ -1112,18 +1439,19 @@ defmodule ModusWeb.UniverseLive do
     happiness_tl = Observatory.happiness_timeline(history)
     trade_tl = Observatory.trade_timeline(history)
 
-    {:noreply, assign(socket,
-      stats_open: true,
-      population_history: history,
-      obs_world: world,
-      obs_buildings: buildings,
-      obs_leaderboards: leaderboards,
-      obs_net_nodes: net_nodes,
-      obs_net_edges: net_edges,
-      obs_happiness: happiness_tl,
-      obs_trades: trade_tl,
-      obs_tab: :overview
-    )}
+    {:noreply,
+     assign(socket,
+       stats_open: true,
+       population_history: history,
+       obs_world: world,
+       obs_buildings: buildings,
+       obs_leaderboards: leaderboards,
+       obs_net_nodes: net_nodes,
+       obs_net_edges: net_edges,
+       obs_happiness: happiness_tl,
+       obs_trades: trade_tl,
+       obs_tab: :overview
+     )}
   end
 
   def handle_event("close_stats", _params, socket) do
@@ -1143,16 +1471,17 @@ defmodule ModusWeb.UniverseLive do
     leaderboards = Observatory.leaderboards()
     {net_nodes, net_edges} = Observatory.relationship_network()
 
-    {:noreply, assign(socket,
-      population_history: history,
-      obs_world: world,
-      obs_buildings: buildings,
-      obs_leaderboards: leaderboards,
-      obs_net_nodes: net_nodes,
-      obs_net_edges: net_edges,
-      obs_happiness: Observatory.happiness_timeline(history),
-      obs_trades: Observatory.trade_timeline(history)
-    )}
+    {:noreply,
+     assign(socket,
+       population_history: history,
+       obs_world: world,
+       obs_buildings: buildings,
+       obs_leaderboards: leaderboards,
+       obs_net_nodes: net_nodes,
+       obs_net_edges: net_edges,
+       obs_happiness: Observatory.happiness_timeline(history),
+       obs_trades: Observatory.trade_timeline(history)
+     )}
   end
 
   # ── Eventus: Event Timeline Toggle ──────────────────────
@@ -1170,12 +1499,20 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("toggle_divine_panel", _params, socket) do
     open = !socket.assigns.divine_panel_open
-    history = if open do
-      try do Modus.Simulation.DivineIntervention.history(limit: 30) catch _, _ -> [] end
-    else
-      []
-    end
-    {:noreply, assign(socket, divine_panel_open: open, divine_history: history, divine_status: nil)}
+
+    history =
+      if open do
+        try do
+          Modus.Simulation.DivineIntervention.history(limit: 30)
+        catch
+          _, _ -> []
+        end
+      else
+        []
+      end
+
+    {:noreply,
+     assign(socket, divine_panel_open: open, divine_history: history, divine_status: nil)}
   end
 
   def handle_event("divine_tab", %{"tab" => tab}, socket) do
@@ -1184,31 +1521,42 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("divine_command", %{"cmd" => cmd} = params, socket) do
     command = String.to_existing_atom(cmd)
-    cmd_params = params
+
+    cmd_params =
+      params
       |> Map.delete("cmd")
       |> Map.delete("_target")
       |> Enum.map(fn {k, v} -> {String.to_atom(k), v} end)
       |> Map.new()
 
     # Add selected agent id if agent command
-    cmd_params = if socket.assigns.selected_agent && Map.get(cmd_params, :agent_id) == nil do
-      Map.put(cmd_params, :agent_id, socket.assigns.selected_agent["id"])
-    else
-      cmd_params
-    end
+    cmd_params =
+      if socket.assigns.selected_agent && Map.get(cmd_params, :agent_id) == nil do
+        Map.put(cmd_params, :agent_id, socket.assigns.selected_agent["id"])
+      else
+        cmd_params
+      end
 
-    result = try do
-      Modus.Simulation.DivineIntervention.execute(command, cmd_params)
-    catch
-      _, reason -> {:error, "#{inspect(reason)}"}
-    end
+    result =
+      try do
+        Modus.Simulation.DivineIntervention.execute(command, cmd_params)
+      catch
+        _, reason -> {:error, "#{inspect(reason)}"}
+      end
 
-    status = case result do
-      {:ok, data} -> "✅ #{cmd}: #{inspect(data)}"
-      {:error, reason} -> "❌ #{reason}"
-    end
+    status =
+      case result do
+        {:ok, data} -> "✅ #{cmd}: #{inspect(data)}"
+        {:error, reason} -> "❌ #{reason}"
+      end
 
-    history = try do Modus.Simulation.DivineIntervention.history(limit: 30) catch _, _ -> [] end
+    history =
+      try do
+        Modus.Simulation.DivineIntervention.history(limit: 30)
+      catch
+        _, _ -> []
+      end
+
     {:noreply, assign(socket, divine_history: history, divine_status: status)}
   end
 
@@ -1217,19 +1565,26 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, divine_history: [], divine_status: "🗑️ Geçmiş temizlendi")}
   end
 
-  def handle_event("world_event_toast", %{"emoji" => emoji, "type" => type, "severity" => severity}, socket) do
-    severity_word = case severity do
-      1 -> "Minor"
-      2 -> "Severe"
-      3 -> "Catastrophic"
-      _ -> ""
-    end
+  def handle_event(
+        "world_event_toast",
+        %{"emoji" => emoji, "type" => type, "severity" => severity},
+        socket
+      ) do
+    severity_word =
+      case severity do
+        1 -> "Minor"
+        2 -> "Severe"
+        3 -> "Catastrophic"
+        _ -> ""
+      end
+
     toast = %{
       id: System.unique_integer([:positive]) |> to_string(),
       emoji: emoji,
       text: "#{severity_word} #{String.replace(type, "_", " ")} strikes the world!",
       tick: socket.assigns.tick
     }
+
     toasts = Enum.take([toast | socket.assigns.toasts], 5)
     Process.send_after(self(), {:dismiss_toast, toast.id}, 8_000)
     {:noreply, assign(socket, toasts: toasts)}
@@ -1247,6 +1602,7 @@ defmodule ModusWeb.UniverseLive do
       text: "#{name} has arrived!",
       tick: socket.assigns.tick
     }
+
     toasts = Enum.take([toast | socket.assigns.toasts], 5)
     Process.send_after(self(), {:dismiss_toast, toast.id}, 10_000)
     {:noreply, assign(socket, toasts: toasts, season_name: name, season_emoji: emoji)}
@@ -1260,7 +1616,9 @@ defmodule ModusWeb.UniverseLive do
 
   defp parse_float(val, default) when is_binary(val) do
     case Float.parse(val) do
-      {f, _} -> f
+      {f, _} ->
+        f
+
       :error ->
         case Integer.parse(val) do
           {i, _} -> i / 1
@@ -1268,6 +1626,7 @@ defmodule ModusWeb.UniverseLive do
         end
     end
   end
+
   defp parse_float(val, _default) when is_float(val), do: val
   defp parse_float(val, _default) when is_integer(val), do: val / 1
   defp parse_float(_, default), do: default
@@ -1281,26 +1640,40 @@ defmodule ModusWeb.UniverseLive do
 
   defp maybe_assign_int(socket, params, key, field) do
     case Map.get(params, key) do
-      nil -> socket
+      nil ->
+        socket
+
       val when is_binary(val) ->
         case Integer.parse(val) do
           {i, _} -> assign(socket, [{field, max(0, min(i, 100))}])
           :error -> socket
         end
-      val when is_integer(val) -> assign(socket, [{field, max(0, min(val, 100))}])
-      _ -> socket
+
+      val when is_integer(val) ->
+        assign(socket, [{field, max(0, min(val, 100))}])
+
+      _ ->
+        socket
     end
   end
 
   defp build_channel_state do
-    agents = try do
-      Modus.AgentRegistry
-      |> Registry.select([{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}])
-      |> length()
-    catch
-      _, _ -> 0
-    end
-    tick = try do Modus.Simulation.Ticker.current_tick() catch _, _ -> 0 end
+    agents =
+      try do
+        Modus.AgentRegistry
+        |> Registry.select([{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}])
+        |> length()
+      catch
+        _, _ -> 0
+      end
+
+    tick =
+      try do
+        Modus.Simulation.Ticker.current_tick()
+      catch
+        _, _ -> 0
+      end
+
     %{agents: agents, tick: tick}
   end
 
@@ -1308,26 +1681,32 @@ defmodule ModusWeb.UniverseLive do
 
   @impl true
   def handle_info({:event, event}, socket) do
-    emoji = case event.type do
-      :death -> "💀"
-      :birth -> "👶"
-      :conversation -> "💬"
-      :conflict -> "⚔️"
-      :resource_gathered -> "🌾"
-      _ -> "⚡"
-    end
+    emoji =
+      case event.type do
+        :death -> "💀"
+        :birth -> "👶"
+        :conversation -> "💬"
+        :conflict -> "⚔️"
+        :resource_gathered -> "🌾"
+        _ -> "⚡"
+      end
 
     name = event.data[:name] || event.data["name"] || resolve_agent_names(event.agents)
-    label = case event.type do
-      :death -> "#{name} died (#{event.data[:cause] || "unknown"})"
-      :birth -> "#{name} was born"
-      :conversation -> "#{name} had a conversation"
-      :conflict -> "Conflict!"
-      :resource_gathered -> "#{name} gathered resources"
-      _ -> to_string(event.type)
-    end
 
-    feed = [%{emoji: emoji, label: label, tick: event.tick} | Enum.take(socket.assigns.event_feed, 19)]
+    label =
+      case event.type do
+        :death -> "#{name} died (#{event.data[:cause] || "unknown"})"
+        :birth -> "#{name} was born"
+        :conversation -> "#{name} had a conversation"
+        :conflict -> "Conflict!"
+        :resource_gathered -> "#{name} gathered resources"
+        _ -> to_string(event.type)
+      end
+
+    feed = [
+      %{emoji: emoji, label: label, tick: event.tick} | Enum.take(socket.assigns.event_feed, 19)
+    ]
+
     {:noreply, assign(socket, event_feed: feed)}
   end
 
@@ -1338,17 +1717,25 @@ defmodule ModusWeb.UniverseLive do
       text: entry.narrative,
       tick: entry.tick
     }
+
     toasts = Enum.take([toast | socket.assigns.toasts], 5)
     # Auto-dismiss after 6 seconds
     Process.send_after(self(), {:dismiss_toast, toast.id}, 6_000)
 
     # Update timeline if open
-    socket = if socket.assigns.timeline_open do
-      entries = try do Modus.Simulation.StoryEngine.get_timeline(limit: 50) catch _, _ -> [] end
-      assign(socket, timeline_entries: entries)
-    else
-      socket
-    end
+    socket =
+      if socket.assigns.timeline_open do
+        entries =
+          try do
+            Modus.Simulation.StoryEngine.get_timeline(limit: 50)
+          catch
+            _, _ -> []
+          end
+
+        assign(socket, timeline_entries: entries)
+      else
+        socket
+      end
 
     {:noreply, assign(socket, toasts: toasts)}
   end
@@ -1360,11 +1747,18 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_info(:toggle_perf_monitor, socket) do
     open = !socket.assigns.perf_monitor_open
-    metrics = if open do
-      try do Modus.Performance.Monitor.metrics() catch _, _ -> socket.assigns.perf_metrics end
-    else
-      socket.assigns.perf_metrics
-    end
+
+    metrics =
+      if open do
+        try do
+          Modus.Performance.Monitor.metrics()
+        catch
+          _, _ -> socket.assigns.perf_metrics
+        end
+      else
+        socket.assigns.perf_metrics
+      end
+
     {:noreply, assign(socket, perf_monitor_open: open, perf_metrics: metrics)}
   end
 
@@ -1380,12 +1774,14 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_info({:world_event, event_data}, socket) when is_map(event_data) do
     # Build timeline entry
-    severity_word = case event_data[:severity] || event_data["severity"] do
-      1 -> "Minor"
-      2 -> "Severe"
-      3 -> "Catastrophic"
-      _ -> ""
-    end
+    severity_word =
+      case event_data[:severity] || event_data["severity"] do
+        1 -> "Minor"
+        2 -> "Severe"
+        3 -> "Catastrophic"
+        _ -> ""
+      end
+
     event_type = event_data[:type] || event_data["type"] || "unknown"
     emoji = event_data[:emoji] || event_data["emoji"] || "⚡"
     category = event_data[:category] || event_data["category"] || "disaster"
@@ -1393,15 +1789,18 @@ defmodule ModusWeb.UniverseLive do
     chain_source = event_data[:chain_source] || event_data["chain_source"]
     artifact = event_data[:artifact] || event_data["artifact"]
 
-    label = cond do
-      artifact ->
-        artifact_name = artifact[:name] || artifact["name"] || "Artifact"
-        "#{artifact_name} discovered!"
-      chain_source ->
-        "#{severity_word} #{String.replace(to_string(event_type), "_", " ")} (caused by #{chain_source})"
-      true ->
-        "#{severity_word} #{String.replace(to_string(event_type), "_", " ")} strikes!"
-    end
+    label =
+      cond do
+        artifact ->
+          artifact_name = artifact[:name] || artifact["name"] || "Artifact"
+          "#{artifact_name} discovered!"
+
+        chain_source ->
+          "#{severity_word} #{String.replace(to_string(event_type), "_", " ")} (caused by #{chain_source})"
+
+        true ->
+          "#{severity_word} #{String.replace(to_string(event_type), "_", " ")} strikes!"
+      end
 
     entry = %{
       id: System.unique_integer([:positive]) |> to_string(),
@@ -1426,16 +1825,18 @@ defmodule ModusWeb.UniverseLive do
       text: label,
       tick: socket.assigns.tick
     }
+
     toasts = Enum.take([toast | socket.assigns.toasts], 5)
     Process.send_after(self(), {:dismiss_toast, toast.id}, 5_000)
 
     # Breaking banner for severe events
-    socket = if to_string(level) == "breaking" do
-      Process.send_after(self(), :dismiss_breaking, 10_000)
-      assign(socket, breaking_event: entry)
-    else
-      socket
-    end
+    socket =
+      if to_string(level) == "breaking" do
+        Process.send_after(self(), :dismiss_breaking, 10_000)
+        assign(socket, breaking_event: entry)
+      else
+        socket
+      end
 
     # Update event feed too
     feed_entry = %{emoji: emoji, label: label, tick: socket.assigns.tick}
@@ -4041,6 +4442,7 @@ defmodule ModusWeb.UniverseLive do
       _ -> "🤖"
     end
   end
+
   defp chat_mood_emoji(_), do: "🤖"
 
   defp topic_icon(topic) do
@@ -4078,6 +4480,7 @@ defmodule ModusWeb.UniverseLive do
     end)
     |> Enum.join(", ")
   end
+
   defp resolve_agent_names(_), do: "Unknown"
 
   # Ensure a value is a float (JSON doesn't distinguish 1 from 1.0)
@@ -4111,6 +4514,7 @@ defmodule ModusWeb.UniverseLive do
       :exit, _ -> String.slice(agent_id, 0..7)
     end
   end
+
   defp resolve_agent_name(_), do: "?"
 
   defp goal_emoji("build_home"), do: "🏠"
@@ -4147,6 +4551,7 @@ defmodule ModusWeb.UniverseLive do
     |> Enum.filter(fn e -> e["type"] == "conversation" end)
     |> Enum.take(3)
   end
+
   defp conversation_events(_), do: []
 
   # Terrain thumbnail colors now served by WorldTemplates.thumb_color/2
@@ -4163,21 +4568,55 @@ defmodule ModusWeb.UniverseLive do
   # ── Speculum Dashboard Data ──────────────────────────────
 
   defp refresh_dashboard_data do
-    pop_history = try do Observatory.population_history() catch _, _ -> [] end
-    _stats = try do Observatory.world_stats() catch _, _ -> %{population: 0} end
-    {nodes, edges} = try do Observatory.relationship_network() catch _, _ -> {[], []} end
-    trades = try do Observatory.trade_timeline(pop_history) catch _, _ -> [] end
+    pop_history =
+      try do
+        Observatory.population_history()
+      catch
+        _, _ -> []
+      end
+
+    _stats =
+      try do
+        Observatory.world_stats()
+      catch
+        _, _ -> %{population: 0}
+      end
+
+    {nodes, edges} =
+      try do
+        Observatory.relationship_network()
+      catch
+        _, _ -> {[], []}
+      end
+
+    trades =
+      try do
+        Observatory.trade_timeline(pop_history)
+      catch
+        _, _ -> []
+      end
 
     # Aggregate resources from all agents
-    agents = try do
-      Modus.Simulation.AgentSupervisor.list_agents()
-      |> Enum.map(fn id -> try do Modus.Simulation.Agent.get_state(id) catch _, _ -> nil end end)
-      |> Enum.filter(& &1)
-    catch _, _ -> [] end
+    agents =
+      try do
+        Modus.Simulation.AgentSupervisor.list_agents()
+        |> Enum.map(fn id ->
+          try do
+            Modus.Simulation.Agent.get_state(id)
+          catch
+            _, _ -> nil
+          end
+        end)
+        |> Enum.filter(& &1)
+      catch
+        _, _ -> []
+      end
 
-    resources = agents
+    resources =
+      agents
       |> Enum.reduce(%{wood: 0, stone: 0, food: 0, herbs: 0}, fn a, acc ->
         inv = a.inventory || %{}
+
         %{
           wood: acc.wood + Map.get(inv, :wood, Map.get(inv, "wood", 0)),
           stone: acc.stone + Map.get(inv, :stone, Map.get(inv, "stone", 0)),
@@ -4187,11 +4626,15 @@ defmodule ModusWeb.UniverseLive do
       end)
 
     # Mood distribution from agent needs/affect
-    mood_counts = agents
+    mood_counts =
+      agents
       |> Enum.map(fn a ->
         needs = a.needs || %{}
-        avg = (Map.get(needs, :hunger, 50.0) + Map.get(needs, :social, 50.0) +
-               Map.get(needs, :rest, 50.0)) / 3.0
+
+        avg =
+          (Map.get(needs, :hunger, 50.0) + Map.get(needs, :social, 50.0) +
+             Map.get(needs, :rest, 50.0)) / 3.0
+
         cond do
           avg >= 70 -> :happy
           avg >= 50 -> :calm
@@ -4209,12 +4652,15 @@ defmodule ModusWeb.UniverseLive do
     ]
 
     # Wildlife counts
-    {predators, prey} = try do
-      wildlife = :ets.tab2list(:wildlife)
-      pred = wildlife |> Enum.count(fn {_id, w} -> w.type in [:wolf, :bear] end)
-      pr = wildlife |> Enum.count(fn {_id, w} -> w.type in [:rabbit, :deer, :fish] end)
-      {pred, pr}
-    catch _, _ -> {0, 0} end
+    {predators, prey} =
+      try do
+        wildlife = :ets.tab2list(:wildlife)
+        pred = wildlife |> Enum.count(fn {_id, w} -> w.type in [:wolf, :bear] end)
+        pr = wildlife |> Enum.count(fn {_id, w} -> w.type in [:rabbit, :deer, :fish] end)
+        {pred, pr}
+      catch
+        _, _ -> {0, 0}
+      end
 
     %{
       dash_population: pop_history,

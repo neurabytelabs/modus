@@ -62,9 +62,11 @@ defmodule Modus.Simulation.StoryEngineTest do
     death_entry = Enum.find(chronicle, fn e -> e.type == :death end)
     assert death_entry != nil
     # Find the specific River death entry
-    river_entry = Enum.find(chronicle, fn e ->
-      e.type == :death and String.contains?(e.narrative, "River")
-    end)
+    river_entry =
+      Enum.find(chronicle, fn e ->
+        e.type == :death and String.contains?(e.narrative, "River")
+      end)
+
     if river_entry do
       assert String.contains?(river_entry.narrative, "starvation")
     else

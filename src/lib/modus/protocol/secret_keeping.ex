@@ -17,6 +17,7 @@ defmodule Modus.Protocol.SecretKeeping do
     if :ets.whereis(@table) == :undefined do
       :ets.new(@table, [:set, :public, :named_table, read_concurrency: true])
     end
+
     :ok
   end
 
@@ -43,7 +44,8 @@ defmodule Modus.Protocol.SecretKeeping do
   end
 
   @doc "Attempt to share a secret with another agent based on trust."
-  @spec try_share(String.t(), String.t(), String.t(), float()) :: {:ok, map()} | {:denied, :insufficient_trust}
+  @spec try_share(String.t(), String.t(), String.t(), float()) ::
+          {:ok, map()} | {:denied, :insufficient_trust}
   def try_share(owner_id, target_id, secret_id, trust_level) do
     init()
     secrets = get_secrets(owner_id)
@@ -56,9 +58,12 @@ defmodule Modus.Protocol.SecretKeeping do
         if ensure_float(trust_level) >= ensure_float(secret.trust_threshold) do
           # Mark as shared
           updated_secret = %{secret | shared_with: Enum.uniq([target_id | secret.shared_with])}
-          updated_secrets = Enum.map(secrets, fn s ->
-            if s.id == secret_id, do: updated_secret, else: s
-          end)
+
+          updated_secrets =
+            Enum.map(secrets, fn s ->
+              if s.id == secret_id, do: updated_secret, else: s
+            end)
+
           :ets.insert(@table, {owner_id, updated_secrets})
 
           # Give the target a copy as "known secret"
@@ -82,6 +87,7 @@ defmodule Modus.Protocol.SecretKeeping do
   @spec get_secrets(String.t()) :: [map()]
   def get_secrets(agent_id) do
     init()
+
     case :ets.lookup(@table, agent_id) do
       [{_, secrets}] -> secrets
       [] -> []
@@ -102,10 +108,12 @@ defmodule Modus.Protocol.SecretKeeping do
       content: secret.content,
       category: secret.category,
       source_id: source_id,
-      trust_threshold: 0.8,  # Known secrets require higher trust to re-share
+      # Known secrets require higher trust to re-share
+      trust_threshold: 0.8,
       shared_with: [],
       created_at: System.system_time(:second)
     }
+
     existing = get_secrets(target_id)
     # Don't duplicate
     unless Enum.any?(existing, &(&1.id == secret.id)) do

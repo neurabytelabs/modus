@@ -12,8 +12,11 @@ defmodule Modus.TestHelperUtils do
   @doc "Ensure AgentRegistry is available."
   def ensure_registry do
     case Process.whereis(Modus.AgentRegistry) do
-      nil -> ExUnit.Callbacks.start_supervised!({Registry, keys: :unique, name: Modus.AgentRegistry})
-      pid -> pid
+      nil ->
+        ExUnit.Callbacks.start_supervised!({Registry, keys: :unique, name: Modus.AgentRegistry})
+
+      pid ->
+        pid
     end
   end
 

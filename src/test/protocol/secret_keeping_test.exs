@@ -5,7 +5,13 @@ defmodule Modus.Protocol.SecretKeepingTest do
 
   setup do
     SecretKeeping.init()
-    try do :ets.delete_all_objects(:agent_secrets) catch _, _ -> :ok end
+
+    try do
+      :ets.delete_all_objects(:agent_secrets)
+    catch
+      _, _ -> :ok
+    end
+
     :ok
   end
 

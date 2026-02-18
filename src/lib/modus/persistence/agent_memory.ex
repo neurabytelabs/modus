@@ -52,7 +52,7 @@ defmodule Modus.Persistence.AgentMemory do
     query =
       MemorySchema
       |> where([m], m.agent_id == ^agent_id)
-      |> order_by([m], [desc: m.importance, desc: m.tick])
+      |> order_by([m], desc: m.importance, desc: m.tick)
       |> limit(^limit)
 
     query =
@@ -88,45 +88,68 @@ defmodule Modus.Persistence.AgentMemory do
     case event_type do
       :death ->
         cause = Map.get(data, :cause, "unknown")
-        record(agent_id, agent_name, :death,
-          "#{agent_name} died: #{cause} (tick #{tick})",
-          importance: 1.0, tick: tick, metadata: data)
+
+        record(agent_id, agent_name, :death, "#{agent_name} died: #{cause} (tick #{tick})",
+          importance: 1.0,
+          tick: tick,
+          metadata: data
+        )
 
       :conversation ->
         # Only record if affect is high
         affect = Map.get(data, :affect, :neutral)
+
         if affect in [:joy, :fear, :sadness, :desire] do
           partner = Map.get(data, :partner, "someone")
-          record(agent_id, agent_name, :conversation,
+
+          record(
+            agent_id,
+            agent_name,
+            :conversation,
             "#{agent_name} had a meaningful conversation with #{partner} (mood: #{affect})",
-            importance: 0.7, tick: tick, metadata: data)
+            importance: 0.7,
+            tick: tick,
+            metadata: data
+          )
         else
           :skip
         end
 
       :friendship ->
         partner = Map.get(data, :partner, "someone")
-        record(agent_id, agent_name, :friendship,
-          "#{agent_name} and #{partner} became friends",
-          importance: 0.8, tick: tick, metadata: data)
+
+        record(agent_id, agent_name, :friendship, "#{agent_name} and #{partner} became friends",
+          importance: 0.8,
+          tick: tick,
+          metadata: data
+        )
 
       :conflict ->
         partner = Map.get(data, :partner, "someone")
-        record(agent_id, agent_name, :conflict,
-          "#{agent_name} and #{partner} had a conflict",
-          importance: 0.7, tick: tick, metadata: data)
+
+        record(agent_id, agent_name, :conflict, "#{agent_name} and #{partner} had a conflict",
+          importance: 0.7,
+          tick: tick,
+          metadata: data
+        )
 
       :discovery ->
         what = Map.get(data, :what, "something")
-        record(agent_id, agent_name, :discovery,
-          "#{agent_name} discovered: #{what}",
-          importance: 0.6, tick: tick, metadata: data)
+
+        record(agent_id, agent_name, :discovery, "#{agent_name} discovered: #{what}",
+          importance: 0.6,
+          tick: tick,
+          metadata: data
+        )
 
       :emotional ->
         affect = Map.get(data, :affect, :neutral)
-        record(agent_id, agent_name, :emotional,
-          "#{agent_name} experienced intense #{affect}",
-          importance: 0.6, tick: tick, metadata: data)
+
+        record(agent_id, agent_name, :emotional, "#{agent_name} experienced intense #{affect}",
+          importance: 0.6,
+          tick: tick,
+          metadata: data
+        )
 
       _ ->
         :skip
@@ -137,7 +160,7 @@ defmodule Modus.Persistence.AgentMemory do
   def load_bulk(agent_ids) when is_list(agent_ids) do
     MemorySchema
     |> where([m], m.agent_id in ^agent_ids)
-    |> order_by([m], [desc: m.importance, desc: m.tick])
+    |> order_by([m], desc: m.importance, desc: m.tick)
     |> Repo.all()
     |> Enum.group_by(& &1.agent_id)
   end
@@ -166,7 +189,7 @@ defmodule Modus.Persistence.AgentMemory do
       to_keep =
         MemorySchema
         |> where([m], m.agent_id == ^agent_id)
-        |> order_by([m], [desc: m.importance, desc: m.tick])
+        |> order_by([m], desc: m.importance, desc: m.tick)
         |> limit(@max_memories_per_agent)
         |> select([m], m.id)
         |> Repo.all()

@@ -8,6 +8,7 @@ defmodule Modus.Mind.AffectMemory do
     if :ets.whereis(@table) == :undefined do
       :ets.new(@table, [:bag, :public, :named_table, read_concurrency: true])
     end
+
     :ok
   end
 
@@ -28,9 +29,11 @@ defmodule Modus.Mind.AffectMemory do
 
     # Enforce max per agent
     all = :ets.lookup(@table, agent_id)
+
     if length(all) > @max_per_agent do
       sorted = all |> Enum.sort_by(fn {_, m} -> m.salience end)
       to_remove = Enum.take(sorted, length(all) - @max_per_agent)
+
       for {_id, m} <- to_remove do
         :ets.match_delete(@table, {agent_id, m})
       end
@@ -93,6 +96,7 @@ defmodule Modus.Mind.AffectMemory do
     if :ets.whereis(@table) != :undefined do
       :ets.match_delete(@table, {agent_id, :_})
     end
+
     :ok
   end
 end

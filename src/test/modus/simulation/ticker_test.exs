@@ -3,15 +3,30 @@ defmodule Modus.Simulation.TickerTest do
   alias Modus.Simulation.Ticker
 
   setup do
-    pid = case Process.whereis(Ticker) do
-      nil ->
-        start_supervised!({Ticker, [interval_ms: 50]})
-      existing_pid ->
-        # Use existing, ensure paused for isolation
-        try do Ticker.pause(existing_pid) catch _, _ -> :ok end
-        existing_pid
-    end
-    on_exit(fn -> try do Ticker.pause(pid) catch _, _ -> :ok end end)
+    pid =
+      case Process.whereis(Ticker) do
+        nil ->
+          start_supervised!({Ticker, [interval_ms: 50]})
+
+        existing_pid ->
+          # Use existing, ensure paused for isolation
+          try do
+            Ticker.pause(existing_pid)
+          catch
+            _, _ -> :ok
+          end
+
+          existing_pid
+      end
+
+    on_exit(fn ->
+      try do
+        Ticker.pause(pid)
+      catch
+        _, _ -> :ok
+      end
+    end)
+
     %{pid: pid}
   end
 

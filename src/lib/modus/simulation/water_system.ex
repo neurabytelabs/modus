@@ -201,7 +201,12 @@ defmodule Modus.Simulation.WaterSystem do
   end
 
   @doc "Count water tiles by type."
-  @spec stats() :: %{rivers: integer(), lakes: integer(), fishing_spots: integer(), total: integer()}
+  @spec stats() :: %{
+          rivers: integer(),
+          lakes: integer(),
+          fishing_spots: integer(),
+          total: integer()
+        }
   def stats do
     cells = all_water()
     rivers = Enum.count(cells, fn {_, c} -> c.type == :river end)
@@ -320,8 +325,8 @@ defmodule Modus.Simulation.WaterSystem do
 
     min_neighbor = Enum.min(neighbors)
     # This tile is lower than all neighbors by threshold
-    elevation <= min_neighbor + @lake_depression_threshold
-    and Enum.all?(neighbors, fn e -> e >= elevation - 0.01 end)
+    elevation <= min_neighbor + @lake_depression_threshold and
+      Enum.all?(neighbors, fn e -> e >= elevation - 0.01 end)
   end
 
   defp lake_radius(elevation, seed, cx, cy) do

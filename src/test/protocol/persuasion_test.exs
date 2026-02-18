@@ -6,7 +6,13 @@ defmodule Modus.Protocol.PersuasionTest do
   setup do
     Persuasion.init()
     Modus.Mind.Cerebro.SocialNetwork.init()
-    try do :ets.delete_all_objects(:persuasion_log) catch _, _ -> :ok end
+
+    try do
+      :ets.delete_all_objects(:persuasion_log)
+    catch
+      _, _ -> :ok
+    end
+
     :ok
   end
 
@@ -14,10 +20,14 @@ defmodule Modus.Protocol.PersuasionTest do
     %{
       id: id,
       name: "Agent_#{id}",
-      personality: Keyword.get(opts, :personality, %{
-        extraversion: 0.5, agreeableness: 0.5, openness: 0.5,
-        conscientiousness: 0.5, neuroticism: 0.5
-      }),
+      personality:
+        Keyword.get(opts, :personality, %{
+          extraversion: 0.5,
+          agreeableness: 0.5,
+          openness: 0.5,
+          conscientiousness: 0.5,
+          neuroticism: 0.5
+        }),
       needs: %{hunger: 50.0, social: 50.0, rest: 80.0, shelter: 70.0},
       inventory: %{},
       relationships: %{}
@@ -25,7 +35,17 @@ defmodule Modus.Protocol.PersuasionTest do
   end
 
   test "attempt returns ok with result and score" do
-    persuader = make_agent("p1", personality: %{extraversion: 0.9, agreeableness: 0.8, openness: 0.7, conscientiousness: 0.5, neuroticism: 0.3})
+    persuader =
+      make_agent("p1",
+        personality: %{
+          extraversion: 0.9,
+          agreeableness: 0.8,
+          openness: 0.7,
+          conscientiousness: 0.5,
+          neuroticism: 0.3
+        }
+      )
+
     target = make_agent("t1")
 
     assert {:ok, result, score} = Persuasion.attempt(persuader, target)
@@ -35,13 +55,25 @@ defmodule Modus.Protocol.PersuasionTest do
   end
 
   test "highly charismatic persuader has higher score" do
-    charismatic = make_agent("p1", personality: %{extraversion: 1.0, agreeableness: 1.0, openness: 1.0, conscientiousness: 0.5, neuroticism: 0.5})
+    charismatic =
+      make_agent("p1",
+        personality: %{
+          extraversion: 1.0,
+          agreeableness: 1.0,
+          openness: 1.0,
+          conscientiousness: 0.5,
+          neuroticism: 0.5
+        }
+      )
+
     target = make_agent("t1")
 
-    scores = for _ <- 1..20 do
-      {:ok, _, score} = Persuasion.attempt(charismatic, target, :general)
-      score
-    end
+    scores =
+      for _ <- 1..20 do
+        {:ok, _, score} = Persuasion.attempt(charismatic, target, :general)
+        score
+      end
+
     avg = Enum.sum(scores) / length(scores)
     assert avg > 0.6
   end

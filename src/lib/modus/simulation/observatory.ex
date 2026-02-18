@@ -38,9 +38,27 @@ defmodule Modus.Simulation.Observatory do
   @spec world_stats() :: world_stats()
   def world_stats do
     agents = get_all_agent_states()
-    eco = try do Economy.stats() catch _, _ -> %{trades: 0, total_transferred: 0.0} end
-    life = try do Lifecycle.stats() catch _, _ -> %{births: 0, deaths: 0} end
-    buildings = try do Building.all() catch _, _ -> [] end
+
+    eco =
+      try do
+        Economy.stats()
+      catch
+        _, _ -> %{trades: 0, total_transferred: 0.0}
+      end
+
+    life =
+      try do
+        Lifecycle.stats()
+      catch
+        _, _ -> %{births: 0, deaths: 0}
+      end
+
+    buildings =
+      try do
+        Building.all()
+      catch
+        _, _ -> []
+      end
 
     happiness_values = agents |> Enum.map(&happiness_score/1) |> Enum.filter(& &1)
     conatus_values = agents |> Enum.map(& &1.conatus_energy) |> Enum.filter(& &1)
@@ -72,7 +90,11 @@ defmodule Modus.Simulation.Observatory do
   @doc "Get population history from StoryEngine."
   @spec population_history() :: [{integer(), integer()}]
   def population_history do
-    try do StoryEngine.population_history() catch _, _ -> [] end
+    try do
+      StoryEngine.population_history()
+    catch
+      _, _ -> []
+    end
   end
 
   @doc "Get happiness history (sampled from current agents' affect_history)."
@@ -96,7 +118,13 @@ defmodule Modus.Simulation.Observatory do
   @doc "Get trade volume history (derived from population history ticks)."
   @spec trade_timeline(list()) :: [{integer(), non_neg_integer()}]
   def trade_timeline(pop_history) do
-    eco = try do Economy.stats() catch _, _ -> %{trades: 0} end
+    eco =
+      try do
+        Economy.stats()
+      catch
+        _, _ -> %{trades: 0}
+      end
+
     total = eco.trades
     len = max(length(pop_history), 1)
 
@@ -119,15 +147,22 @@ defmodule Modus.Simulation.Observatory do
     agents = get_all_agent_states()
 
     %{
-      most_social: agents
+      most_social:
+        agents
         |> Enum.map(fn a ->
-          friends = try do SocialNetwork.get_friends(a.id, 0.1) catch _, _ -> [] end
+          friends =
+            try do
+              SocialNetwork.get_friends(a.id, 0.1)
+            catch
+              _, _ -> []
+            end
+
           %{id: a.id, name: a.name, value: length(friends), label: "#{length(friends)} friends"}
         end)
         |> Enum.sort_by(& &1.value, :desc)
         |> Enum.take(5),
-
-      wealthiest: agents
+      wealthiest:
+        agents
         |> Enum.map(fn a ->
           inv = a.inventory || %{}
           total = inv |> Map.values() |> Enum.sum()
@@ -135,15 +170,15 @@ defmodule Modus.Simulation.Observatory do
         end)
         |> Enum.sort_by(& &1.value, :desc)
         |> Enum.take(5),
-
-      oldest: agents
+      oldest:
+        agents
         |> Enum.map(fn a ->
           %{id: a.id, name: a.name, value: a.age || 0, label: "age #{a.age || 0}"}
         end)
         |> Enum.sort_by(& &1.value, :desc)
         |> Enum.take(5),
-
-      happiest: agents
+      happiest:
+        agents
         |> Enum.map(fn a ->
           h = happiness_score(a)
           %{id: a.id, name: a.name, value: h, label: "#{Float.round(h * 100, 0)}%"}
@@ -159,23 +194,27 @@ defmodule Modus.Simulation.Observatory do
     agents = get_all_agent_states()
     agent_map = Map.new(agents, fn a -> {a.id, a.name} end)
 
-    edges = try do
-      :ets.tab2list(:social_network)
-      |> Enum.filter(fn {_key, rel} -> rel.strength >= 0.2 end)
-      |> Enum.map(fn {{a, b}, rel} ->
-        %{from: a, to: b, strength: rel.strength, type: rel.type}
-      end)
-      |> Enum.take(50)  # Limit for performance
-    catch
-      _, _ -> []
-    end
+    edges =
+      try do
+        :ets.tab2list(:social_network)
+        |> Enum.filter(fn {_key, rel} -> rel.strength >= 0.2 end)
+        |> Enum.map(fn {{a, b}, rel} ->
+          %{from: a, to: b, strength: rel.strength, type: rel.type}
+        end)
+        # Limit for performance
+        |> Enum.take(50)
+      catch
+        _, _ -> []
+      end
 
     # Only include nodes that appear in edges
-    node_ids = edges
+    node_ids =
+      edges
       |> Enum.flat_map(fn e -> [e.from, e.to] end)
       |> Enum.uniq()
 
-    nodes = node_ids
+    nodes =
+      node_ids
       |> Enum.map(fn id -> %{id: id, name: Map.get(agent_map, id, "?")} end)
 
     {nodes, edges}
@@ -186,24 +225,30 @@ defmodule Modus.Simulation.Observatory do
   defp get_all_agent_states do
     AgentSupervisor.list_agents()
     |> Enum.map(fn id ->
-      try do Agent.get_state(id) catch _, _ -> nil end
+      try do
+        Agent.get_state(id)
+      catch
+        _, _ -> nil
+      end
     end)
     |> Enum.filter(& &1)
   end
 
   defp happiness_score(agent) do
     needs = agent.needs || %{}
+
     values = [
       Map.get(needs, :hunger, 50.0),
       Map.get(needs, :social, 50.0),
       Map.get(needs, :rest, 50.0),
       Map.get(needs, :shelter, 50.0)
     ]
+
     # Normalize 0-100 needs to 0-1 happiness
     avg = Enum.sum(values) / max(length(values), 1)
     # Weight with conatus energy
     conatus = agent.conatus_energy || 0.5
-    Float.round((avg / 100.0) * 0.7 + conatus * 0.3, 3)
+    Float.round(avg / 100.0 * 0.7 + conatus * 0.3, 3)
   end
 
   defp safe_avg([]), do: 0.0

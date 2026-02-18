@@ -15,37 +15,53 @@ defmodule Modus.Mind.Cerebro.Group do
   alias Modus.Mind.Cerebro.SocialNetwork
 
   @type group :: %{
-    id: String.t(),
-    leader_id: String.t(),
-    member_ids: [String.t()],
-    color: integer(),
-    formed_at: integer(),
-    name: String.t()
-  }
+          id: String.t(),
+          leader_id: String.t(),
+          member_ids: [String.t()],
+          color: integer(),
+          formed_at: integer(),
+          name: String.t()
+        }
 
   @group_colors [
-    0xFF6B6B,  # red
-    0x4ECDC4,  # teal
-    0xFFE66D,  # yellow
-    0xA855F7,  # purple
-    0x06B6D4,  # cyan
-    0xF97316,  # orange
-    0x22C55E,  # green
-    0xEC4899   # pink
+    # red
+    0xFF6B6B,
+    # teal
+    0x4ECDC4,
+    # yellow
+    0xFFE66D,
+    # purple
+    0xA855F7,
+    # cyan
+    0x06B6D4,
+    # orange
+    0xF97316,
+    # green
+    0x22C55E,
+    # pink
+    0xEC4899
   ]
 
   @group_names [
-    "Wanderers", "Seekers", "Builders", "Guardians",
-    "Dreamers", "Foragers", "Scouts", "Sages"
+    "Wanderers",
+    "Seekers",
+    "Builders",
+    "Guardians",
+    "Dreamers",
+    "Foragers",
+    "Scouts",
+    "Sages"
   ]
 
   def init do
     if :ets.whereis(@table) == :undefined do
       :ets.new(@table, [:set, :public, :named_table, read_concurrency: true])
     end
+
     if :ets.whereis(@member_index) == :undefined do
       :ets.new(@member_index, [:set, :public, :named_table, read_concurrency: true])
     end
+
     :ok
   end
 
@@ -53,18 +69,21 @@ defmodule Modus.Mind.Cerebro.Group do
   def form_group(leader_id, member_ids, tick \\ 0) do
     # Validate: no one already in a group
     all_ids = [leader_id | member_ids]
+
     if length(all_ids) > @max_members do
       {:error, :too_many_members}
     else
       already_grouped = Enum.any?(all_ids, &get_agent_group/1)
+
       if already_grouped do
         {:error, :already_in_group}
       else
         # Validate friendship strength
-        weak = Enum.any?(member_ids, fn mid ->
-          rel = SocialNetwork.get_relationship(leader_id, mid)
-          rel == nil or Map.get(rel, :strength, 0) < @min_friendship_to_group
-        end)
+        weak =
+          Enum.any?(member_ids, fn mid ->
+            rel = SocialNetwork.get_relationship(leader_id, mid)
+            rel == nil or Map.get(rel, :strength, 0) < @min_friendship_to_group
+          end)
 
         if weak do
           {:error, :insufficient_friendship}
@@ -104,12 +123,16 @@ defmodule Modus.Mind.Cerebro.Group do
     case :ets.lookup(@member_index, agent_id) do
       [{^agent_id, group_id}] ->
         case :ets.lookup(@table, group_id) do
-          [{^group_id, group}] -> group
+          [{^group_id, group}] ->
+            group
+
           [] ->
             :ets.delete(@member_index, agent_id)
             nil
         end
-      [] -> nil
+
+      [] ->
+        nil
     end
   end
 
@@ -130,7 +153,9 @@ defmodule Modus.Mind.Cerebro.Group do
   @doc "Remove an agent from their group. If leader leaves, group dissolves."
   def leave_group(agent_id) do
     case get_agent_group(agent_id) do
-      nil -> :ok
+      nil ->
+        :ok
+
       group ->
         if group.leader_id == agent_id do
           dissolve_group(group.id)
@@ -145,6 +170,7 @@ defmodule Modus.Mind.Cerebro.Group do
             dissolve_group(group.id)
           end
         end
+
         :ok
     end
   end
@@ -152,12 +178,16 @@ defmodule Modus.Mind.Cerebro.Group do
   @doc "Dissolve a group entirely."
   def dissolve_group(group_id) do
     case get_group(group_id) do
-      nil -> :ok
+      nil ->
+        :ok
+
       group ->
         all_ids = [group.leader_id | group.member_ids]
+
         Enum.each(all_ids, fn aid ->
           :ets.delete(@member_index, aid)
         end)
+
         :ets.delete(@table, group_id)
         :ok
     end
@@ -171,17 +201,22 @@ defmodule Modus.Mind.Cerebro.Group do
           [{^id2, gid2}] -> gid1 == gid2
           [] -> false
         end
-      [] -> false
+
+      [] ->
+        false
     end
   end
 
   @doc "Get leader's target position for group movement. Members should follow."
   def get_group_target(agent_id) do
     case get_agent_group(agent_id) do
-      nil -> nil
+      nil ->
+        nil
+
       group ->
         if group.leader_id == agent_id do
-          nil  # Leader decides on their own
+          # Leader decides on their own
+          nil
         else
           # Follow leader — get leader position from registry
           case Registry.lookup(Modus.AgentRegistry, group.leader_id) do
@@ -204,12 +239,14 @@ defmodule Modus.Mind.Cerebro.Group do
       if get_agent_group(agent_id) do
         formed
       else
-        friends = SocialNetwork.get_friends(agent_id, @min_friendship_to_group)
-                  |> Enum.reject(fn f -> get_agent_group(f.id) != nil end)
-                  |> Enum.take(@max_members - 1)
+        friends =
+          SocialNetwork.get_friends(agent_id, @min_friendship_to_group)
+          |> Enum.reject(fn f -> get_agent_group(f.id) != nil end)
+          |> Enum.take(@max_members - 1)
 
         if length(friends) >= 1 do
           member_ids = Enum.map(friends, & &1.id)
+
           case form_group(agent_id, member_ids, tick) do
             {:ok, group} -> [group | formed]
             _ -> formed

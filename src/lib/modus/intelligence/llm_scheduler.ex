@@ -9,6 +9,7 @@ defmodule Modus.Intelligence.LlmScheduler do
   require Logger
 
   alias Modus.Simulation.Agent
+
   alias Modus.Intelligence.{
     DecisionCache,
     ResponseCache,
@@ -46,6 +47,7 @@ defmodule Modus.Intelligence.LlmScheduler do
     cond do
       rem(tick, @batch_interval) == 0 and tick > 0 ->
         {:noreply, %{state | busy: true} |> spawn_batch(tick)}
+
       true ->
         {:noreply, state}
     end
@@ -59,19 +61,23 @@ defmodule Modus.Intelligence.LlmScheduler do
 
   defp spawn_batch(state, tick) do
     scheduler = self()
+
     Task.start(fn ->
       try do
         agents = get_alive_agents()
+
         if agents != [] do
           # Split: agents with cached responses vs those needing LLM
-          {cached_agents, uncached_agents} = Enum.split_with(agents, fn agent ->
-            hash = ResponseCache.situation_hash(agent)
-            ResponseCache.get(hash, tick) != nil
-          end)
+          {cached_agents, uncached_agents} =
+            Enum.split_with(agents, fn agent ->
+              hash = ResponseCache.situation_hash(agent)
+              ResponseCache.get(hash, tick) != nil
+            end)
 
           # Apply cached decisions
           for agent <- cached_agents do
             hash = ResponseCache.situation_hash(agent)
+
             case ResponseCache.get(hash, tick) do
               {action, params} -> DecisionCache.put(agent.id, {action, params})
               _ -> :ok
@@ -87,6 +93,7 @@ defmodule Modus.Intelligence.LlmScheduler do
             case BudgetTracker.request_slot(:normal) do
               :ok ->
                 context = %{tick: tick, world_size: {50, 50}}
+
                 case FallbackChain.batch_decide(uncached_agents, context) do
                   :fallback ->
                     # Use behavior tree
@@ -94,26 +101,37 @@ defmodule Modus.Intelligence.LlmScheduler do
                       action = BehaviorTree.evaluate(agent, tick)
                       DecisionCache.put(agent.id, {action, %{reason: "behavior_tree"}})
                     end
+
                   decisions when is_list(decisions) ->
                     for {agent_id, action, params} <- decisions do
                       DecisionCache.put(agent_id, {action, params})
                       # Cache the response for similar situations
                       agent = Enum.find(uncached_agents, &(&1.id == agent_id))
+
                       if agent do
                         hash = ResponseCache.situation_hash(agent)
                         ResponseCache.put(hash, {action, params}, tick)
                       end
                     end
-                    Logger.info("LLM batch decided for #{length(decisions)} agents at tick #{tick}")
-                  _ -> :ok
+
+                    Logger.info(
+                      "LLM batch decided for #{length(decisions)} agents at tick #{tick}"
+                    )
+
+                  _ ->
+                    :ok
                 end
+
               :over_budget ->
                 # Over budget — use behavior tree
                 for agent <- uncached_agents do
                   action = BehaviorTree.evaluate(agent, tick)
                   DecisionCache.put(agent.id, {action, %{reason: "budget_limited"}})
                 end
-                Logger.debug("LLM over budget at tick #{tick}, using behavior tree for #{length(uncached_agents)} agents")
+
+                Logger.debug(
+                  "LLM over budget at tick #{tick}, using behavior tree for #{length(uncached_agents)} agents"
+                )
             end
           end
         end
@@ -123,6 +141,7 @@ defmodule Modus.Intelligence.LlmScheduler do
         send(scheduler, {:llm_done})
       end
     end)
+
     state
   end
 

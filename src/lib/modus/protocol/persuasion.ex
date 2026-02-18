@@ -19,12 +19,13 @@ defmodule Modus.Protocol.Persuasion do
     if :ets.whereis(@table) == :undefined do
       :ets.new(@table, [:set, :public, :named_table])
     end
+
     :ok
   end
 
   @doc """
   Attempt persuasion. Returns {:ok, :persuaded} or {:ok, :resisted}.
-  
+
   Persuasion score is based on:
   - Persuader's extraversion + agreeableness (charisma)
   - Target's neuroticism (susceptibility) vs conscientiousness (resistance)
@@ -37,27 +38,29 @@ defmodule Modus.Protocol.Persuasion do
 
     # Persuader's charisma score
     p_personality = persuader.personality || %{}
-    charisma = (
+
+    charisma =
       ensure_float(Map.get(p_personality, :extraversion, 0.5)) * 0.4 +
-      ensure_float(Map.get(p_personality, :agreeableness, 0.5)) * 0.3 +
-      ensure_float(Map.get(p_personality, :openness, 0.5)) * 0.3
-    )
+        ensure_float(Map.get(p_personality, :agreeableness, 0.5)) * 0.3 +
+        ensure_float(Map.get(p_personality, :openness, 0.5)) * 0.3
 
     # Target's resistance score
     t_personality = target.personality || %{}
-    resistance = (
+
+    resistance =
       ensure_float(Map.get(t_personality, :conscientiousness, 0.5)) * 0.5 +
-      (1.0 - ensure_float(Map.get(t_personality, :neuroticism, 0.5))) * 0.3 +
-      (1.0 - ensure_float(Map.get(t_personality, :agreeableness, 0.5))) * 0.2
-    )
+        (1.0 - ensure_float(Map.get(t_personality, :neuroticism, 0.5))) * 0.3 +
+        (1.0 - ensure_float(Map.get(t_personality, :agreeableness, 0.5))) * 0.2
 
     # Trust bonus from relationship
     relationship = SocialNetwork.get_relationship(persuader.id, target.id)
-    trust_bonus = if relationship do
-      ensure_float(relationship.strength) * 0.3
-    else
-      0.0
-    end
+
+    trust_bonus =
+      if relationship do
+        ensure_float(relationship.strength) * 0.3
+      else
+        0.0
+      end
 
     # Topic relevance bonus
     topic_bonus = topic_relevance(target, topic)
@@ -84,9 +87,12 @@ defmodule Modus.Protocol.Persuasion do
       result: result,
       timestamp: System.system_time(:second)
     }
+
     store_log(persuader.id, log_entry)
 
-    Logger.debug("[Persuasion] #{persuader.name} -> #{target.name} (#{topic}): #{result} (#{Float.round(persuasion_score, 2)} vs #{Float.round(resistance_score, 2)})")
+    Logger.debug(
+      "[Persuasion] #{persuader.name} -> #{target.name} (#{topic}): #{result} (#{Float.round(persuasion_score, 2)} vs #{Float.round(resistance_score, 2)})"
+    )
 
     {:ok, result, persuasion_score}
   end
@@ -95,6 +101,7 @@ defmodule Modus.Protocol.Persuasion do
   @spec get_log(String.t()) :: [map()]
   def get_log(agent_id) do
     init()
+
     case :ets.lookup(@table, agent_id) do
       [{_, log}] -> log
       [] -> []
@@ -105,10 +112,12 @@ defmodule Modus.Protocol.Persuasion do
 
   defp topic_relevance(target, topic) do
     needs = target.needs || %{}
+
     case topic do
       :trade -> if ensure_float(Map.get(needs, :hunger, 50)) > 60, do: 0.2, else: 0.05
       :alliance -> if ensure_float(Map.get(needs, :social, 50)) > 60, do: 0.2, else: 0.05
-      :warning -> 0.15  # warnings are always somewhat relevant
+      # warnings are always somewhat relevant
+      :warning -> 0.15
       :gossip -> 0.05
       _ -> 0.0
     end

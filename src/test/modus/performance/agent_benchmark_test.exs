@@ -16,11 +16,12 @@ defmodule Modus.Performance.AgentBenchmarkTest do
     mem_before = :erlang.memory(:total)
 
     # Spawn 50 agents
-    agents = for i <- 1..50 do
-      agent = Agent.new("Bench#{i}", {rem(i, 50), div(i, 50)})
-      {:ok, pid} = Agent.start_link(agent)
-      {agent.id, pid}
-    end
+    agents =
+      for i <- 1..50 do
+        agent = Agent.new("Bench#{i}", {rem(i, 50), div(i, 50)})
+        {:ok, pid} = Agent.start_link(agent)
+        {agent.id, pid}
+      end
 
     :erlang.garbage_collect()
     mem_after = :erlang.memory(:total)

@@ -23,18 +23,17 @@ defmodule Modus.Mind.EpisodicMemoryTest do
         mem = EpisodicMemory.store(aid, type, 1, "#{type} memory")
         assert mem.type == type
       end
+
       assert length(EpisodicMemory.recall(aid, limit: 100)) == 4
     end
 
     test "stores with position", %{agent_id: aid} do
-      mem = EpisodicMemory.store(aid, :spatial, 5, "river found",
-        position: {10, 20})
+      mem = EpisodicMemory.store(aid, :spatial, 5, "river found", position: {10, 20})
       assert mem.position == {10, 20}
     end
 
     test "stores social memory with related_agent_id", %{agent_id: aid} do
-      mem = EpisodicMemory.store(aid, :social, 5, "traded with Kai",
-        related_agent_id: "kai_01")
+      mem = EpisodicMemory.store(aid, :social, 5, "traded with Kai", related_agent_id: "kai_01")
       assert mem.related_agent_id == "kai_01"
     end
   end

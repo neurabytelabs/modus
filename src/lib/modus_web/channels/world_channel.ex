@@ -71,6 +71,7 @@ defmodule ModusWeb.WorldChannel do
         # Kill a random agent and log
         if alive != [] do
           victim = Enum.random(alive)
+
           try do
             GenServer.cast(
               {:via, Registry, {Modus.AgentRegistry, victim.id}},
@@ -79,7 +80,11 @@ defmodule ModusWeb.WorldChannel do
           catch
             :exit, _ -> :ok
           end
-          EventLog.log(:disaster, tick, [victim.id], %{type: :natural_disaster, victim: victim.name})
+
+          EventLog.log(:disaster, tick, [victim.id], %{
+            type: :natural_disaster,
+            victim: victim.name
+          })
         end
 
       "migrant" ->
@@ -87,6 +92,7 @@ defmodule ModusWeb.WorldChannel do
         if Process.whereis(World) do
           World.spawn_initial_agents(1)
         end
+
         EventLog.log(:migration, tick, [], %{type: :migrant_arrival})
 
       "resource_bonus" ->
@@ -101,13 +107,16 @@ defmodule ModusWeb.WorldChannel do
             :exit, _ -> :ok
           end
         end
+
         EventLog.log(:resource, tick, [], %{type: :resource_bonus})
 
-      _ -> :ok
+      _ ->
+        :ok
     end
 
     # Send updated state
     updated_agents = get_agent_list()
+
     broadcast!(socket, "delta", %{
       tick: tick,
       agent_count: length(updated_agents),
@@ -117,14 +126,22 @@ defmodule ModusWeb.WorldChannel do
     {:noreply, socket}
   end
 
-  def handle_in("create_world", %{"template" => template, "population" => pop, "danger" => danger} = payload, socket) do
+  def handle_in(
+        "create_world",
+        %{"template" => template, "population" => pop, "danger" => danger} = payload,
+        socket
+      ) do
     Ticker.pause()
     AgentSupervisor.terminate_all()
     if Process.whereis(World), do: GenServer.stop(World)
 
     opts = [template: String.to_atom(template), danger_level: String.to_atom(danger)]
     opts = if payload["seed"], do: Keyword.put(opts, :seed, payload["seed"]), else: opts
-    opts = if payload["grid_size"], do: Keyword.put(opts, :grid_size, {payload["grid_size"], payload["grid_size"]}), else: opts
+
+    opts =
+      if payload["grid_size"],
+        do: Keyword.put(opts, :grid_size, {payload["grid_size"], payload["grid_size"]}),
+        else: opts
 
     world = World.new("Genesis", opts)
     {:ok, _} = World.start_link(world)
@@ -151,8 +168,10 @@ defmodule ModusWeb.WorldChannel do
               user_message: message,
               agent_reply: reply
             })
+
             Logger.info("MODUS chat_reply ready for #{agent_id}: #{String.slice(reply, 0..80)}")
             send(channel_pid, {:chat_reply, agent_id, reply})
+
           _ ->
             send(channel_pid, {:chat_reply, agent_id, "I can't respond right now..."})
         end
@@ -168,19 +187,23 @@ defmodule ModusWeb.WorldChannel do
 
   def handle_in("get_llm_config", _payload, socket) do
     config = LlmProvider.get_config()
-    {:reply, {:ok, %{
-      provider: to_string(config.provider),
-      model: config.model,
-      base_url: config.base_url || "",
-      api_key: config.api_key || ""
-    }}, socket}
+
+    {:reply,
+     {:ok,
+      %{
+        provider: to_string(config.provider),
+        model: config.model,
+        base_url: config.base_url || "",
+        api_key: config.api_key || ""
+      }}, socket}
   end
 
   def handle_in("set_llm_config", payload, socket) do
-    provider = case payload["provider"] do
-      "antigravity" -> :antigravity
-      _ -> :ollama
-    end
+    provider =
+      case payload["provider"] do
+        "antigravity" -> :antigravity
+        _ -> :ollama
+      end
 
     config = %{
       provider: provider,
@@ -212,6 +235,7 @@ defmodule ModusWeb.WorldChannel do
     case Modus.Persistence.WorldPersistence.save(name) do
       {:ok, info} ->
         {:reply, {:ok, info}, socket}
+
       {:error, reason} ->
         {:reply, {:error, %{reason: reason}}, socket}
     end
@@ -221,6 +245,7 @@ defmodule ModusWeb.WorldChannel do
     case Modus.Persistence.WorldPersistence.save() do
       {:ok, info} ->
         {:reply, {:ok, info}, socket}
+
       {:error, reason} ->
         {:reply, {:error, %{reason: reason}}, socket}
     end
@@ -234,6 +259,7 @@ defmodule ModusWeb.WorldChannel do
         broadcast!(socket, "full_state", state)
         broadcast!(socket, "status_change", %{status: "paused"})
         {:reply, {:ok, info}, socket}
+
       {:error, reason} ->
         {:reply, {:error, %{reason: reason}}, socket}
     end
@@ -258,11 +284,13 @@ defmodule ModusWeb.WorldChannel do
   def handle_in("paint_terrain", %{"x" => x, "y" => y, "terrain" => terrain}, socket)
       when is_integer(x) and is_integer(y) and terrain in @valid_terrains do
     terrain_atom = String.to_existing_atom(terrain)
+
     case World.paint_terrain({x, y}, terrain_atom) do
       :ok ->
         # Broadcast tile update to all clients
         broadcast!(socket, "terrain_painted", %{x: x, y: y, terrain: terrain})
         {:reply, :ok, socket}
+
       {:error, reason} ->
         {:reply, {:error, %{reason: inspect(reason)}}, socket}
     end
@@ -279,10 +307,12 @@ defmodule ModusWeb.WorldChannel do
   def handle_in("place_resource", %{"x" => x, "y" => y, "node_type" => node_type}, socket)
       when is_integer(x) and is_integer(y) and node_type in @valid_nodes do
     node_atom = String.to_existing_atom(node_type)
+
     case World.place_resource_node({x, y}, node_atom) do
       :ok ->
         broadcast!(socket, "resource_placed", %{x: x, y: y, node_type: node_type})
         {:reply, :ok, socket}
+
       {:error, reason} ->
         {:reply, {:error, %{reason: inspect(reason)}}, socket}
     end
@@ -302,7 +332,11 @@ defmodule ModusWeb.WorldChannel do
     tick = if Process.whereis(Ticker), do: Ticker.current_tick(), else: 0
     building = Building.place(building_type, {x, y}, nil, tick)
     EventLog.log(:building, tick, [], %{type: building_type, position: {x, y}, god_mode: true})
-    broadcast!(socket, "building_placed", %{building: hd(Building.serialize_all() |> Enum.filter(&(&1.id == building.id)))})
+
+    broadcast!(socket, "building_placed", %{
+      building: hd(Building.serialize_all() |> Enum.filter(&(&1.id == building.id)))
+    })
+
     {:reply, :ok, socket}
   end
 
@@ -318,6 +352,7 @@ defmodule ModusWeb.WorldChannel do
         {:via, Registry, {Modus.AgentRegistry, agent_id}},
         {:gather_at, {x, y}}
       )
+
       {:reply, :ok, socket}
     catch
       :exit, _ -> {:reply, {:error, %{reason: "agent_not_found"}}, socket}
@@ -335,15 +370,20 @@ defmodule ModusWeb.WorldChannel do
     Logger.info("MODUS spawn_custom_agent: #{inspect(payload)}")
 
     name = payload["name"] || "Unnamed"
-    occupation = if payload["occupation"] in @valid_occupations,
-      do: String.to_atom(payload["occupation"]),
-      else: :explorer
-    mood = if payload["mood"] in @valid_moods,
-      do: String.to_atom(payload["mood"]),
-      else: :calm
+
+    occupation =
+      if payload["occupation"] in @valid_occupations,
+        do: String.to_atom(payload["occupation"]),
+        else: :explorer
+
+    mood =
+      if payload["mood"] in @valid_moods,
+        do: String.to_atom(payload["mood"]),
+        else: :calm
 
     # Parse personality (Big Five 0-100 → 0.0-1.0)
     p = payload["personality"] || %{}
+
     personality = %{
       openness: (p["o"] || 50) / 100,
       conscientiousness: (p["c"] || 50) / 100,
@@ -353,31 +393,39 @@ defmodule ModusWeb.WorldChannel do
     }
 
     # Position — use provided or find walkable
-    position = if payload["x"] && payload["y"] do
-      {payload["x"], payload["y"]}
-    else
-      if Process.whereis(World) do
-        state = World.get_state()
-        {max_x, max_y} = state.grid_size
-        find_walkable({max_x, max_y}, state.grid_table)
+    position =
+      if payload["x"] && payload["y"] do
+        {payload["x"], payload["y"]}
       else
-        {50, 50}
+        if Process.whereis(World) do
+          state = World.get_state()
+          {max_x, max_y} = state.grid_size
+          find_walkable({max_x, max_y}, state.grid_table)
+        else
+          {50, 50}
+        end
       end
-    end
 
     agent = Agent.new_custom(name, position, occupation, personality, mood)
 
     case AgentSupervisor.spawn_agent(agent) do
       {:ok, _pid} ->
         tick = if Process.whereis(Ticker), do: Ticker.current_tick(), else: 0
-        EventLog.log(:birth, tick, [agent.id], %{name: name, type: :custom_spawn, occupation: occupation})
+
+        EventLog.log(:birth, tick, [agent.id], %{
+          name: name,
+          type: :custom_spawn,
+          occupation: occupation
+        })
 
         agents = get_agent_list()
+
         broadcast!(socket, "delta", %{
           tick: tick,
           agent_count: length(agents),
           agents: agents
         })
+
         {:reply, {:ok, %{id: agent.id, name: name}}, socket}
 
       {:error, reason} ->
@@ -391,11 +439,12 @@ defmodule ModusWeb.WorldChannel do
     Logger.info("MODUS spawn_animal: #{animal_type} at #{x},#{y}")
 
     # Animals are simple agents with animal occupation
-    name = case animal_type do
-      "deer" -> "Deer"
-      "rabbit" -> "Rabbit"
-      "wolf" -> "Wolf"
-    end
+    name =
+      case animal_type do
+        "deer" -> "Deer"
+        "rabbit" -> "Rabbit"
+        "wolf" -> "Wolf"
+      end
 
     personality = %{
       openness: :rand.uniform() * 0.5,
@@ -410,14 +459,21 @@ defmodule ModusWeb.WorldChannel do
     case AgentSupervisor.spawn_agent(agent) do
       {:ok, _pid} ->
         tick = if Process.whereis(Ticker), do: Ticker.current_tick(), else: 0
-        EventLog.log(:birth, tick, [agent.id], %{name: name, type: :animal_spawn, animal: animal_type})
+
+        EventLog.log(:birth, tick, [agent.id], %{
+          name: name,
+          type: :animal_spawn,
+          animal: animal_type
+        })
 
         agents = get_agent_list()
+
         broadcast!(socket, "delta", %{
           tick: tick,
           agent_count: length(agents),
           agents: agents
         })
+
         {:reply, {:ok, %{id: agent.id, name: name}}, socket}
 
       {:error, reason} ->
@@ -451,6 +507,7 @@ defmodule ModusWeb.WorldChannel do
         state = build_full_state()
         broadcast!(socket, "full_state", state)
         {:reply, {:ok, info}, socket}
+
       {:error, reason} ->
         {:reply, {:error, %{reason: reason}}, socket}
     end
@@ -462,6 +519,7 @@ defmodule ModusWeb.WorldChannel do
         state = build_full_state()
         broadcast!(socket, "full_state", state)
         {:reply, {:ok, info}, socket}
+
       {:error, reason} ->
         {:reply, {:error, %{reason: reason}}, socket}
     end
@@ -498,13 +556,47 @@ defmodule ModusWeb.WorldChannel do
 
   def handle_in("update_rules", %{"rules" => rules_params}, socket) do
     changes = %{}
-    changes = if rules_params["time_speed"], do: Map.put(changes, :time_speed, ensure_float(rules_params["time_speed"])), else: changes
-    changes = if rules_params["resource_abundance"], do: Map.put(changes, :resource_abundance, String.to_existing_atom(rules_params["resource_abundance"])), else: changes
-    changes = if rules_params["danger_level"], do: Map.put(changes, :danger_level, String.to_existing_atom(rules_params["danger_level"])), else: changes
-    changes = if rules_params["social_tendency"], do: Map.put(changes, :social_tendency, ensure_float(rules_params["social_tendency"])), else: changes
-    changes = if rules_params["birth_rate"], do: Map.put(changes, :birth_rate, ensure_float(rules_params["birth_rate"])), else: changes
-    changes = if rules_params["building_speed"], do: Map.put(changes, :building_speed, ensure_float(rules_params["building_speed"])), else: changes
-    changes = if rules_params["mutation_rate"], do: Map.put(changes, :mutation_rate, ensure_float(rules_params["mutation_rate"])), else: changes
+
+    changes =
+      if rules_params["time_speed"],
+        do: Map.put(changes, :time_speed, ensure_float(rules_params["time_speed"])),
+        else: changes
+
+    changes =
+      if rules_params["resource_abundance"],
+        do:
+          Map.put(
+            changes,
+            :resource_abundance,
+            String.to_existing_atom(rules_params["resource_abundance"])
+          ),
+        else: changes
+
+    changes =
+      if rules_params["danger_level"],
+        do:
+          Map.put(changes, :danger_level, String.to_existing_atom(rules_params["danger_level"])),
+        else: changes
+
+    changes =
+      if rules_params["social_tendency"],
+        do: Map.put(changes, :social_tendency, ensure_float(rules_params["social_tendency"])),
+        else: changes
+
+    changes =
+      if rules_params["birth_rate"],
+        do: Map.put(changes, :birth_rate, ensure_float(rules_params["birth_rate"])),
+        else: changes
+
+    changes =
+      if rules_params["building_speed"],
+        do: Map.put(changes, :building_speed, ensure_float(rules_params["building_speed"])),
+        else: changes
+
+    changes =
+      if rules_params["mutation_rate"],
+        do: Map.put(changes, :mutation_rate, ensure_float(rules_params["mutation_rate"])),
+        else: changes
 
     Modus.Simulation.RulesEngine.update(changes)
     rules = Modus.Simulation.RulesEngine.serialize()
@@ -518,6 +610,7 @@ defmodule ModusWeb.WorldChannel do
         rules = Modus.Simulation.RulesEngine.serialize()
         broadcast!(socket, "rules_changed", %{rules: rules})
         {:reply, {:ok, %{rules: rules}}, socket}
+
       {:error, :unknown_preset} ->
         {:reply, {:error, %{reason: "unknown_preset"}}, socket}
     end
@@ -539,7 +632,10 @@ defmodule ModusWeb.WorldChannel do
     type = String.to_existing_atom(type_str)
     target = payload["target"]
     goal = Modus.Mind.Goals.add_goal(agent_id, type, target)
-    {:reply, {:ok, %{goal: hd(Modus.Mind.Goals.serialize(agent_id) |> Enum.filter(&(&1.id == goal.id)))}}, socket}
+
+    {:reply,
+     {:ok, %{goal: hd(Modus.Mind.Goals.serialize(agent_id) |> Enum.filter(&(&1.id == goal.id)))}},
+     socket}
   rescue
     _ -> {:reply, {:error, %{reason: "invalid_goal_type"}}, socket}
   end
@@ -556,41 +652,70 @@ defmodule ModusWeb.WorldChannel do
     # Agents now self-tick via PubSub — we just query state
     agents = get_agent_list()
 
-    env = try do
-      Modus.Simulation.Environment.get_state()
-    catch
-      :exit, _ -> %{time_of_day: :day, cycle_progress: 0.0}
-    end
+    env =
+      try do
+        Modus.Simulation.Environment.get_state()
+      catch
+        :exit, _ -> %{time_of_day: :day, cycle_progress: 0.0}
+      end
 
-    buildings = try do
-      Building.serialize_all()
-    catch
-      _, _ -> []
-    end
+    buildings =
+      try do
+        Building.serialize_all()
+      catch
+        _, _ -> []
+      end
 
-    neighborhoods = try do
-      Building.serialize_neighborhoods()
-    catch
-      _, _ -> []
-    end
+    neighborhoods =
+      try do
+        Building.serialize_neighborhoods()
+      catch
+        _, _ -> []
+      end
 
-    world_events = try do
-      WorldEvents.serialize()
-    catch
-      _, _ -> []
-    end
+    world_events =
+      try do
+        WorldEvents.serialize()
+      catch
+        _, _ -> []
+      end
 
-    seasons = try do
-      Modus.Simulation.Seasons.serialize()
-    catch
-      _, _ -> %{season: "spring", season_name: "Spring", emoji: "🌸", year: 1, progress: 0.0, tint: 0x88DD88, tint_alpha: 0.08, terrain_shift: %{}, growth_modifier: 1.0}
-    end
+    seasons =
+      try do
+        Modus.Simulation.Seasons.serialize()
+      catch
+        _, _ ->
+          %{
+            season: "spring",
+            season_name: "Spring",
+            emoji: "🌸",
+            year: 1,
+            progress: 0.0,
+            tint: 0x88DD88,
+            tint_alpha: 0.08,
+            terrain_shift: %{},
+            growth_modifier: 1.0
+          }
+      end
 
-    weather = try do
-      Modus.Simulation.Weather.serialize()
-    catch
-      _, _ -> %{current: "clear", name: "Clear", emoji: "☀️", move_mod: 1.0, gather_mod: 1.0, mood_mod: 0.0, crop_mod: 1.0, severe_event: nil, ticks_remaining: 0, forecast: []}
-    end
+    weather =
+      try do
+        Modus.Simulation.Weather.serialize()
+      catch
+        _, _ ->
+          %{
+            current: "clear",
+            name: "Clear",
+            emoji: "☀️",
+            move_mod: 1.0,
+            gather_mod: 1.0,
+            mood_mod: 0.0,
+            crop_mod: 1.0,
+            severe_event: nil,
+            ticks_remaining: 0,
+            forecast: []
+          }
+      end
 
     delta = %{
       tick: tick_number,
@@ -606,13 +731,19 @@ defmodule ModusWeb.WorldChannel do
       day_phase: to_string(Map.get(env, :day_phase, :day)),
       season: seasons,
       weather: weather,
-      rules: try do Modus.Simulation.RulesEngine.serialize() catch _, _ -> %{} end
+      rules:
+        try do
+          Modus.Simulation.RulesEngine.serialize()
+        catch
+          _, _ -> %{}
+        end
     }
 
     push(socket, "delta", delta)
 
     # Push selected agent detail every 10 ticks for live panel update
     selected_id = socket.assigns[:selected_agent_id]
+
     if selected_id && rem(tick_number, 10) == 0 do
       try do
         state = Agent.get_state(selected_id)
@@ -644,9 +775,13 @@ defmodule ModusWeb.WorldChannel do
       emoji: config.emoji,
       tint: config.tint,
       tint_alpha: config.tint_alpha,
-      terrain_shift: config.terrain_shift |> Enum.map(fn {k, v} -> {Atom.to_string(k), v} end) |> Enum.into(%{}),
+      terrain_shift:
+        config.terrain_shift
+        |> Enum.map(fn {k, v} -> {Atom.to_string(k), v} end)
+        |> Enum.into(%{}),
       growth_modifier: config.growth_modifier
     })
+
     {:noreply, socket}
   end
 
@@ -667,6 +802,7 @@ defmodule ModusWeb.WorldChannel do
   defp find_walkable({max_x, max_y}, table) do
     x = :rand.uniform(max_x) - 1
     y = :rand.uniform(max_y) - 1
+
     case :ets.lookup(table, {x, y}) do
       [{{^x, ^y}, %{terrain: terrain}}] when terrain in [:grass, :forest] -> {x, y}
       _ -> find_walkable({max_x, max_y}, table)
@@ -688,40 +824,61 @@ defmodule ModusWeb.WorldChannel do
         do: Ticker.status().state |> to_string(),
         else: "paused"
 
-    env = try do
-      Modus.Simulation.Environment.get_state()
-    catch
-      :exit, _ -> %{time_of_day: :day, cycle_progress: 0.0}
-    end
+    env =
+      try do
+        Modus.Simulation.Environment.get_state()
+      catch
+        :exit, _ -> %{time_of_day: :day, cycle_progress: 0.0}
+      end
 
     grid_size = if world_state, do: world_state.grid_size, else: {100, 100}
     {gw, gh} = grid_size
 
-    buildings = try do
-      Building.serialize_all()
-    catch
-      _, _ -> []
-    end
+    buildings =
+      try do
+        Building.serialize_all()
+      catch
+        _, _ -> []
+      end
 
-    neighborhoods = try do
-      Building.serialize_neighborhoods()
-    catch
-      _, _ -> []
-    end
+    neighborhoods =
+      try do
+        Building.serialize_neighborhoods()
+      catch
+        _, _ -> []
+      end
 
-    world_events = try do
-      WorldEvents.serialize()
-    catch
-      _, _ -> []
-    end
+    world_events =
+      try do
+        WorldEvents.serialize()
+      catch
+        _, _ -> []
+      end
 
-    seasons = try do
-      Modus.Simulation.Seasons.serialize()
-    catch
-      _, _ -> %{season: "spring", season_name: "Spring", emoji: "🌸", year: 1, progress: 0.0, tint: 0x88DD88, tint_alpha: 0.08, terrain_shift: %{}, growth_modifier: 1.0}
-    end
+    seasons =
+      try do
+        Modus.Simulation.Seasons.serialize()
+      catch
+        _, _ ->
+          %{
+            season: "spring",
+            season_name: "Spring",
+            emoji: "🌸",
+            year: 1,
+            progress: 0.0,
+            tint: 0x88DD88,
+            tint_alpha: 0.08,
+            terrain_shift: %{},
+            growth_modifier: 1.0
+          }
+      end
 
-    rules = try do Modus.Simulation.RulesEngine.serialize() catch _, _ -> %{} end
+    rules =
+      try do
+        Modus.Simulation.RulesEngine.serialize()
+      catch
+        _, _ -> %{}
+      end
 
     %{
       grid: grid,
@@ -753,7 +910,10 @@ defmodule ModusWeb.WorldChannel do
           biome = Map.get(cell, :biome, :plains) |> to_string()
           base = %{x: x, y: y, terrain: cell.terrain |> to_string(), biome: biome}
           nodes = Map.get(cell, :resource_nodes, [])
-          if nodes == [], do: base, else: Map.put(base, :resource_nodes, Enum.map(nodes, &to_string/1))
+
+          if nodes == [],
+            do: base,
+            else: Map.put(base, :resource_nodes, Enum.map(nodes, &to_string/1))
 
         _ ->
           %{x: x, y: y, terrain: "grass"}
@@ -781,17 +941,25 @@ defmodule ModusWeb.WorldChannel do
           conatus_energy: state.conatus_energy,
           affect: state.affect_state |> to_string(),
           reasoning: state.last_reasoning != nil,
-          friends: (try do Modus.Mind.Cerebro.SocialNetwork.get_friends(state.id) |> Enum.take(3) catch _, _ -> [] end)
-                   |> Enum.take(5)
-                   |> Enum.map(fn f -> %{id: f.id, strength: Float.round(ensure_float(f.strength), 2)} end),
+          friends:
+            try do
+              Modus.Mind.Cerebro.SocialNetwork.get_friends(state.id) |> Enum.take(3)
+            catch
+              _, _ -> []
+            end
+            |> Enum.take(5)
+            |> Enum.map(fn f ->
+              %{id: f.id, strength: Float.round(ensure_float(f.strength), 2)}
+            end),
           age: state.age,
           age_stage: Modus.Simulation.Aging.stage(state.age) |> to_string(),
           age_emoji: Modus.Simulation.Aging.emoji(Modus.Simulation.Aging.stage(state.age)),
           conversing_with: Map.get(state, :conversing_with),
-          group: case Modus.Mind.Cerebro.Group.get_agent_group(state.id) do
-            nil -> nil
-            g -> %{id: g.id, name: g.name, color: g.color, is_leader: g.leader_id == state.id}
-          end
+          group:
+            case Modus.Mind.Cerebro.Group.get_agent_group(state.id) do
+              nil -> nil
+              g -> %{id: g.id, name: g.name, color: g.color, is_leader: g.leader_id == state.id}
+            end
         }
       catch
         :exit, _ -> nil

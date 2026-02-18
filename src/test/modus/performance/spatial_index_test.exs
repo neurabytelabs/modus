@@ -6,7 +6,12 @@ defmodule Modus.Performance.SpatialIndexTest do
   setup do
     SpatialIndex.init()
     # Clean up
-    try do :ets.delete_all_objects(:modus_spatial_index) catch _, _ -> :ok end
+    try do
+      :ets.delete_all_objects(:modus_spatial_index)
+    catch
+      _, _ -> :ok
+    end
+
     :ok
   end
 

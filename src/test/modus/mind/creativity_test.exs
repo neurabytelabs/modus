@@ -190,7 +190,7 @@ defmodule Modus.Mind.CreativityTest do
 
     test "pass_story fails for nonexistent story", %{agent_id: agent_id} do
       assert {:error, :story_not_found} =
-        Creativity.pass_story(agent_id, "someone", "fake_id")
+               Creativity.pass_story(agent_id, "someone", "fake_id")
     end
 
     test "oral_tradition_history tracks transmissions", %{agent_id: agent_id} do

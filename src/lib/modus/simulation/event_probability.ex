@@ -57,15 +57,29 @@ defmodule Modus.Simulation.EventProbability do
       season_mod = Map.get(season_mods, event, 1.0)
 
       # Context-specific modifiers
-      context_mod = case event do
-        :festival -> if happiness > 0.7, do: 2.0, else: if(happiness < 0.3, do: 0.1, else: 1.0)
-        :conflict -> if happiness < 0.3, do: 2.0, else: if(happiness > 0.7, do: 0.2, else: 1.0)
-        :famine -> if food_ratio < 0.3, do: 2.5, else: if(food_ratio > 0.8, do: 0.2, else: 1.0)
-        :golden_age -> if happiness > 0.8, do: 2.5, else: if(happiness < 0.5, do: 0.1, else: 1.0)
-        :migration_wave -> if population < 5, do: 2.0, else: if(population > 30, do: 0.5, else: 1.0)
-        :discovery -> if population > 5, do: 1.5, else: 0.5
-        _ -> 1.0
-      end
+      context_mod =
+        case event do
+          :festival ->
+            if happiness > 0.7, do: 2.0, else: if(happiness < 0.3, do: 0.1, else: 1.0)
+
+          :conflict ->
+            if happiness < 0.3, do: 2.0, else: if(happiness > 0.7, do: 0.2, else: 1.0)
+
+          :famine ->
+            if food_ratio < 0.3, do: 2.5, else: if(food_ratio > 0.8, do: 0.2, else: 1.0)
+
+          :golden_age ->
+            if happiness > 0.8, do: 2.5, else: if(happiness < 0.5, do: 0.1, else: 1.0)
+
+          :migration_wave ->
+            if population < 5, do: 2.0, else: if(population > 30, do: 0.5, else: 1.0)
+
+          :discovery ->
+            if population > 5, do: 1.5, else: 0.5
+
+          _ ->
+            1.0
+        end
 
       final_prob = base_prob * season_mod * context_mod * cooldown_mod * pop_mod
       {event, min(0.5, final_prob)}
@@ -78,24 +92,31 @@ defmodule Modus.Simulation.EventProbability do
   def roll(context) do
     probabilities = calculate(context)
 
-    result = Enum.find(probabilities, fn {_event, prob} ->
-      :rand.uniform() < prob
-    end)
+    result =
+      Enum.find(probabilities, fn {_event, prob} ->
+        :rand.uniform() < prob
+      end)
 
     case result do
       {event, _prob} ->
         severity = weighted_severity()
         {event, severity}
-      nil -> nil
+
+      nil ->
+        nil
     end
   end
 
   defp weighted_severity do
     r = :rand.uniform(100)
+
     cond do
-      r <= 60 -> 1  # 60% minor
-      r <= 90 -> 2  # 30% moderate
-      true -> 3     # 10% severe
+      # 60% minor
+      r <= 60 -> 1
+      # 30% moderate
+      r <= 90 -> 2
+      # 10% severe
+      true -> 3
     end
   end
 

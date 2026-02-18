@@ -26,7 +26,18 @@ defmodule Modus.Mind.Cerebro.GroupTest do
     assert {:ok, group} = Group.form_group("agent_a", ["agent_b", "agent_c"], 100)
     assert group.leader_id == "agent_a"
     assert group.member_ids == ["agent_b", "agent_c"]
-    assert group.color in [0xFF6B6B, 0x4ECDC4, 0xFFE66D, 0xA855F7, 0x06B6D4, 0xF97316, 0x22C55E, 0xEC4899]
+
+    assert group.color in [
+             0xFF6B6B,
+             0x4ECDC4,
+             0xFFE66D,
+             0xA855F7,
+             0x06B6D4,
+             0xF97316,
+             0x22C55E,
+             0xEC4899
+           ]
+
     assert group.formed_at == 100
   end
 
@@ -65,7 +76,8 @@ defmodule Modus.Mind.Cerebro.GroupTest do
   end
 
   test "max members enforced" do
-    assert {:error, :too_many_members} = Group.form_group("agent_a", ["agent_b", "agent_c", "d", "e"], 0)
+    assert {:error, :too_many_members} =
+             Group.form_group("agent_a", ["agent_b", "agent_c", "d", "e"], 0)
   end
 
   test "insufficient friendship rejected" do

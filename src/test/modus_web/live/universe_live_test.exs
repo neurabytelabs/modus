@@ -31,15 +31,16 @@ defmodule ModusWeb.UniverseLiveTest do
       mind_view_active: false,
       phase: :onboarding
     }
+
     assert assigns.god_mode == false
     assert assigns.cinematic_mode == false
     assert assigns.phase == :onboarding
   end
 
   # Test 4: Version check
-  test "version is 5.1.0 in mix.exs" do
+  test "version is 5.2.0 in mix.exs" do
     {:ok, content} = File.read("mix.exs")
-    assert content =~ ~s(version: "5.1.0")
+    assert content =~ ~s(version: "5.2.0")
   end
 
   # Test 5: Landing page has correct content in template

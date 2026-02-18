@@ -173,12 +173,15 @@ defmodule Modus.Simulation.WildlifeTest do
       end
 
       case Process.whereis(Wildlife) do
-        nil -> start_supervised!({Wildlife, []})
+        nil ->
+          start_supervised!({Wildlife, []})
+
         _pid ->
           # Reset to initial state for test isolation
           GenServer.cast(Wildlife, :reset)
           :timer.sleep(10)
       end
+
       :ok
     end
 

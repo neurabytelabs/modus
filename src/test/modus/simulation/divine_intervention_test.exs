@@ -9,6 +9,7 @@ defmodule Modus.Simulation.DivineInterventionTest do
       nil ->
         {:ok, _pid} = DivineIntervention.start_link([])
         :ok
+
       _pid ->
         DivineIntervention.clear_history()
         :ok
@@ -86,6 +87,7 @@ defmodule Modus.Simulation.DivineInterventionTest do
       for _ <- 1..5 do
         DivineIntervention.execute(:storm, %{})
       end
+
       limited = DivineIntervention.history(limit: 3)
       assert length(limited) == 3
     end

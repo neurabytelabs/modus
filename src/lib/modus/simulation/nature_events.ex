@@ -72,6 +72,7 @@ defmodule Modus.Simulation.NatureEvents do
 
     # Log
     {cx, cy} = center
+
     EventLog.log(:nature_event, tick, [], %{
       type: event_type,
       center_x: cx,
@@ -82,13 +83,18 @@ defmodule Modus.Simulation.NatureEvents do
 
     # Broadcast
     try do
-      Phoenix.PubSub.broadcast(Modus.PubSub, "world_events", {:nature_event, %{
-        type: to_string(event_type),
-        emoji: config.emoji,
-        description: config.description,
-        center_x: cx,
-        center_y: cy
-      }})
+      Phoenix.PubSub.broadcast(
+        Modus.PubSub,
+        "world_events",
+        {:nature_event,
+         %{
+           type: to_string(event_type),
+           emoji: config.emoji,
+           description: config.description,
+           center_x: cx,
+           center_y: cy
+         }}
+      )
     catch
       _, _ -> :ok
     end
@@ -114,6 +120,7 @@ defmodule Modus.Simulation.NatureEvents do
     # Terrain changes
     if config.terrain_change do
       radius = div(config.radius, 2)
+
       for x <- (cx - radius)..(cx + radius),
           y <- (cy - radius)..(cy + radius),
           in_radius?({x, y}, event.center, radius) do
@@ -142,12 +149,15 @@ defmodule Modus.Simulation.NatureEvents do
         case Modus.Simulation.World.get_cell({x, y}) do
           {:ok, %{terrain: :farm}} ->
             Modus.Simulation.World.set_cell({x, y}, %{resources: %{crops: 0, food: 0}})
-          _ -> :ok
+
+          _ ->
+            :ok
         end
       catch
         _, _ -> :ok
       end
     end
+
     :ok
   end
 

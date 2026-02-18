@@ -22,12 +22,31 @@ defmodule Modus.Simulation.Resource do
   """
 
   defstruct [
-    :id, :type, :position, :amount, :max_amount, :depleted_at,
-    :fertility, :harvest_count, :barren_until, :density
+    :id,
+    :type,
+    :position,
+    :amount,
+    :max_amount,
+    :depleted_at,
+    :fertility,
+    :harvest_count,
+    :barren_until,
+    :density
   ]
 
-  @type resource_type :: :food | :wood | :stone | :water | :fish | :fresh_water |
-                         :crops | :herbs | :wild_berries | :gold | :gems | :rare_herbs
+  @type resource_type ::
+          :food
+          | :wood
+          | :stone
+          | :water
+          | :fish
+          | :fresh_water
+          | :crops
+          | :herbs
+          | :wild_berries
+          | :gold
+          | :gems
+          | :rare_herbs
   @type t :: %__MODULE__{
           id: String.t(),
           type: resource_type(),
@@ -43,13 +62,13 @@ defmodule Modus.Simulation.Resource do
 
   # Biome-specific respawn ticks (lower = faster regrowth)
   @biome_respawn %{
-    forest:   %{wood: 80, food: 120, herbs: 150},
-    plains:   %{food: 100, wild_berries: 140},
-    swamp:    %{herbs: 60, food: 200, rare_herbs: 400},
+    forest: %{wood: 80, food: 120, herbs: 150},
+    plains: %{food: 100, wild_berries: 140},
+    swamp: %{herbs: 60, food: 200, rare_herbs: 400},
     mountain: %{stone: 150, gold: 600, gems: 800},
-    desert:   %{stone: 300},
-    tundra:   %{stone: 250, food: 350},
-    ocean:    %{fish: 70, fresh_water: 50}
+    desert: %{stone: 300},
+    tundra: %{stone: 250, food: 350},
+    ocean: %{fish: 70, fresh_water: 50}
   }
 
   # Carrying capacity per biome (max total resource amount per tile)
@@ -77,22 +96,22 @@ defmodule Modus.Simulation.Resource do
   # ── Terrain → resource types ────────────────────────────────
 
   @doc "Terrain → harvestable resource types."
-  def terrain_resources(:forest),   do: [:wood, :food, :herbs]
-  def terrain_resources(:water),    do: [:fish, :fresh_water]
-  def terrain_resources(:farm),     do: [:crops]
+  def terrain_resources(:forest), do: [:wood, :food, :herbs]
+  def terrain_resources(:water), do: [:fish, :fresh_water]
+  def terrain_resources(:farm), do: [:crops]
   def terrain_resources(:mountain), do: [:stone]
-  def terrain_resources(:flowers),  do: [:herbs]
-  def terrain_resources(:grass),    do: [:wild_berries, :food]
-  def terrain_resources(:desert),   do: []
-  def terrain_resources(:sand),     do: []
-  def terrain_resources(_),         do: []
+  def terrain_resources(:flowers), do: [:herbs]
+  def terrain_resources(:grass), do: [:wild_berries, :food]
+  def terrain_resources(:desert), do: []
+  def terrain_resources(:sand), do: []
+  def terrain_resources(_), do: []
 
   @doc "Resource node types and what they provide."
-  def node_resources(:food_source),  do: %{food: 20.0}
-  def node_resources(:water_well),   do: %{fresh_water: 15.0}
-  def node_resources(:wood_pile),    do: %{wood: 25.0}
+  def node_resources(:food_source), do: %{food: 20.0}
+  def node_resources(:water_well), do: %{fresh_water: 15.0}
+  def node_resources(:wood_pile), do: %{wood: 25.0}
   def node_resources(:stone_quarry), do: %{stone: 20.0}
-  def node_resources(_),             do: %{}
+  def node_resources(_), do: %{}
 
   # ── Creation ────────────────────────────────────────────────
 
@@ -100,6 +119,7 @@ defmodule Modus.Simulation.Resource do
   @spec new(resource_type(), {integer(), integer()}, number()) :: t()
   def new(type, position, amount \\ 10.0) do
     amt = ensure_float(amount)
+
     %__MODULE__{
       id: :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower),
       type: type,
@@ -153,13 +173,14 @@ defmodule Modus.Simulation.Resource do
         resource.depleted_at
       end
 
-    updated = %{resource |
-      amount: new_amount,
-      depleted_at: depleted_at,
-      harvest_count: new_count,
-      barren_until: barren_until,
-      fertility: new_fertility,
-      density: density_level(new_amount, resource.max_amount)
+    updated = %{
+      resource
+      | amount: new_amount,
+        depleted_at: depleted_at,
+        harvest_count: new_count,
+        barren_until: barren_until,
+        fertility: new_fertility,
+        density: density_level(new_amount, resource.max_amount)
     }
 
     {taken, updated}
@@ -181,9 +202,11 @@ defmodule Modus.Simulation.Resource do
   @doc "Check if resource should respawn based on biome rate and season."
   @spec should_respawn?(t(), atom()) :: boolean()
   def should_respawn?(%__MODULE__{depleted_at: nil}, _biome), do: false
+
   def should_respawn?(%__MODULE__{barren_until: b}, _biome) when is_integer(b) do
     current_tick() >= b
   end
+
   def should_respawn?(%__MODULE__{depleted_at: tick, type: type}, biome) do
     rate = respawn_rate(biome, type)
     tick + rate <= current_tick()
@@ -196,12 +219,13 @@ defmodule Modus.Simulation.Resource do
     fert = ensure_float(resource.fertility)
     restored = ensure_float(resource.max_amount) * fert * season_mod
 
-    %{resource |
-      amount: min(restored, resource.max_amount),
-      depleted_at: nil,
-      barren_until: nil,
-      harvest_count: 0,
-      density: density_level(restored, resource.max_amount)
+    %{
+      resource
+      | amount: min(restored, resource.max_amount),
+        depleted_at: nil,
+        barren_until: nil,
+        harvest_count: 0,
+        density: density_level(restored, resource.max_amount)
     }
   end
 
@@ -234,12 +258,15 @@ defmodule Modus.Simulation.Resource do
   @spec discover_rare({integer(), integer()}, atom()) :: {:ok, t()} | :nothing
   def discover_rare(position, biome) do
     roll = :rand.uniform(100)
+
     case biome do
       :mountain when roll <= 3 ->
         type = if :rand.uniform(2) == 1, do: :gold, else: :gems
         {:ok, new(type, position, 5.0)}
+
       :swamp when roll <= 5 ->
         {:ok, new(:rare_herbs, position, 3.0)}
+
       _ ->
         :nothing
     end
@@ -261,6 +288,7 @@ defmodule Modus.Simulation.Resource do
   @spec density_level(number(), number()) :: atom()
   def density_level(amount, max_amount) do
     ratio = ensure_float(amount) / max(ensure_float(max_amount), 1.0)
+
     cond do
       ratio >= 0.75 -> :dense
       ratio >= 0.40 -> :moderate
@@ -271,11 +299,11 @@ defmodule Modus.Simulation.Resource do
 
   @doc "Density emoji for display."
   @spec density_emoji(atom()) :: String.t()
-  def density_emoji(:dense),    do: "🟢"
+  def density_emoji(:dense), do: "🟢"
   def density_emoji(:moderate), do: "🟡"
-  def density_emoji(:sparse),   do: "🟠"
+  def density_emoji(:sparse), do: "🟠"
   def density_emoji(:depleted), do: "🔴"
-  def density_emoji(_),         do: "⚪"
+  def density_emoji(_), do: "⚪"
 
   # ── Legacy compat ───────────────────────────────────────────
 
@@ -290,7 +318,11 @@ defmodule Modus.Simulation.Resource do
 
   defp current_tick do
     if Process.whereis(Modus.Simulation.Ticker) do
-      try do Modus.Simulation.Ticker.current_tick() catch _, _ -> 0 end
+      try do
+        Modus.Simulation.Ticker.current_tick()
+      catch
+        _, _ -> 0
+      end
     else
       0
     end

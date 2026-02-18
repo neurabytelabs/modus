@@ -283,8 +283,7 @@ defmodule Modus.Simulation.PathSystem do
         {:ok, reconstruct_path(came_from, current)}
       else
         {new_open, new_g, new_from} =
-          Enum.reduce(neighbors(current), {rest, g_scores, came_from}, fn neighbor,
-                                                                         {o, gs, cf} ->
+          Enum.reduce(neighbors(current), {rest, g_scores, came_from}, fn neighbor, {o, gs, cf} ->
             cost = move_cost(neighbor)
 
             if cost == :impassable do

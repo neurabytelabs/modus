@@ -6,7 +6,12 @@ defmodule Modus.Protocol.DialogueSystemTest do
   setup do
     DialogueSystem.init()
     # Clean up ETS
-    try do :ets.delete_all_objects(:dialogue_history) catch _, _ -> :ok end
+    try do
+      :ets.delete_all_objects(:dialogue_history)
+    catch
+      _, _ -> :ok
+    end
+
     :ok
   end
 
@@ -14,7 +19,13 @@ defmodule Modus.Protocol.DialogueSystemTest do
     %{
       id: id,
       name: Keyword.get(opts, :name, "Agent_#{id}"),
-      personality: %{extraversion: 0.6, agreeableness: 0.5, openness: 0.5, conscientiousness: 0.5, neuroticism: 0.3},
+      personality: %{
+        extraversion: 0.6,
+        agreeableness: 0.5,
+        openness: 0.5,
+        conscientiousness: 0.5,
+        neuroticism: 0.3
+      },
       needs: Keyword.get(opts, :needs, %{hunger: 50.0, social: 50.0, rest: 80.0, shelter: 70.0}),
       affect_state: :neutral,
       inventory: Keyword.get(opts, :inventory, %{}),
@@ -44,7 +55,9 @@ defmodule Modus.Protocol.DialogueSystemTest do
   end
 
   test "determine_topic returns :alliance when social need is high" do
-    agent = make_agent("a1", needs: %{hunger: 30, social: 80, rest: 80, shelter: 70}, inventory: %{})
+    agent =
+      make_agent("a1", needs: %{hunger: 30, social: 80, rest: 80, shelter: 70}, inventory: %{})
+
     partner = make_agent("a2")
     assert DialogueSystem.determine_topic(agent, partner) == :alliance
   end

@@ -7,7 +7,8 @@ defmodule ModusWeb.DashboardCharts do
   use Phoenix.Component
 
   @doc "Population line graph — SVG polyline from last 100 ticks."
-  attr :data, :list, default: []
+  attr(:data, :list, default: [])
+
   def population_chart(assigns) do
     points = build_polyline_points(assigns.data, 340, 140)
     assigns = assign(assigns, :points, points)
@@ -33,7 +34,8 @@ defmodule ModusWeb.DashboardCharts do
   end
 
   @doc "Resource stacked area chart — wood/stone/food/herbs."
-  attr :data, :map, default: %{}
+  attr(:data, :map, default: %{})
+
   def resource_chart(assigns) do
     resources = [
       {:wood, "#06b6d4"},
@@ -41,8 +43,12 @@ defmodule ModusWeb.DashboardCharts do
       {:food, "#22c55e"},
       {:herbs, "#f59e0b"}
     ]
-    total = resources |> Enum.map(fn {k, _} -> Map.get(assigns.data, k, 0) end) |> Enum.sum() |> max(1)
-    bars = resources
+
+    total =
+      resources |> Enum.map(fn {k, _} -> Map.get(assigns.data, k, 0) end) |> Enum.sum() |> max(1)
+
+    bars =
+      resources
       |> Enum.reduce({[], 0}, fn {k, color}, {acc, offset} ->
         val = Map.get(assigns.data, k, 0)
         width = val / total * 300
@@ -50,6 +56,7 @@ defmodule ModusWeb.DashboardCharts do
       end)
       |> elem(0)
       |> Enum.reverse()
+
     assigns = assign(assigns, :bars, bars)
 
     ~H"""
@@ -67,8 +74,9 @@ defmodule ModusWeb.DashboardCharts do
   end
 
   @doc "Relationship network — force-directed SVG circles + lines."
-  attr :nodes, :list, default: []
-  attr :edges, :list, default: []
+  attr(:nodes, :list, default: [])
+  attr(:edges, :list, default: [])
+
   def relationship_chart(assigns) do
     positioned = position_nodes(assigns.nodes, 180, 75, 55)
     assigns = assign(assigns, :positioned, positioned)
@@ -94,13 +102,19 @@ defmodule ModusWeb.DashboardCharts do
   end
 
   @doc "Mood distribution — horizontal bar chart."
-  attr :data, :list, default: []
+  attr(:data, :list, default: [])
+
   def mood_chart(assigns) do
     moods = if assigns.data == [], do: default_moods(), else: assigns.data
     max_val = moods |> Enum.map(&elem(&1, 1)) |> Enum.max(fn -> 1 end) |> max(1)
-    bars = moods |> Enum.with_index() |> Enum.map(fn {{label, val, color}, i} ->
-      %{label: label, val: val, color: color, width: val / max_val * 220, y: 15 + i * 28}
-    end)
+
+    bars =
+      moods
+      |> Enum.with_index()
+      |> Enum.map(fn {{label, val, color}, i} ->
+        %{label: label, val: val, color: color, width: val / max_val * 220, y: 15 + i * 28}
+      end)
+
     assigns = assign(assigns, :bars, bars)
 
     ~H"""
@@ -116,15 +130,24 @@ defmodule ModusWeb.DashboardCharts do
   end
 
   @doc "Trade volume — bar chart."
-  attr :data, :list, default: []
+  attr(:data, :list, default: [])
+
   def trade_chart(assigns) do
-    max_val = if assigns.data == [], do: 1,
-      else: assigns.data |> Enum.map(&elem(&1, 1)) |> Enum.max(fn -> 1 end) |> max(1)
+    max_val =
+      if assigns.data == [],
+        do: 1,
+        else: assigns.data |> Enum.map(&elem(&1, 1)) |> Enum.max(fn -> 1 end) |> max(1)
+
     bar_width = if assigns.data == [], do: 20, else: min(30, 300 / max(length(assigns.data), 1))
-    bars = assigns.data |> Enum.with_index() |> Enum.map(fn {{_tick, vol}, i} ->
-      h = vol / max_val * 110
-      %{x: 20 + i * bar_width, height: h, y: 130 - h, vol: vol}
-    end)
+
+    bars =
+      assigns.data
+      |> Enum.with_index()
+      |> Enum.map(fn {{_tick, vol}, i} ->
+        h = vol / max_val * 110
+        %{x: 20 + i * bar_width, height: h, y: 130 - h, vol: vol}
+      end)
+
     assigns = assign(assigns, :bars, bars) |> assign(:bar_width, bar_width)
 
     ~H"""
@@ -139,9 +162,10 @@ defmodule ModusWeb.DashboardCharts do
   end
 
   @doc "Ecosystem balance — donut/gauge chart for predator/prey ratio."
-  attr :predators, :integer, default: 0
-  attr :prey, :integer, default: 0
-  attr :agents, :integer, default: 0
+  attr(:predators, :integer, default: 0)
+  attr(:prey, :integer, default: 0)
+  attr(:agents, :integer, default: 0)
+
   def ecosystem_chart(assigns) do
     total = max(assigns.predators + assigns.prey + assigns.agents, 1)
     # SVG arc calculations - circumference of r=50 circle
@@ -149,7 +173,9 @@ defmodule ModusWeb.DashboardCharts do
     pred_pct = assigns.predators / total
     prey_pct = assigns.prey / total
     agent_pct = assigns.agents / total
-    assigns = assigns
+
+    assigns =
+      assigns
       |> assign(:circ, circ)
       |> assign(:pred_dash, "#{pred_pct * circ} #{circ}")
       |> assign(:prey_offset, pred_pct * circ)
@@ -183,27 +209,32 @@ defmodule ModusWeb.DashboardCharts do
   # ── Helpers ──────────────────────────────────────────────
 
   defp build_polyline_points([], _w, _h), do: ""
+
   defp build_polyline_points(data, width, height) do
     data = Enum.take(data, -100)
     max_val = data |> Enum.map(&elem(&1, 1)) |> Enum.max(fn -> 1 end) |> max(1)
     len = max(length(data) - 1, 1)
+
     data
     |> Enum.with_index()
     |> Enum.map(fn {{_tick, pop}, i} ->
       x = 10 + i / len * width
-      y = height - (pop / max_val * (height - 20))
+      y = height - pop / max_val * (height - 20)
       "#{Float.round(x * 1.0, 1)},#{Float.round(y * 1.0, 1)}"
     end)
     |> Enum.join(" ")
   end
 
   defp position_nodes([], _cx, _cy, _r), do: []
+
   defp position_nodes(nodes, cx, cy, radius) do
     len = max(length(nodes), 1)
+
     nodes
     |> Enum.with_index()
     |> Enum.map(fn {node, i} ->
       angle = 2 * :math.pi() * i / len
+
       Map.merge(node, %{
         x: Float.round(cx + radius * :math.cos(angle), 1),
         y: Float.round(cy + radius * :math.sin(angle), 1)
@@ -226,6 +257,11 @@ defmodule ModusWeb.DashboardCharts do
   end
 
   defp default_moods do
-    [{"Happy", 5, "#22c55e"}, {"Calm", 3, "#06b6d4"}, {"Anxious", 2, "#f59e0b"}, {"Sad", 1, "#8b5cf6"}]
+    [
+      {"Happy", 5, "#22c55e"},
+      {"Calm", 3, "#06b6d4"},
+      {"Anxious", 2, "#f59e0b"},
+      {"Sad", 1, "#8b5cf6"}
+    ]
   end
 end

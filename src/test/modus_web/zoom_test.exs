@@ -40,8 +40,8 @@ defmodule ModusWeb.ZoomTest do
       {_, _, max_x_world, max_y_world} = visible_tiles(0, 0, 800, 600, 0.35, 16, 100, 100)
       {_, _, max_x_local, max_y_local} = visible_tiles(0, 0, 800, 600, 1.5, 16, 100, 100)
       # World zoom daha fazla tile gösterir
-      assert (max_x_world - 0) > (max_x_local - 0)
-      assert (max_y_world - 0) > (max_y_local - 0)
+      assert max_x_world - 0 > max_x_local - 0
+      assert max_y_world - 0 > max_y_local - 0
     end
 
     test "fog of war — keşfedilmemiş tile'lar karanlık" do

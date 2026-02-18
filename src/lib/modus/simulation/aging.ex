@@ -22,14 +22,19 @@ defmodule Modus.Simulation.Aging do
   @type age_stage :: :child | :young | :adult | :elder
 
   # Stage thresholds (in age units, where age increments every 100 ticks)
-  @child_max 4       # 0-499 ticks
-  @young_max 14      # 500-1499 ticks
-  @adult_max 29      # 1500-2999 ticks
+  # 0-499 ticks
+  @child_max 4
+  # 500-1499 ticks
+  @young_max 14
+  # 1500-2999 ticks
+  @adult_max 29
   # 30+ = elder       # 3000+ ticks
 
   # Base lifespan range (in age units)
-  @min_lifespan 30   # ~3000 ticks
-  @max_lifespan 50   # ~5000 ticks
+  # ~3000 ticks
+  @min_lifespan 30
+  # ~5000 ticks
+  @max_lifespan 50
 
   # ── Init ────────────────────────────────────────────────────
 
@@ -37,6 +42,7 @@ defmodule Modus.Simulation.Aging do
     if :ets.whereis(@table) == :undefined do
       :ets.new(@table, [:set, :public, :named_table, read_concurrency: true])
     end
+
     :ok
   end
 
@@ -44,6 +50,7 @@ defmodule Modus.Simulation.Aging do
   @spec init_agent(String.t(), age_stage()) :: :ok
   def init_agent(agent_id, initial_stage \\ :child) do
     lifespan = @min_lifespan + :rand.uniform(@max_lifespan - @min_lifespan)
+
     data = %{
       stage: initial_stage,
       lifespan: lifespan,
@@ -51,6 +58,7 @@ defmodule Modus.Simulation.Aging do
       lifestyle_score: 0.0,
       lifestyle_ticks: 0
     }
+
     :ets.insert(@table, {agent_id, data})
     :ok
   end
@@ -83,12 +91,15 @@ defmodule Modus.Simulation.Aging do
   def modifiers(:child) do
     %{learning_rate: 2.0, strength: 0.5, wisdom: 0.3, speed: 0.7, social: 0.8}
   end
+
   def modifiers(:young) do
     %{learning_rate: 1.5, strength: 0.9, wisdom: 0.5, speed: 1.2, social: 1.3}
   end
+
   def modifiers(:adult) do
     %{learning_rate: 1.0, strength: 1.0, wisdom: 1.0, speed: 1.0, social: 1.0}
   end
+
   def modifiers(:elder) do
     %{learning_rate: 0.5, strength: 0.5, wisdom: 2.0, speed: 0.6, social: 1.2}
   end
@@ -106,7 +117,9 @@ defmodule Modus.Simulation.Aging do
   @spec should_die_of_age?(String.t(), non_neg_integer()) :: boolean()
   def should_die_of_age?(agent_id, age) do
     case get_data(agent_id) do
-      nil -> false
+      nil ->
+        false
+
       data ->
         # Lifestyle bonus: good living extends lifespan up to 20%
         bonus = min(data.lifestyle_score / max(data.lifestyle_ticks, 1) * 0.2, 0.2)
@@ -136,12 +149,13 @@ defmodule Modus.Simulation.Aging do
       new_ticks = data.lifestyle_ticks + 1
 
       # Check for stage transition milestone
-      milestones = if current_stage != old_stage do
-        milestone = %{from: old_stage, to: current_stage, tick: tick, age: age}
-        [milestone | data.milestones]
-      else
-        data.milestones
-      end
+      milestones =
+        if current_stage != old_stage do
+          milestone = %{from: old_stage, to: current_stage, tick: tick, age: age}
+          [milestone | data.milestones]
+        else
+          data.milestones
+        end
 
       # Log milestone events
       if current_stage != old_stage do
@@ -153,12 +167,17 @@ defmodule Modus.Simulation.Aging do
         })
       end
 
-      :ets.insert(@table, {agent.id, %{data |
-        stage: current_stage,
-        milestones: milestones,
-        lifestyle_score: new_lifestyle,
-        lifestyle_ticks: new_ticks
-      }})
+      :ets.insert(
+        @table,
+        {agent.id,
+         %{
+           data
+           | stage: current_stage,
+             milestones: milestones,
+             lifestyle_score: new_lifestyle,
+             lifestyle_ticks: new_ticks
+         }}
+      )
 
       agent
     end
@@ -167,22 +186,24 @@ defmodule Modus.Simulation.Aging do
   @doc "Elder knowledge transfer — elder teaches a skill to a nearby young agent."
   @spec maybe_teach(String.t(), non_neg_integer(), [String.t()]) :: :ok
   def maybe_teach(elder_id, tick, nearby_agent_ids) do
-    elder_age = try do
-      Modus.Simulation.Agent.get_state(elder_id).age
-    catch
-      _, _ -> 0
-    end
+    elder_age =
+      try do
+        Modus.Simulation.Agent.get_state(elder_id).age
+      catch
+        _, _ -> 0
+      end
 
     if stage(elder_age) == :elder and rem(tick, 200) == 0 do
       # Find a young/child agent nearby to teach
-      student = Enum.find(nearby_agent_ids, fn id ->
-        try do
-          s = Modus.Simulation.Agent.get_state(id)
-          s.alive? and stage(s.age) in [:child, :young]
-        catch
-          _, _ -> false
-        end
-      end)
+      student =
+        Enum.find(nearby_agent_ids, fn id ->
+          try do
+            s = Modus.Simulation.Agent.get_state(id)
+            s.alive? and stage(s.age) in [:child, :young]
+          catch
+            _, _ -> false
+          end
+        end)
 
       if student do
         # Transfer knowledge: pick elder's best skill
@@ -193,6 +214,7 @@ defmodule Modus.Simulation.Aging do
           # Student gets 10% of elder's XP (wisdom modifier)
           xp_gift = best_data.xp * 0.1
           Modus.Mind.Learning.add_xp(student, best_skill, xp_gift)
+
           Modus.Simulation.EventLog.log(:teaching, tick, [elder_id, student], %{
             skill: to_string(best_skill),
             xp: Float.round(xp_gift, 1)
@@ -223,20 +245,21 @@ defmodule Modus.Simulation.Aging do
   @doc "Get population age distribution."
   @spec population_pyramid() :: map()
   def population_pyramid do
-    agents = try do
-      Modus.Simulation.AgentSupervisor.list_agents()
-      |> Enum.map(fn id ->
-        try do
-          s = Modus.Simulation.Agent.get_state(id)
-          if s.alive?, do: stage(s.age), else: nil
-        catch
-          _, _ -> nil
-        end
-      end)
-      |> Enum.reject(&is_nil/1)
-    catch
-      _, _ -> []
-    end
+    agents =
+      try do
+        Modus.Simulation.AgentSupervisor.list_agents()
+        |> Enum.map(fn id ->
+          try do
+            s = Modus.Simulation.Agent.get_state(id)
+            if s.alive?, do: stage(s.age), else: nil
+          catch
+            _, _ -> nil
+          end
+        end)
+        |> Enum.reject(&is_nil/1)
+      catch
+        _, _ -> []
+      end
 
     %{
       child: Enum.count(agents, &(&1 == :child)),

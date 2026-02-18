@@ -40,8 +40,13 @@ defmodule Modus.Mind.MindEngine do
     # 6. Form affect memory on state change
     if affect_changed do
       AffectMemory.form_memory(
-        agent.id, tick, agent.position,
-        agent.affect_state, new_affect, affect_reason, new_energy
+        agent.id,
+        tick,
+        agent.position,
+        agent.affect_state,
+        new_affect,
+        affect_reason,
+        new_energy
       )
     end
 
@@ -70,17 +75,19 @@ defmodule Modus.Mind.MindEngine do
 
     # 7g. Check traditions every 100 ticks
     if rem(tick, 100) == 0 do
-      season = try do
-        Modus.Simulation.Seasons.get_state().season
-      catch
-        _, _ -> :spring
-      end
+      season =
+        try do
+          Modus.Simulation.Seasons.get_state().season
+        catch
+          _, _ -> :spring
+        end
 
       triggered = Culture.check_traditions(tick, season, if(not agent.alive?, do: :death))
 
       Enum.each(triggered, fn tradition ->
         # Find nearby agents as participants
-        nearby_ids = Modus.AgentRegistry
+        nearby_ids =
+          Modus.AgentRegistry
           |> Registry.select([{{:"$1", :_, :"$3"}, [], [{{:"$1", :"$3"}}]}])
           |> Enum.filter(fn {_id, {_x, _y, alive}} -> alive end)
           |> Enum.map(fn {id, _} -> id end)
@@ -98,55 +105,74 @@ defmodule Modus.Mind.MindEngine do
 
     # 7c. Try to form groups every 200 ticks
     if rem(tick, 200) == 0 do
-      agent_ids = Modus.AgentRegistry
+      agent_ids =
+        Modus.AgentRegistry
         |> Registry.select([{{:"$1", :_, :"$3"}, [], [{{:"$1", :"$3"}}]}])
         |> Enum.filter(fn {_id, {_x, _y, alive}} -> alive end)
         |> Enum.map(fn {id, _} -> id end)
+
       Modus.Mind.Cerebro.Group.maybe_form_groups(agent_ids, tick)
     end
 
     # 8. Build base updated agent
-    updated_agent = %{agent |
-      conatus_energy: new_energy,
-      affect_state: new_affect,
-      affect_history: affect_history,
-      conatus_history: conatus_history
+    updated_agent = %{
+      agent
+      | conatus_energy: new_energy,
+        affect_state: new_affect,
+        affect_history: affect_history,
+        conatus_history: conatus_history
     }
 
     # 9. Auto-assign goals on first tick
-    updated_agent = if not updated_agent.goals_initialized do
-      Goals.auto_assign(updated_agent.id, updated_agent.personality, tick)
-      %{updated_agent | goals_initialized: true}
-    else
-      updated_agent
-    end
+    updated_agent =
+      if not updated_agent.goals_initialized do
+        Goals.auto_assign(updated_agent.id, updated_agent.personality, tick)
+        %{updated_agent | goals_initialized: true}
+      else
+        updated_agent
+      end
 
     # 10. Check goal progress every 50 ticks
-    updated_agent = if rem(tick, 50) == 0 do
-      {_updated_goals, completed} = Goals.check_progress(updated_agent.id, updated_agent, tick)
+    updated_agent =
+      if rem(tick, 50) == 0 do
+        {_updated_goals, completed} = Goals.check_progress(updated_agent.id, updated_agent, tick)
 
-      Enum.reduce(completed, updated_agent, fn goal, acc ->
-        # Reward: joy + conatus boost + event log
-        Modus.Simulation.EventLog.log(:goal_completed, tick, [acc.id], %{
-          name: acc.name,
-          goal: to_string(goal.type),
-          description: Goals.describe(goal)
-        })
+        Enum.reduce(completed, updated_agent, fn goal, acc ->
+          # Reward: joy + conatus boost + event log
+          Modus.Simulation.EventLog.log(:goal_completed, tick, [acc.id], %{
+            name: acc.name,
+            goal: to_string(goal.type),
+            description: Goals.describe(goal)
+          })
 
-        %{acc |
-          conatus_energy: Conatus.clamp(acc.conatus_energy + 0.1),
-          affect_state: :joy,
-          affect_history: Enum.take([%{tick: tick, from: acc.affect_state, to: :joy, reason: "completed goal: #{Goals.describe(goal)}"} | acc.affect_history], @max_history)
-        }
-      end)
-    else
-      updated_agent
-    end
+          %{
+            acc
+            | conatus_energy: Conatus.clamp(acc.conatus_energy + 0.1),
+              affect_state: :joy,
+              affect_history:
+                Enum.take(
+                  [
+                    %{
+                      tick: tick,
+                      from: acc.affect_state,
+                      to: :joy,
+                      reason: "completed goal: #{Goals.describe(goal)}"
+                    }
+                    | acc.affect_history
+                  ],
+                  @max_history
+                )
+          }
+        end)
+      else
+        updated_agent
+      end
 
     # 11. LLM reasoning every 100 ticks for persistently sad agents
     if rem(tick, 100) == 0 and ReasoningEngine.should_reason?(updated_agent) do
       # Fire reasoning async, apply result
       agent_ref = updated_agent
+
       Task.start(fn ->
         case ReasoningEngine.reason(agent_ref) do
           {:ok, _reasoning} -> :ok
@@ -155,11 +181,19 @@ defmodule Modus.Mind.MindEngine do
       end)
 
       # Boost conatus and shift affect to desire
-      %{updated_agent |
-        conatus_energy: Conatus.clamp(updated_agent.conatus_energy + 0.05),
-        affect_state: :desire,
-        affect_history: Enum.take([%{tick: tick, from: new_affect, to: :desire, reason: "reasoning insight"} | affect_history], @max_history),
-        last_reasoning: "Reasoning triggered at tick #{tick}"
+      %{
+        updated_agent
+        | conatus_energy: Conatus.clamp(updated_agent.conatus_energy + 0.05),
+          affect_state: :desire,
+          affect_history:
+            Enum.take(
+              [
+                %{tick: tick, from: new_affect, to: :desire, reason: "reasoning insight"}
+                | affect_history
+              ],
+              @max_history
+            ),
+          last_reasoning: "Reasoning triggered at tick #{tick}"
       }
     else
       updated_agent

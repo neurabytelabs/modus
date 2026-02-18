@@ -190,7 +190,10 @@ defmodule Modus.Mind.SocialEngine do
                   do: List.first(new_members),
                   else: group.leader_id
 
-              :ets.insert(@groups_table, {group_id, %{group | member_ids: new_members, leader_id: new_leader}})
+              :ets.insert(
+                @groups_table,
+                {group_id, %{group | member_ids: new_members, leader_id: new_leader}}
+              )
             end
 
           _ ->
@@ -311,7 +314,10 @@ defmodule Modus.Mind.SocialEngine do
     # Try async LLM name generation
     spawn(fn -> generate_llm_group_name(group_id, members) end)
 
-    Logger.info("[SocialEngine] Group '#{group.name}' formed with #{length(member_ids)} members, leader: #{leader && leader.name}")
+    Logger.info(
+      "[SocialEngine] Group '#{group.name}' formed with #{length(member_ids)} members, leader: #{leader && leader.name}"
+    )
+
     group
   end
 
@@ -358,9 +364,7 @@ defmodule Modus.Mind.SocialEngine do
         if new_leader && new_leader.id != group.leader_id do
           :ets.insert(@groups_table, {group_id, %{group | leader_id: new_leader.id}})
 
-          Logger.debug(
-            "[SocialEngine] Leadership change in '#{group.name}': #{new_leader.name}"
-          )
+          Logger.debug("[SocialEngine] Leadership change in '#{group.name}': #{new_leader.name}")
         end
       end
     end)
@@ -455,7 +459,8 @@ defmodule Modus.Mind.SocialEngine do
 
     :ets.tab2list(@groups_table)
     |> Enum.each(fn {group_id, group} ->
-      group_agents = Enum.map(group.member_ids, &Map.get(agents_map, &1)) |> Enum.reject(&is_nil/1)
+      group_agents =
+        Enum.map(group.member_ids, &Map.get(agents_map, &1)) |> Enum.reject(&is_nil/1)
 
       if length(group_agents) >= 2 do
         # Calculate pooled resources
@@ -464,7 +469,12 @@ defmodule Modus.Mind.SocialEngine do
         pooled =
           Enum.reduce(all_inventories, %{}, fn inv, acc ->
             Enum.reduce(inv, acc, fn {k, v}, a ->
-              Map.update(a, k, ensure_float(v) * @resource_share_rate, &(&1 + ensure_float(v) * @resource_share_rate))
+              Map.update(
+                a,
+                k,
+                ensure_float(v) * @resource_share_rate,
+                &(&1 + ensure_float(v) * @resource_share_rate)
+              )
             end)
           end)
 

@@ -39,23 +39,31 @@ defmodule Modus.Performance.StateLimiter do
     case agent do
       %{memory: memory} when is_list(memory) and length(memory) > @max_memory_entries ->
         %{agent | memory: Enum.take(memory, @max_memory_entries)}
-      _ -> agent
+
+      _ ->
+        agent
     end
   end
 
   defp trim_affect_history(agent) do
     case agent do
-      %{affect_history: history} when is_list(history) and length(history) > @max_affect_history ->
+      %{affect_history: history}
+      when is_list(history) and length(history) > @max_affect_history ->
         %{agent | affect_history: Enum.take(history, @max_affect_history)}
-      _ -> agent
+
+      _ ->
+        agent
     end
   end
 
   defp trim_conatus_history(agent) do
     case agent do
-      %{conatus_history: history} when is_list(history) and length(history) > @max_conatus_history ->
+      %{conatus_history: history}
+      when is_list(history) and length(history) > @max_conatus_history ->
         %{agent | conatus_history: Enum.take(history, @max_conatus_history)}
-      _ -> agent
+
+      _ ->
+        agent
     end
   end
 
@@ -63,12 +71,16 @@ defmodule Modus.Performance.StateLimiter do
     case agent do
       %{inventory: inv} when is_map(inv) and map_size(inv) > @max_inventory_types ->
         # Keep the most valuable items
-        trimmed = inv
-        |> Enum.sort_by(fn {_k, v} -> v end, :desc)
-        |> Enum.take(@max_inventory_types)
-        |> Map.new()
+        trimmed =
+          inv
+          |> Enum.sort_by(fn {_k, v} -> v end, :desc)
+          |> Enum.take(@max_inventory_types)
+          |> Map.new()
+
         %{agent | inventory: trimmed}
-      _ -> agent
+
+      _ ->
+        agent
     end
   end
 end

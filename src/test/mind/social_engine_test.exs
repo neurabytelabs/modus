@@ -21,13 +21,14 @@ defmodule Modus.Mind.SocialEngineTest do
       id: id,
       name: name,
       position: position,
-      personality: Keyword.get(opts, :personality, %{
-        openness: 0.5,
-        conscientiousness: 0.5,
-        extraversion: 0.5,
-        agreeableness: 0.5,
-        neuroticism: 0.5
-      }),
+      personality:
+        Keyword.get(opts, :personality, %{
+          openness: 0.5,
+          conscientiousness: 0.5,
+          extraversion: 0.5,
+          agreeableness: 0.5,
+          neuroticism: 0.5
+        }),
       needs: %{hunger: 50.0, social: 50.0, rest: 80.0, shelter: 70.0},
       occupation: Keyword.get(opts, :occupation, :explorer),
       relationships: Keyword.get(opts, :relationships, %{}),
@@ -79,9 +80,10 @@ defmodule Modus.Mind.SocialEngineTest do
 
   describe "social_influence/1" do
     test "calculates based on personality" do
-      agent = make_agent("a1", "Alice", {0, 0},
-        personality: %{extraversion: 0.9, agreeableness: 0.8, conscientiousness: 0.7}
-      )
+      agent =
+        make_agent("a1", "Alice", {0, 0},
+          personality: %{extraversion: 0.9, agreeableness: 0.8, conscientiousness: 0.7}
+        )
 
       score = SocialEngine.social_influence(agent)
       assert is_float(score)
@@ -89,20 +91,24 @@ defmodule Modus.Mind.SocialEngineTest do
     end
 
     test "higher extraversion = more influence" do
-      high = make_agent("a1", "High", {0, 0},
-        personality: %{extraversion: 1.0, agreeableness: 0.5, conscientiousness: 0.5}
-      )
-      low = make_agent("a2", "Low", {0, 0},
-        personality: %{extraversion: 0.1, agreeableness: 0.5, conscientiousness: 0.5}
-      )
+      high =
+        make_agent("a1", "High", {0, 0},
+          personality: %{extraversion: 1.0, agreeableness: 0.5, conscientiousness: 0.5}
+        )
+
+      low =
+        make_agent("a2", "Low", {0, 0},
+          personality: %{extraversion: 0.1, agreeableness: 0.5, conscientiousness: 0.5}
+        )
 
       assert SocialEngine.social_influence(high) > SocialEngine.social_influence(low)
     end
 
     test "relationships boost influence" do
-      agent = make_agent("a1", "Alice", {0, 0},
-        relationships: %{"b1" => {:friend, 0.9}, "b2" => {:friend, 0.8}}
-      )
+      agent =
+        make_agent("a1", "Alice", {0, 0},
+          relationships: %{"b1" => {:friend, 0.9}, "b2" => {:friend, 0.8}}
+        )
 
       loner = make_agent("a2", "Bob", {0, 0})
 
@@ -150,7 +156,9 @@ defmodule Modus.Mind.SocialEngineTest do
     end
 
     test "dead agents are not grouped" do
-      a1 = make_agent("a1", "Alice", {5, 5}, relationships: %{"a2" => {:friend, 0.5}}, alive?: false)
+      a1 =
+        make_agent("a1", "Alice", {5, 5}, relationships: %{"a2" => {:friend, 0.5}}, alive?: false)
+
       a2 = make_agent("a2", "Bob", {6, 5}, relationships: %{"a1" => {:friend, 0.5}})
 
       SocialEngine.tick(1, [a1, a2])
@@ -159,14 +167,17 @@ defmodule Modus.Mind.SocialEngineTest do
     end
 
     test "selects highest influence agent as leader" do
-      a1 = make_agent("a1", "Alice", {5, 5},
-        relationships: %{"a2" => {:friend, 0.5}},
-        personality: %{extraversion: 0.9, agreeableness: 0.9, conscientiousness: 0.9}
-      )
-      a2 = make_agent("a2", "Bob", {6, 5},
-        relationships: %{"a1" => {:friend, 0.5}},
-        personality: %{extraversion: 0.1, agreeableness: 0.1, conscientiousness: 0.1}
-      )
+      a1 =
+        make_agent("a1", "Alice", {5, 5},
+          relationships: %{"a2" => {:friend, 0.5}},
+          personality: %{extraversion: 0.9, agreeableness: 0.9, conscientiousness: 0.9}
+        )
+
+      a2 =
+        make_agent("a2", "Bob", {6, 5},
+          relationships: %{"a1" => {:friend, 0.5}},
+          personality: %{extraversion: 0.1, agreeableness: 0.1, conscientiousness: 0.1}
+        )
 
       SocialEngine.tick(1, [a1, a2])
 
@@ -206,12 +217,15 @@ defmodule Modus.Mind.SocialEngineTest do
     end
 
     test "removes agent from larger group without dissolving" do
-      agents = for i <- 1..4 do
-        rels = for j <- 1..4, j != i, into: %{} do
-          {"a#{j}", {:friend, 0.5}}
+      agents =
+        for i <- 1..4 do
+          rels =
+            for j <- 1..4, j != i, into: %{} do
+              {"a#{j}", {:friend, 0.5}}
+            end
+
+          make_agent("a#{i}", "Agent#{i}", {5 + rem(i, 2), 5}, relationships: rels)
         end
-        make_agent("a#{i}", "Agent#{i}", {5 + rem(i, 2), 5}, relationships: rels)
-      end
 
       SocialEngine.tick(1, agents)
       assert length(SocialEngine.get_groups()) >= 1
@@ -255,10 +269,12 @@ defmodule Modus.Mind.SocialEngineTest do
 
   describe "group_leader_decision/3" do
     test "leader makes resource allocation decision" do
-      a1 = make_agent("a1", "Alice", {5, 5},
-        relationships: %{"a2" => {:friend, 0.5}},
-        personality: %{extraversion: 0.9, agreeableness: 0.9, conscientiousness: 0.9}
-      )
+      a1 =
+        make_agent("a1", "Alice", {5, 5},
+          relationships: %{"a2" => {:friend, 0.5}},
+          personality: %{extraversion: 0.9, agreeableness: 0.9, conscientiousness: 0.9}
+        )
+
       a2 = make_agent("a2", "Bob", {6, 5}, relationships: %{"a1" => {:friend, 0.5}})
       SocialEngine.tick(1, [a1, a2])
 
@@ -292,11 +308,26 @@ defmodule Modus.Mind.SocialEngineTest do
   describe "alliances and rivalries" do
     test "forms alliance between groups with positive inter-relationships" do
       # Group 1
-      a1 = make_agent("a1", "Alice", {5, 5}, relationships: %{"a2" => {:friend, 0.5}, "a3" => {:friend, 0.5}})
-      a2 = make_agent("a2", "Bob", {6, 5}, relationships: %{"a1" => {:friend, 0.5}, "a4" => {:friend, 0.5}})
+      a1 =
+        make_agent("a1", "Alice", {5, 5},
+          relationships: %{"a2" => {:friend, 0.5}, "a3" => {:friend, 0.5}}
+        )
+
+      a2 =
+        make_agent("a2", "Bob", {6, 5},
+          relationships: %{"a1" => {:friend, 0.5}, "a4" => {:friend, 0.5}}
+        )
+
       # Group 2
-      a3 = make_agent("a3", "Eve", {20, 20}, relationships: %{"a4" => {:friend, 0.5}, "a1" => {:friend, 0.5}})
-      a4 = make_agent("a4", "Dan", {21, 20}, relationships: %{"a3" => {:friend, 0.5}, "a2" => {:friend, 0.5}})
+      a3 =
+        make_agent("a3", "Eve", {20, 20},
+          relationships: %{"a4" => {:friend, 0.5}, "a1" => {:friend, 0.5}}
+        )
+
+      a4 =
+        make_agent("a4", "Dan", {21, 20},
+          relationships: %{"a3" => {:friend, 0.5}, "a2" => {:friend, 0.5}}
+        )
 
       SocialEngine.tick(1, [a1, a2, a3, a4])
 
@@ -313,14 +344,17 @@ defmodule Modus.Mind.SocialEngineTest do
 
   describe "shared resources" do
     test "pools resources among group members" do
-      a1 = make_agent("a1", "Alice", {5, 5},
-        relationships: %{"a2" => {:friend, 0.5}},
-        inventory: %{wood: 10.0, food: 5.0}
-      )
-      a2 = make_agent("a2", "Bob", {6, 5},
-        relationships: %{"a1" => {:friend, 0.5}},
-        inventory: %{stone: 8.0, food: 3.0}
-      )
+      a1 =
+        make_agent("a1", "Alice", {5, 5},
+          relationships: %{"a2" => {:friend, 0.5}},
+          inventory: %{wood: 10.0, food: 5.0}
+        )
+
+      a2 =
+        make_agent("a2", "Bob", {6, 5},
+          relationships: %{"a1" => {:friend, 0.5}},
+          inventory: %{stone: 8.0, food: 3.0}
+        )
 
       SocialEngine.tick(1, [a1, a2])
 

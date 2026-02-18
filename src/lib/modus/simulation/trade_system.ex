@@ -50,12 +50,36 @@ defmodule Modus.Simulation.TradeSystem do
   """
   @spec propose_trade(map(), map(), atom(), float(), atom(), float(), non_neg_integer()) ::
           {:ok, map()} | {:error, atom()}
-  def propose_trade(agent_a, agent_b, offer_resource, offer_amount, request_resource, request_amount, tick) do
+  def propose_trade(
+        agent_a,
+        agent_b,
+        offer_resource,
+        offer_amount,
+        request_resource,
+        request_amount,
+        tick
+      ) do
     with :ok <- validate_proximity(agent_a.position, agent_b.position),
          :ok <- validate_inventory(agent_a, offer_resource, offer_amount),
          :ok <- validate_inventory(agent_b, request_resource, request_amount),
-         true <- willing_to_trade?(agent_a, agent_b, offer_resource, offer_amount, request_resource, request_amount) do
-      execute_trade(agent_a, agent_b, offer_resource, offer_amount, request_resource, request_amount, tick)
+         true <-
+           willing_to_trade?(
+             agent_a,
+             agent_b,
+             offer_resource,
+             offer_amount,
+             request_resource,
+             request_amount
+           ) do
+      execute_trade(
+        agent_a,
+        agent_b,
+        offer_resource,
+        offer_amount,
+        request_resource,
+        request_amount,
+        tick
+      )
     else
       false -> {:error, :trade_rejected}
       error -> error
@@ -69,23 +93,37 @@ defmodule Modus.Simulation.TradeSystem do
     needs = find_needs(agent)
 
     case {surplus, needs} do
-      {nil, _} -> :none
-      {_, nil} -> :none
+      {nil, _} ->
+        :none
+
+      {_, nil} ->
+        :none
+
       {surplus_res, need_res} ->
-        partner = Enum.find(nearby_agents, fn other ->
-          other.id != agent.id and
-          in_trade_radius?(agent.position, other.position) and
-          has_resource?(other, need_res) and
-          wants_resource?(other, surplus_res)
-        end)
+        partner =
+          Enum.find(nearby_agents, fn other ->
+            other.id != agent.id and
+              in_trade_radius?(agent.position, other.position) and
+              has_resource?(other, need_res) and
+              wants_resource?(other, surplus_res)
+          end)
 
         case partner do
-          nil -> :none
+          nil ->
+            :none
+
           p ->
             offer_amount = min(Map.get(agent.inventory, surplus_res, 0.0), 3.0)
             request_amount = calculate_fair_exchange(surplus_res, offer_amount, need_res, agent)
-            {:ok, %{partner: p, offer: surplus_res, offer_amount: offer_amount,
-                     request: need_res, request_amount: request_amount}}
+
+            {:ok,
+             %{
+               partner: p,
+               offer: surplus_res,
+               offer_amount: offer_amount,
+               request: need_res,
+               request_amount: request_amount
+             }}
         end
     end
   end
@@ -111,14 +149,16 @@ defmodule Modus.Simulation.TradeSystem do
     agent_id = Keyword.get(opts, :agent_id)
     limit = Keyword.get(opts, :limit, 20)
 
-    history = :ets.tab2list(@history_table)
-              |> Enum.map(fn {_key, trade} -> trade end)
-              |> Enum.sort_by(& &1.tick, :desc)
+    history =
+      :ets.tab2list(@history_table)
+      |> Enum.map(fn {_key, trade} -> trade end)
+      |> Enum.sort_by(& &1.tick, :desc)
 
-    history = case agent_id do
-      nil -> history
-      id -> Enum.filter(history, fn t -> t.agent_a_id == id or t.agent_b_id == id end)
-    end
+    history =
+      case agent_id do
+        nil -> history
+        id -> Enum.filter(history, fn t -> t.agent_a_id == id or t.agent_b_id == id end)
+      end
 
     Enum.take(history, limit)
   end
@@ -136,7 +176,9 @@ defmodule Modus.Simulation.TradeSystem do
   @spec market_bonus?({integer(), integer()}) :: boolean()
   def market_bonus?(position) do
     case :ets.whereis(:buildings) do
-      :undefined -> false
+      :undefined ->
+        false
+
       _ ->
         :ets.tab2list(:buildings)
         |> Enum.any?(fn
@@ -162,9 +204,9 @@ defmodule Modus.Simulation.TradeSystem do
     conscientiousness = ensure_float(Map.get(personality, :conscientiousness, 0.5))
 
     # Agreeable agents accept worse deals, disagreeable ones demand more
-    agree_mod = 1.3 - (agreeableness * 0.5)
+    agree_mod = 1.3 - agreeableness * 0.5
     # Conscientious agents are more careful (slight increase)
-    consc_mod = 1.0 + (conscientiousness * 0.1)
+    consc_mod = 1.0 + conscientiousness * 0.1
 
     ensure_float(agree_mod * consc_mod)
   end
@@ -189,13 +231,15 @@ defmodule Modus.Simulation.TradeSystem do
 
     # Agent B accepts if offer value >= their perceived value of what they give
     # The 0.6 threshold allows reasonable trades to go through
-    offer_value >= (request_value * b_modifier * 0.5)
+    offer_value >= request_value * b_modifier * 0.5
   end
 
   defp execute_trade(agent_a, agent_b, offer_res, offer_amt, request_res, request_amt, tick) do
     # Apply market bonus
-    bonus = if market_bonus?(agent_a.position) or market_bonus?(agent_b.position),
-      do: @market_bonus, else: 0.0
+    bonus =
+      if market_bonus?(agent_a.position) or market_bonus?(agent_b.position),
+        do: @market_bonus,
+        else: 0.0
 
     effective_offer = ensure_float(offer_amt * (1.0 + bonus))
 
@@ -231,6 +275,7 @@ defmodule Modus.Simulation.TradeSystem do
 
     # Trim old history
     count = :ets.info(@history_table, :size)
+
     if count > @max_history do
       first_key = :ets.first(@history_table)
       :ets.delete(@history_table, first_key)
@@ -240,11 +285,18 @@ defmodule Modus.Simulation.TradeSystem do
   defp update_stats(trade_value) do
     case :ets.lookup(@table, :stats) do
       [{:stats, s}] ->
-        :ets.insert(@table, {:stats, %{s |
-          total_trades: s.total_trades + 1,
-          total_value: ensure_float(s.total_value + trade_value)
-        }})
-      _ -> :ok
+        :ets.insert(
+          @table,
+          {:stats,
+           %{
+             s
+             | total_trades: s.total_trades + 1,
+               total_value: ensure_float(s.total_value + trade_value)
+           }}
+        )
+
+      _ ->
+        :ok
     end
   end
 
@@ -283,8 +335,12 @@ defmodule Modus.Simulation.TradeSystem do
   defp find_needs(agent) do
     # Check what agent needs based on low needs
     cond do
-      agent.needs.hunger > 60.0 -> :food
-      agent.needs.rest > 70.0 -> :herbs
+      agent.needs.hunger > 60.0 ->
+        :food
+
+      agent.needs.rest > 70.0 ->
+        :herbs
+
       true ->
         # Find resource with lowest inventory
         all_resources = [:wood, :stone, :food, :herbs]
@@ -314,7 +370,9 @@ defmodule Modus.Simulation.TradeSystem do
           count < 80.0 -> 0.8
           true -> 0.6
         end
-      _ -> 1.0
+
+      _ ->
+        1.0
     end
   end
 

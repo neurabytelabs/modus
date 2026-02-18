@@ -22,11 +22,13 @@ defmodule Modus.Performance.LazyEval do
   @doc "Check if position is far from all active observers (other agents nearby)."
   @spec distant?({integer(), integer()}, non_neg_integer()) :: boolean()
   def distant?({x, y}, _tick) do
-    nearby_count = try do
-      Modus.Performance.SpatialIndex.nearby({x, y}, @lazy_distance) |> length()
-    catch
-      _, _ -> 1
-    end
+    nearby_count =
+      try do
+        Modus.Performance.SpatialIndex.nearby({x, y}, @lazy_distance) |> length()
+      catch
+        _, _ -> 1
+      end
+
     # If very few neighbors, agent is in a remote area
     nearby_count <= 1
   end
@@ -36,11 +38,13 @@ defmodule Modus.Performance.LazyEval do
   def simplified_tick(agent) do
     # Only decay needs slowly
     needs = agent.needs
+
     new_needs = %{
       needs
       | hunger: min(needs.hunger + 0.005, 100.0),
         rest: max(needs.rest - 0.005, 0.0)
     }
+
     %{agent | needs: new_needs}
   end
 end

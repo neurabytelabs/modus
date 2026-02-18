@@ -17,7 +17,9 @@ defmodule Modus.Mind.ReasoningEngine do
 
   defp persistent_affect?(agent, _ticks) do
     case agent.affect_history do
-      [] -> false
+      [] ->
+        false
+
       [latest | _] ->
         # No affect change in the last N ticks
         latest.to == :sadness and
@@ -43,14 +45,16 @@ defmodule Modus.Mind.ReasoningEngine do
   end
 
   def build_reasoning_prompt(agent, memories) do
-    personality_desc = "Openness: #{Float.round(ensure_float(agent.personality.openness), 2)}, " <>
-      "Extraversion: #{Float.round(ensure_float(agent.personality.extraversion), 2)}, " <>
-      "Neuroticism: #{Float.round(ensure_float(agent.personality.neuroticism), 2)}"
+    personality_desc =
+      "Openness: #{Float.round(ensure_float(agent.personality.openness), 2)}, " <>
+        "Extraversion: #{Float.round(ensure_float(agent.personality.extraversion), 2)}, " <>
+        "Neuroticism: #{Float.round(ensure_float(agent.personality.neuroticism), 2)}"
 
-    memory_lines = case memories do
-      [] -> "No significant memories."
-      lines -> Enum.join(lines, "\n")
-    end
+    memory_lines =
+      case memories do
+        [] -> "No significant memories."
+        lines -> Enum.join(lines, "\n")
+      end
 
     """
     You are #{agent.name}, a #{agent.occupation} in a simulated world.

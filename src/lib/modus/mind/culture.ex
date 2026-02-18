@@ -18,24 +18,24 @@ defmodule Modus.Mind.Culture do
   # ── Types ──────────────────────────────────────────────
 
   @type catchphrase :: %{
-    text: String.t(),
-    origin_agent: String.t(),
-    origin_tick: integer(),
-    strength: float(),
-    context: atom()
-  }
+          text: String.t(),
+          origin_agent: String.t(),
+          origin_tick: integer(),
+          strength: float(),
+          context: atom()
+        }
 
   @type tradition :: %{
-    id: String.t(),
-    name: String.t(),
-    type: atom(),
-    season: atom(),
-    description: String.t(),
-    participants: [String.t()],
-    created_tick: integer(),
-    last_performed: integer(),
-    strength: float()
-  }
+          id: String.t(),
+          name: String.t(),
+          type: atom(),
+          season: atom(),
+          description: String.t(),
+          participants: [String.t()],
+          created_tick: integer(),
+          last_performed: integer(),
+          strength: float()
+        }
 
   # ── Initialization ─────────────────────────────────────
 
@@ -43,9 +43,11 @@ defmodule Modus.Mind.Culture do
     if :ets.whereis(@table) == :undefined do
       :ets.new(@table, [:set, :public, :named_table, read_concurrency: true])
     end
+
     if :ets.whereis(@traditions_table) == :undefined do
       :ets.new(@traditions_table, [:set, :public, :named_table, read_concurrency: true])
     end
+
     :ok
   end
 
@@ -102,9 +104,18 @@ defmodule Modus.Mind.Culture do
     # Only generate with some probability
     if :rand.uniform() < 0.15 do
       # Use language-specific catchphrases if available
-      lang = try do Modus.I18n.current_language() catch _, _ -> "en" end
+      lang =
+        try do
+          Modus.I18n.current_language()
+        catch
+          _, _ -> "en"
+        end
+
       lang_pool = Modus.I18n.catchphrases(lang)
-      templates = Map.get(lang_pool, event_type) || Map.get(@catchphrase_templates, event_type, [])
+
+      templates =
+        Map.get(lang_pool, event_type) || Map.get(@catchphrase_templates, event_type, [])
+
       if templates != [] do
         text = Enum.random(templates)
         # Add slight personality-based mutation
@@ -115,6 +126,7 @@ defmodule Modus.Mind.Culture do
           strength: 1.0,
           context: event_type
         }
+
         add_catchphrase(agent_id, catchphrase)
         catchphrase
       end
@@ -129,6 +141,7 @@ defmodule Modus.Mind.Culture do
       updated = Enum.take([catchphrase | existing], @max_catchphrases)
       :ets.insert(@table, {agent_id, updated})
     end
+
     :ok
   end
 
@@ -143,12 +156,15 @@ defmodule Modus.Mind.Culture do
   @doc "Get a random catchphrase for use in conversation. Returns nil if none."
   def random_catchphrase(agent_id) do
     phrases = get_catchphrases(agent_id)
+
     if phrases != [] do
       # Weighted by strength
-      weighted = Enum.flat_map(phrases, fn p ->
-        count = max(round(p.strength * 10), 1)
-        List.duplicate(p, count)
-      end)
+      weighted =
+        Enum.flat_map(phrases, fn p ->
+          count = max(round(p.strength * 10), 1)
+          List.duplicate(p, count)
+        end)
+
       Enum.random(weighted)
     end
   end
@@ -168,11 +184,10 @@ defmodule Modus.Mind.Culture do
 
     Enum.each(from_phrases, fn phrase ->
       already_has = Enum.any?(to_phrases, fn p -> p.text == phrase.text end)
+
       if not already_has and :rand.uniform() < @spread_chance * phrase.strength do
         # Spread with reduced strength
-        spread_phrase = %{phrase |
-          strength: phrase.strength * 0.7
-        }
+        spread_phrase = %{phrase | strength: phrase.strength * 0.7}
         add_catchphrase(to_id, spread_phrase)
       end
     end)
@@ -181,6 +196,7 @@ defmodule Modus.Mind.Culture do
   @doc "Apply cultural drift — phrases mutate slightly over time."
   def drift(agent_id) do
     phrases = get_catchphrases(agent_id)
+
     if phrases != [] and :rand.uniform() < @drift_chance do
       idx = :rand.uniform(length(phrases)) - 1
       phrase = Enum.at(phrases, idx)
@@ -198,6 +214,7 @@ defmodule Modus.Mind.Culture do
       fn t -> String.replace(t, ".", "...") end,
       fn t -> String.upcase(String.first(t)) <> String.slice(t, 1..-1//1) end
     ]
+
     mutation = Enum.random(mutations)
     new_text = mutation.(phrase.text)
     # Only mutate if result is different and not too long
@@ -211,18 +228,42 @@ defmodule Modus.Mind.Culture do
   # ── Traditions ─────────────────────────────────────────
 
   @tradition_templates [
-    %{name: "Harvest Festival", type: :harvest, season: :autumn,
-      description: "Agents gather to celebrate the autumn harvest with feasting and song."},
-    %{name: "Mourning Circle", type: :mourning, season: :any,
-      description: "When an agent dies, nearby agents gather in a circle of remembrance."},
-    %{name: "Dawn Greeting", type: :greeting, season: :any,
-      description: "Agents greet each other at dawn with a shared phrase or gesture."},
-    %{name: "Winter Vigil", type: :survival, season: :winter,
-      description: "Agents huddle together during the coldest nights, sharing warmth and stories."},
-    %{name: "Spring Awakening", type: :renewal, season: :spring,
-      description: "A celebration of new life and new beginnings as the world blooms."},
-    %{name: "Stargazing Rite", type: :wonder, season: :summer,
-      description: "On summer nights, agents look up and share stories about the stars."}
+    %{
+      name: "Harvest Festival",
+      type: :harvest,
+      season: :autumn,
+      description: "Agents gather to celebrate the autumn harvest with feasting and song."
+    },
+    %{
+      name: "Mourning Circle",
+      type: :mourning,
+      season: :any,
+      description: "When an agent dies, nearby agents gather in a circle of remembrance."
+    },
+    %{
+      name: "Dawn Greeting",
+      type: :greeting,
+      season: :any,
+      description: "Agents greet each other at dawn with a shared phrase or gesture."
+    },
+    %{
+      name: "Winter Vigil",
+      type: :survival,
+      season: :winter,
+      description: "Agents huddle together during the coldest nights, sharing warmth and stories."
+    },
+    %{
+      name: "Spring Awakening",
+      type: :renewal,
+      season: :spring,
+      description: "A celebration of new life and new beginnings as the world blooms."
+    },
+    %{
+      name: "Stargazing Rite",
+      type: :wonder,
+      season: :summer,
+      description: "On summer nights, agents look up and share stories about the stars."
+    }
   ]
 
   @doc "Check if a tradition should trigger based on current conditions."
@@ -230,26 +271,30 @@ defmodule Modus.Mind.Culture do
     traditions = list_traditions()
 
     # Auto-create traditions from templates if none exist
-    traditions = if traditions == [] and tick > 500 do
-      seed_traditions(tick)
-      list_traditions()
-    else
-      traditions
-    end
+    traditions =
+      if traditions == [] and tick > 500 do
+        seed_traditions(tick)
+        list_traditions()
+      else
+        traditions
+      end
 
     # Check which traditions should fire
     Enum.filter(traditions, fn t ->
       season_match = t.season == :any or t.season == season
       cooldown_ok = tick - t.last_performed > 300
-      event_match = case {t.type, event_type} do
-        {:mourning, :death} -> true
-        {:harvest, _} -> season == :autumn
-        {:greeting, _} -> true  # Checked every dawn
-        {:survival, _} -> season == :winter
-        {:renewal, _} -> season == :spring
-        {:wonder, _} -> season == :summer
-        _ -> false
-      end
+
+      event_match =
+        case {t.type, event_type} do
+          {:mourning, :death} -> true
+          {:harvest, _} -> season == :autumn
+          # Checked every dawn
+          {:greeting, _} -> true
+          {:survival, _} -> season == :winter
+          {:renewal, _} -> season == :spring
+          {:wonder, _} -> season == :summer
+          _ -> false
+        end
 
       season_match and cooldown_ok and event_match
     end)
@@ -258,17 +303,22 @@ defmodule Modus.Mind.Culture do
   @doc "Perform a tradition — record it and return event data."
   def perform_tradition(tradition_id, participant_ids, tick) do
     case get_tradition(tradition_id) do
-      nil -> {:error, :not_found}
+      nil ->
+        {:error, :not_found}
+
       tradition ->
-        updated = %{tradition |
-          last_performed: tick,
-          participants: participant_ids,
-          strength: min(tradition.strength + 0.05, 1.0)
+        updated = %{
+          tradition
+          | last_performed: tick,
+            participants: participant_ids,
+            strength: min(tradition.strength + 0.05, 1.0)
         }
+
         :ets.insert(@traditions_table, {tradition_id, updated})
 
         # Boost social bonds between participants
         pairs = for a <- participant_ids, b <- participant_ids, a < b, do: {a, b}
+
         Enum.each(pairs, fn {a, b} ->
           Modus.Mind.Cerebro.SocialNetwork.update_relationship(a, b, :conversation_joy)
         end)
@@ -281,6 +331,7 @@ defmodule Modus.Mind.Culture do
   def seed_traditions(tick) do
     Enum.each(@tradition_templates, fn template ->
       id = :crypto.strong_rand_bytes(6) |> Base.encode16(case: :lower)
+
       tradition = %{
         id: id,
         name: template.name,
@@ -292,6 +343,7 @@ defmodule Modus.Mind.Culture do
         last_performed: 0,
         strength: 0.5
       }
+
       :ets.insert(@traditions_table, {id, tradition})
     end)
   end
@@ -317,9 +369,11 @@ defmodule Modus.Mind.Culture do
     # Decay catchphrases
     :ets.tab2list(@table)
     |> Enum.each(fn {agent_id, phrases} ->
-      updated = phrases
+      updated =
+        phrases
         |> Enum.map(fn p -> %{p | strength: max(p.strength - @decay_amount, 0.0)} end)
         |> Enum.reject(fn p -> p.strength < 0.05 end)
+
       if updated == [] do
         :ets.delete(@table, agent_id)
       else
@@ -331,6 +385,7 @@ defmodule Modus.Mind.Culture do
     :ets.tab2list(@traditions_table)
     |> Enum.each(fn {id, t} ->
       new_strength = max(t.strength - @decay_amount * 0.5, 0.0)
+
       if new_strength < 0.05 do
         :ets.delete(@traditions_table, id)
       else
@@ -352,9 +407,7 @@ defmodule Modus.Mind.Culture do
     |> Enum.filter(fn p -> p.strength > 0.3 end)
     |> Enum.take(3)
     |> Enum.each(fn phrase ->
-      inherited = %{phrase |
-        strength: phrase.strength * 0.6
-      }
+      inherited = %{phrase | strength: phrase.strength * 0.6}
       # Small chance of mutation during inheritance
       final = if :rand.uniform() < 0.2, do: mutate_phrase(inherited), else: inherited
       add_catchphrase(child_id, final)
@@ -366,16 +419,19 @@ defmodule Modus.Mind.Culture do
   @doc "Serialize an agent's culture for the detail panel."
   def serialize(agent_id) do
     phrases = get_catchphrases(agent_id)
+
     %{
-      catchphrases: Enum.map(phrases, fn p ->
-        %{
-          text: p.text,
-          strength: Float.round(p.strength, 2),
-          context: to_string(p.context),
-          origin_agent: p.origin_agent
-        }
-      end),
-      traditions: list_traditions()
+      catchphrases:
+        Enum.map(phrases, fn p ->
+          %{
+            text: p.text,
+            strength: Float.round(p.strength, 2),
+            context: to_string(p.context),
+            origin_agent: p.origin_agent
+          }
+        end),
+      traditions:
+        list_traditions()
         |> Enum.map(fn t ->
           %{
             id: t.id,

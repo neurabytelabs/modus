@@ -98,6 +98,7 @@ defmodule Modus.Simulation.RulesEngine do
     if :ets.whereis(@table) == :undefined do
       :ets.new(@table, [:set, :public, :named_table, read_concurrency: true])
     end
+
     :ets.insert(@table, {:rules, @default_rules})
     :ok
   end
@@ -127,11 +128,12 @@ defmodule Modus.Simulation.RulesEngine do
     updated = Map.merge(current, changes)
 
     # If not explicitly setting a preset, mark as Custom
-    updated = if Map.has_key?(changes, :preset) do
-      updated
-    else
-      Map.put(updated, :preset, "Custom")
-    end
+    updated =
+      if Map.has_key?(changes, :preset) do
+        updated
+      else
+        Map.put(updated, :preset, "Custom")
+      end
 
     :ets.insert(@table, {:rules, updated})
 
@@ -207,6 +209,7 @@ defmodule Modus.Simulation.RulesEngine do
   @spec serialize() :: map()
   def serialize do
     rules = get_rules()
+
     %{
       time_speed: rules.time_speed,
       resource_abundance: to_string(rules.resource_abundance),

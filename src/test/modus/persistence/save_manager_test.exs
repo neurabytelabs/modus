@@ -22,6 +22,7 @@ defmodule Modus.Persistence.SaveManagerTest do
         {:ok, json} ->
           assert is_binary(json)
           assert {:ok, _} = Jason.decode(json)
+
         {:error, _} ->
           # May fail if no world is running, that's ok
           :ok
@@ -72,6 +73,7 @@ defmodule Modus.Persistence.SaveManagerTest do
 
           # Cleanup
           SaveManager.delete_slot(5)
+
         {:error, _} ->
           # No world running, skip
           :ok

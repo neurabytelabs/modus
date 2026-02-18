@@ -13,18 +13,27 @@ defmodule Modus.Mind.Cerebro.AgentConversationTest do
   end
 
   defp make_agent(overrides \\ %{}) do
-    Map.merge(%{
-      id: "agent_#{:rand.uniform(10000)}",
-      name: "TestAgent",
-      occupation: :explorer,
-      position: {10, 10},
-      personality: %{openness: 0.5, conscientiousness: 0.5, extraversion: 0.7, agreeableness: 0.6, neuroticism: 0.3},
-      needs: %{hunger: 30.0, social: 60.0, rest: 70.0, shelter: 70.0},
-      conatus_energy: 0.7,
-      affect_state: :neutral,
-      current_action: :talking,
-      alive?: true
-    }, overrides)
+    Map.merge(
+      %{
+        id: "agent_#{:rand.uniform(10000)}",
+        name: "TestAgent",
+        occupation: :explorer,
+        position: {10, 10},
+        personality: %{
+          openness: 0.5,
+          conscientiousness: 0.5,
+          extraversion: 0.7,
+          agreeableness: 0.6,
+          neuroticism: 0.3
+        },
+        needs: %{hunger: 30.0, social: 60.0, rest: 70.0, shelter: 70.0},
+        conatus_energy: 0.7,
+        affect_state: :neutral,
+        current_action: :talking,
+        alive?: true
+      },
+      overrides
+    )
   end
 
   test "skipped when conatus too low" do

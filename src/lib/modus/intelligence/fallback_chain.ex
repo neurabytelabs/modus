@@ -22,16 +22,20 @@ defmodule Modus.Intelligence.FallbackChain do
 
     start = System.monotonic_time(:millisecond)
 
-    result = try_antigravity(agents, context, config)
-             |> or_try(fn -> try_gemini_batch(agents, tick) end)
-             |> or_try(fn -> try_ollama(agents, context, config) end)
-             |> or_fallback(fn -> behavior_tree_fallback(agents, tick) end)
+    result =
+      try_antigravity(agents, context, config)
+      |> or_try(fn -> try_gemini_batch(agents, tick) end)
+      |> or_try(fn -> try_ollama(agents, context, config) end)
+      |> or_fallback(fn -> behavior_tree_fallback(agents, tick) end)
 
     elapsed = System.monotonic_time(:millisecond) - start
-    model = case result do
-      {:ok, _, model} -> model
-      _ -> "behavior_tree"
-    end
+
+    model =
+      case result do
+        {:ok, _, model} -> model
+        _ -> "behavior_tree"
+      end
+
     LlmMetrics.record_call(elapsed, model)
 
     case result do
@@ -45,19 +49,23 @@ defmodule Modus.Intelligence.FallbackChain do
     config = get_config()
     start = System.monotonic_time(:millisecond)
 
-    result = case config.provider do
-      :antigravity ->
-        case AntigravityClient.chat_with_agent(agent, message, config) do
-          {:ok, text} -> {:ok, text}
-          _ -> try_gemini_chat(agent, message)
-        end
-      :ollama ->
-        case OllamaClient.chat_with_agent(agent, message, config) do
-          {:ok, text} -> {:ok, text}
-          _ -> {:ok, "I'm thinking... (LLM unavailable)"}
-        end
-      _ -> {:ok, "I'm thinking... (no provider)"}
-    end
+    result =
+      case config.provider do
+        :antigravity ->
+          case AntigravityClient.chat_with_agent(agent, message, config) do
+            {:ok, text} -> {:ok, text}
+            _ -> try_gemini_chat(agent, message)
+          end
+
+        :ollama ->
+          case OllamaClient.chat_with_agent(agent, message, config) do
+            {:ok, text} -> {:ok, text}
+            _ -> {:ok, "I'm thinking... (LLM unavailable)"}
+          end
+
+        _ ->
+          {:ok, "I'm thinking... (no provider)"}
+      end
 
     elapsed = System.monotonic_time(:millisecond) - start
     LlmMetrics.record_call(elapsed)
@@ -77,18 +85,22 @@ defmodule Modus.Intelligence.FallbackChain do
       Logger.warning("FallbackChain: Antigravity failed: #{inspect(e)}")
       :fallback
   end
+
   defp try_antigravity(_agents, _context, _config), do: :fallback
 
   defp try_gemini_batch(agents, tick) do
     prompt = Modus.Intelligence.PromptCompressor.compress_batch(agents, tick)
     messages = [%{role: "user", content: prompt}]
+
     case GeminiClient.chat(messages) do
       {:ok, text} ->
         case parse_decisions(text, agents) do
           :fallback -> :fallback
           decisions -> {:ok, decisions, "gemini-flash"}
         end
-      _ -> :fallback
+
+      _ ->
+        :fallback
     end
   rescue
     _ -> :fallback
@@ -105,14 +117,18 @@ defmodule Modus.Intelligence.FallbackChain do
   end
 
   defp behavior_tree_fallback(agents, tick) do
-    decisions = Enum.map(agents, fn agent ->
-      action = try do
-        BehaviorTree.evaluate(agent, tick)
-      rescue
-        _ -> fallback_action(agent)
-      end
-      {agent.id, action, %{reason: "behavior_tree"}}
-    end)
+    decisions =
+      Enum.map(agents, fn agent ->
+        action =
+          try do
+            BehaviorTree.evaluate(agent, tick)
+          rescue
+            _ -> fallback_action(agent)
+          end
+
+        {agent.id, action, %{reason: "behavior_tree"}}
+      end)
+
     {:ok, decisions, "behavior_tree"}
   end
 
@@ -136,7 +152,13 @@ defmodule Modus.Intelligence.FallbackChain do
     try do
       Modus.Intelligence.LlmProvider.get_config()
     rescue
-      _ -> %{provider: :ollama, model: "llama3.2:3b-instruct-q4_K_M", base_url: "http://modus-llm:11434", api_key: nil}
+      _ ->
+        %{
+          provider: :ollama,
+          model: "llama3.2:3b-instruct-q4_K_M",
+          base_url: "http://modus-llm:11434",
+          api_key: nil
+        }
     end
   end
 
@@ -144,6 +166,7 @@ defmodule Modus.Intelligence.FallbackChain do
 
   defp parse_decisions(text, agents) do
     agent_ids = MapSet.new(Enum.map(agents, & &1.id))
+
     case Jason.decode(text) do
       {:ok, %{"decisions" => decisions}} when is_list(decisions) ->
         decisions
@@ -152,7 +175,9 @@ defmodule Modus.Intelligence.FallbackChain do
           action = if d["action"] in @valid_actions, do: String.to_atom(d["action"]), else: :idle
           {d["id"], action, %{reason: d["reason"] || "llm"}}
         end)
-      _ -> :fallback
+
+      _ ->
+        :fallback
     end
   end
 end

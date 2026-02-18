@@ -35,6 +35,7 @@ defmodule Modus.Mind.Learning do
     if :ets.whereis(@table) == :undefined do
       :ets.new(@table, [:set, :public, :named_table, read_concurrency: true])
     end
+
     :ok
   end
 
@@ -104,7 +105,8 @@ defmodule Modus.Mind.Learning do
   # ── XP & Leveling ──────────────────────────────────────────
 
   @doc "Add experience points to a skill. Returns {:ok, new_level} or {:level_up, old, new}."
-  @spec add_xp(String.t(), atom(), float()) :: {:ok, non_neg_integer()} | {:level_up, non_neg_integer(), non_neg_integer()}
+  @spec add_xp(String.t(), atom(), float()) ::
+          {:ok, non_neg_integer()} | {:level_up, non_neg_integer(), non_neg_integer()}
   def add_xp(agent_id, skill, xp_amount) when xp_amount > 0 do
     skills = get_skills(agent_id)
     current = Map.get(skills, skill, %{xp: 0.0, level: 0})
@@ -126,7 +128,9 @@ defmodule Modus.Mind.Learning do
   @spec award_for_action(String.t(), atom()) :: :ok
   def award_for_action(agent_id, action) do
     case action_skill_map(action) do
-      nil -> :ok
+      nil ->
+        :ok
+
       {skill, xp} ->
         add_xp(agent_id, skill, xp)
         :ok
@@ -142,11 +146,12 @@ defmodule Modus.Mind.Learning do
 
     skills
     |> Enum.map(fn {skill, data} ->
-      {to_string(skill), %{
-        "xp" => Float.round(ensure_float(data.xp), 1),
-        "level" => data.level,
-        "progress" => level_progress(data.xp, data.level)
-      }}
+      {to_string(skill),
+       %{
+         "xp" => Float.round(ensure_float(data.xp), 1),
+         "level" => data.level,
+         "progress" => level_progress(data.xp, data.level)
+       }}
     end)
     |> Map.new()
   end
@@ -169,6 +174,7 @@ defmodule Modus.Mind.Learning do
   end
 
   defp level_progress(_xp, level) when level >= @max_level, do: 100.0
+
   defp level_progress(xp, level) do
     current_threshold = Map.get(@xp_thresholds, level, 0)
     next_threshold = Map.get(@xp_thresholds, level + 1, 100)

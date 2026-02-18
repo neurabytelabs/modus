@@ -1,7 +1,8 @@
 defmodule ModusWeb.UserSocket do
+  @moduledoc "ModusWeb.UserSocket — auto-documented by Probatio quality pass."
   use Phoenix.Socket
 
-  channel "world:*", ModusWeb.WorldChannel
+  channel("world:*", ModusWeb.WorldChannel)
 
   @impl true
   def connect(_params, socket, _connect_info) do

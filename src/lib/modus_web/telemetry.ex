@@ -1,4 +1,5 @@
 defmodule ModusWeb.Telemetry do
+  @moduledoc "ModusWeb.Telemetry — auto-documented by Probatio quality pass."
   use Supervisor
   import Telemetry.Metrics
 

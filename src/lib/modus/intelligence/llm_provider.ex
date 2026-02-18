@@ -14,15 +14,16 @@ defmodule Modus.Intelligence.LlmProvider do
   alias Modus.Intelligence.{OllamaClient, AntigravityClient}
 
   # Default config reads from env — prefers Antigravity if configured
-#   @default_config %{
-#     provider: :ollama,
-#     model: "llama3.2:3b-instruct-q4_K_M",
-#     base_url: "http://modus-llm:11434",
-#     api_key: nil
-#   }
+  #   @default_config %{
+  #     provider: :ollama,
+  #     model: "llama3.2:3b-instruct-q4_K_M",
+  #     base_url: "http://modus-llm:11434",
+  #     api_key: nil
+  #   }
 
   defp init_config do
     antigravity_key = System.get_env("ANTIGRAVITY_API_KEY")
+
     if antigravity_key && antigravity_key != "" do
       %{
         provider: :antigravity,
@@ -89,6 +90,7 @@ defmodule Modus.Intelligence.LlmProvider do
   @doc "Chat with a single agent. Bypasses GenServer to avoid blocking on batch_decide."
   def chat(agent, user_message) do
     config = get_config()
+
     case config.provider do
       :ollama -> OllamaClient.chat_with_agent(agent, user_message, config)
       :antigravity -> AntigravityClient.chat_with_agent(agent, user_message, config)
@@ -105,7 +107,10 @@ defmodule Modus.Intelligence.LlmProvider do
 
   @impl true
   def init(config) do
-    Logger.info("LlmProvider started: provider=#{config.provider} model=#{config.model} url=#{config.base_url}")
+    Logger.info(
+      "LlmProvider started: provider=#{config.provider} model=#{config.model} url=#{config.base_url}"
+    )
+
     :persistent_term.put(:llm_config, config)
     # Reset circuit breaker on startup
     AntigravityClient.reset_circuit_breaker()
@@ -140,11 +145,13 @@ defmodule Modus.Intelligence.LlmProvider do
   end
 
   def handle_call(:test_connection, _from, config) do
-    result = case config.provider do
-      :ollama -> OllamaClient.test_connection(config)
-      :antigravity -> AntigravityClient.test_connection(config)
-      _ -> {:error, "Unknown provider: #{config.provider}"}
-    end
+    result =
+      case config.provider do
+        :ollama -> OllamaClient.test_connection(config)
+        :antigravity -> AntigravityClient.test_connection(config)
+        _ -> {:error, "Unknown provider: #{config.provider}"}
+      end
+
     {:reply, result, config}
   end
 

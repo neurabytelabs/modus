@@ -10,13 +10,16 @@ defmodule Modus.Simulation.EnvironmentTest do
         if Process.whereis(Modus.PubSub) == nil do
           start_supervised!({Phoenix.PubSub, name: Modus.PubSub})
         end
+
         start_supervised!(Environment)
+
       _pid ->
         # Reset to initial state
         :sys.replace_state(Environment, fn _state ->
           %Modus.Simulation.Environment{}
         end)
     end
+
     :ok
   end
 
@@ -40,6 +43,7 @@ defmodule Modus.Simulation.EnvironmentTest do
     for i <- 1..250 do
       send(Process.whereis(Environment), {:tick, i})
     end
+
     # Give it time to process
     :timer.sleep(50)
 
@@ -52,6 +56,7 @@ defmodule Modus.Simulation.EnvironmentTest do
     for i <- 1..500 do
       send(Process.whereis(Environment), {:tick, i})
     end
+
     :timer.sleep(50)
 
     assert Environment.time_of_day() == :day
@@ -64,6 +69,7 @@ defmodule Modus.Simulation.EnvironmentTest do
     for i <- 1..125 do
       send(Process.whereis(Environment), {:tick, i})
     end
+
     :timer.sleep(50)
 
     progress = Environment.cycle_progress()

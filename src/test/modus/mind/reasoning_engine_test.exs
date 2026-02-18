@@ -9,7 +9,13 @@ defmodule Modus.Mind.ReasoningEngineTest do
       name: "Tester",
       occupation: :explorer,
       position: {10, 10},
-      personality: %{openness: 0.5, conscientiousness: 0.5, extraversion: 0.5, agreeableness: 0.5, neuroticism: 0.5},
+      personality: %{
+        openness: 0.5,
+        conscientiousness: 0.5,
+        extraversion: 0.5,
+        agreeableness: 0.5,
+        neuroticism: 0.5
+      },
       conatus_energy: 0.4,
       affect_state: affect_state,
       affect_history: affect_history,
@@ -18,7 +24,9 @@ defmodule Modus.Mind.ReasoningEngineTest do
   end
 
   test "should_reason? true for persistent sadness" do
-    history = for i <- 1..5, do: %{tick: 100 - i * 10, from: :neutral, to: :sadness, reason: "test"}
+    history =
+      for i <- 1..5, do: %{tick: 100 - i * 10, from: :neutral, to: :sadness, reason: "test"}
+
     agent = make_agent(:sadness, history)
     assert ReasoningEngine.should_reason?(agent)
   end
@@ -35,7 +43,12 @@ defmodule Modus.Mind.ReasoningEngineTest do
 
   test "build_reasoning_prompt includes agent info" do
     agent = make_agent(:sadness, [])
-    prompt = ReasoningEngine.build_reasoning_prompt(agent, ["Tick 50: felt sadness after failure at (10,10)"])
+
+    prompt =
+      ReasoningEngine.build_reasoning_prompt(agent, [
+        "Tick 50: felt sadness after failure at (10,10)"
+      ])
+
     assert prompt =~ "Tester"
     assert prompt =~ "sadness"
     assert prompt =~ "Tick 50"

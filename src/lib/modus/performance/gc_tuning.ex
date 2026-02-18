@@ -33,7 +33,11 @@ defmodule Modus.Performance.GcTuning do
     |> Registry.select([{{:_, :"$2", :_}, [], [:"$2"]}])
     |> Enum.each(&:erlang.garbage_collect/1)
     |> then(fn _ ->
-      try do Registry.count(Modus.AgentRegistry) catch _, _ -> 0 end
+      try do
+        Registry.count(Modus.AgentRegistry)
+      catch
+        _, _ -> 0
+      end
     end)
   end
 

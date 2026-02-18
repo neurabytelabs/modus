@@ -94,9 +94,12 @@ defmodule Modus.Mind.PlannerTest do
 
   describe "active_plans/1" do
     test "returns plans sorted by priority desc" do
-      Planner.create_plan("a1", :socialize)        # 20
-      Planner.create_plan("a1", :build_house)       # 40
-      Planner.create_plan("a1", :satisfy_hunger)    # 80
+      # 20
+      Planner.create_plan("a1", :socialize)
+      # 40
+      Planner.create_plan("a1", :build_house)
+      # 80
+      Planner.create_plan("a1", :satisfy_hunger)
 
       plans = Planner.active_plans("a1")
       priorities = Enum.map(plans, & &1.priority)
@@ -139,6 +142,7 @@ defmodule Modus.Mind.PlannerTest do
 
     test "threat overrides everything" do
       Planner.create_plan("a1", :build_house)
+
       agent_state = %{
         needs: %{hunger: 50.0, rest: 80.0, shelter: 70.0, social: 50.0},
         under_threat: true,

@@ -63,27 +63,27 @@ defmodule Modus.Simulation.Archaeology do
   @type artifact_type :: :tool | :writing | :treasure | :relic
 
   @type ruin :: %{
-    id: String.t(),
-    type: ruin_type(),
-    position: {integer(), integer()},
-    artifacts: [artifact()],
-    discovered: boolean(),
-    haunted: boolean(),
-    decay_level: float(),
-    created_tick: integer(),
-    original_building_id: String.t() | nil
-  }
+          id: String.t(),
+          type: ruin_type(),
+          position: {integer(), integer()},
+          artifacts: [artifact()],
+          discovered: boolean(),
+          haunted: boolean(),
+          decay_level: float(),
+          created_tick: integer(),
+          original_building_id: String.t() | nil
+        }
 
   @type artifact :: %{
-    id: String.t(),
-    type: artifact_type(),
-    name: String.t(),
-    description: String.t(),
-    value: float(),
-    discovered_by: String.t() | nil,
-    discovered_tick: integer() | nil,
-    in_museum: boolean()
-  }
+          id: String.t(),
+          type: artifact_type(),
+          name: String.t(),
+          description: String.t(),
+          value: float(),
+          discovered_by: String.t() | nil,
+          discovered_tick: integer() | nil,
+          in_museum: boolean()
+        }
 
   # ── ETS Setup ─────────────────────────────────────────
 
@@ -91,12 +91,15 @@ defmodule Modus.Simulation.Archaeology do
     if :ets.whereis(@ruins_table) == :undefined do
       :ets.new(@ruins_table, [:named_table, :set, :public, read_concurrency: true])
     end
+
     if :ets.whereis(@artifacts_table) == :undefined do
       :ets.new(@artifacts_table, [:named_table, :set, :public, read_concurrency: true])
     end
+
     if :ets.whereis(@museums_table) == :undefined do
       :ets.new(@museums_table, [:named_table, :set, :public, read_concurrency: true])
     end
+
     :ok
   end
 
@@ -121,7 +124,9 @@ defmodule Modus.Simulation.Archaeology do
   @spec get_ruin(String.t()) :: ruin() | nil
   def get_ruin(id) do
     case :ets.whereis(@ruins_table) do
-      :undefined -> nil
+      :undefined ->
+        nil
+
       _ ->
         case :ets.lookup(@ruins_table, id) do
           [{_id, ruin}] -> ruin
@@ -150,13 +155,15 @@ defmodule Modus.Simulation.Archaeology do
   def museum_culture_bonus do
     get_museum_artifacts()
     |> Enum.reduce(0.0, fn art, acc ->
-      base = case art.type do
-        :relic -> 10.0
-        :writing -> 7.0
-        :treasure -> 5.0
-        :tool -> 3.0
-        _ -> 2.0
-      end
+      base =
+        case art.type do
+          :relic -> 10.0
+          :writing -> 7.0
+          :treasure -> 5.0
+          :tool -> 3.0
+          _ -> 2.0
+        end
+
       acc + base
     end)
   end
@@ -238,7 +245,8 @@ defmodule Modus.Simulation.Archaeology do
   # ── Excavation ────────────────────────────────────────
 
   @doc "Ajan bir harabede kazı yapar. Başarılı olursa artefakt döner."
-  @spec excavate(String.t(), String.t(), integer()) :: {:ok, artifact()} | {:empty, String.t()} | {:fail, String.t()}
+  @spec excavate(String.t(), String.t(), integer()) ::
+          {:ok, artifact()} | {:empty, String.t()} | {:fail, String.t()}
   def excavate(ruin_id, agent_id, current_tick) do
     case get_ruin(ruin_id) do
       nil ->
@@ -246,9 +254,10 @@ defmodule Modus.Simulation.Archaeology do
 
       ruin ->
         # Keşfedilmemiş artefaktlar
-        undiscovered = ruin.artifacts
-        |> Enum.map(&get_artifact/1)
-        |> Enum.filter(fn a -> a != nil and a.discovered_by == nil end)
+        undiscovered =
+          ruin.artifacts
+          |> Enum.map(&get_artifact/1)
+          |> Enum.filter(fn a -> a != nil and a.discovered_by == nil end)
 
         cond do
           undiscovered == [] ->
@@ -259,10 +268,7 @@ defmodule Modus.Simulation.Archaeology do
 
           true ->
             artifact = Enum.random(undiscovered)
-            updated = %{artifact |
-              discovered_by: agent_id,
-              discovered_tick: current_tick
-            }
+            updated = %{artifact | discovered_by: agent_id, discovered_tick: current_tick}
             :ets.insert(@artifacts_table, {updated.id, updated})
 
             # Harabeyi keşfedilmiş olarak işaretle
@@ -280,7 +286,9 @@ defmodule Modus.Simulation.Archaeology do
   @spec add_to_museum(String.t()) :: :ok | :error
   def add_to_museum(artifact_id) do
     case get_artifact(artifact_id) do
-      nil -> :error
+      nil ->
+        :error
+
       art ->
         if art.discovered_by != nil and not art.in_museum do
           :ets.insert(@artifacts_table, {art.id, %{art | in_museum: true}})
@@ -315,6 +323,7 @@ defmodule Modus.Simulation.Archaeology do
       new_decay = min(1.0, ensure_float(ruin.decay_level) + 0.0005)
       :ets.insert(@ruins_table, {ruin.id, %{ruin | decay_level: new_decay}})
     end)
+
     :ok
   end
 
@@ -375,7 +384,9 @@ defmodule Modus.Simulation.Archaeology do
 
   defp get_artifact(id) do
     case :ets.whereis(@artifacts_table) do
-      :undefined -> nil
+      :undefined ->
+        nil
+
       _ ->
         case :ets.lookup(@artifacts_table, id) do
           [{_id, art}] -> art
@@ -387,6 +398,7 @@ defmodule Modus.Simulation.Archaeology do
   defp generate_artifacts(ruin_type, count) when count > 0 do
     Enum.map(1..count, fn _ ->
       type = weighted_artifact_type()
+
       %{
         id: "artifact_#{:erlang.unique_integer([:positive])}",
         type: type,
@@ -399,10 +411,12 @@ defmodule Modus.Simulation.Archaeology do
       }
     end)
   end
+
   defp generate_artifacts(_ruin_type, _count), do: []
 
   defp weighted_artifact_type do
     roll = :rand.uniform()
+
     cond do
       roll < 0.4 -> :tool
       roll < 0.7 -> :writing
@@ -411,15 +425,28 @@ defmodule Modus.Simulation.Archaeology do
     end
   end
 
-  defp artifact_name(:tool, _), do: Enum.random(["Antik Çekiç", "Obsidyen Bıçak", "Bronz Keski", "Taş Balta", "Kemik İğne"])
-  defp artifact_name(:writing, _), do: Enum.random(["Kil Tablet", "Papirüs Parçası", "Taş Yazıt", "Antik Harita", "Şifreli Rulo"])
-  defp artifact_name(:treasure, _), do: Enum.random(["Altın Kolye", "Yakut Yüzük", "Gümüş Kupa", "Fildişi Heykel", "Jade Maske"])
-  defp artifact_name(:relic, :temple), do: Enum.random(["Kutsal Kadeh", "Ritüel Bıçağı", "Dua Taşı", "Antik İkon"])
-  defp artifact_name(:relic, _), do: Enum.random(["Mühürlü Kutu", "Gizemli Küre", "Eski Pusula", "Kristal Prizma"])
+  defp artifact_name(:tool, _),
+    do: Enum.random(["Antik Çekiç", "Obsidyen Bıçak", "Bronz Keski", "Taş Balta", "Kemik İğne"])
+
+  defp artifact_name(:writing, _),
+    do:
+      Enum.random(["Kil Tablet", "Papirüs Parçası", "Taş Yazıt", "Antik Harita", "Şifreli Rulo"])
+
+  defp artifact_name(:treasure, _),
+    do: Enum.random(["Altın Kolye", "Yakut Yüzük", "Gümüş Kupa", "Fildişi Heykel", "Jade Maske"])
+
+  defp artifact_name(:relic, :temple),
+    do: Enum.random(["Kutsal Kadeh", "Ritüel Bıçağı", "Dua Taşı", "Antik İkon"])
+
+  defp artifact_name(:relic, _),
+    do: Enum.random(["Mühürlü Kutu", "Gizemli Küre", "Eski Pusula", "Kristal Prizma"])
 
   defp artifact_description(:tool, _), do: "Eski bir uygarlığın zanaatkarlarına ait alet."
   defp artifact_description(:writing, _), do: "Kayıp bir dilin izlerini taşıyan yazıt."
-  defp artifact_description(:treasure, _), do: "Parlak ve değerli — geçmişin zenginliğinin kanıtı."
+
+  defp artifact_description(:treasure, _),
+    do: "Parlak ve değerli — geçmişin zenginliğinin kanıtı."
+
   defp artifact_description(:relic, _), do: "Gizemli bir enerji yayan antik eser."
 
   defp artifact_value(:tool), do: ensure_float(10.0 + :rand.uniform() * 20.0)

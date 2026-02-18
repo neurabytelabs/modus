@@ -20,6 +20,7 @@ defmodule Modus.Simulation.Lifecycle do
     if :ets.whereis(@table) == :undefined do
       :ets.new(@table, [:set, :public, :named_table, read_concurrency: true])
     end
+
     :ets.insert(@table, {:stats, %{births: 0, deaths: 0}})
     :ok
   end
@@ -40,6 +41,7 @@ defmodule Modus.Simulation.Lifecycle do
       [{:stats, s}] -> :ets.insert(@table, {:stats, %{s | deaths: s.deaths + 1}})
       _ -> :ok
     end
+
     :ok
   end
 
@@ -47,11 +49,19 @@ defmodule Modus.Simulation.Lifecycle do
   @spec tick(non_neg_integer()) :: :ok
   def tick(tick_number) do
     # Higher birth_rate → more frequent checks
-    birth_rate = try do Modus.Simulation.RulesEngine.birth_rate() catch _, _ -> 1.0 end
+    birth_rate =
+      try do
+        Modus.Simulation.RulesEngine.birth_rate()
+      catch
+        _, _ -> 1.0
+      end
+
     check_interval = max(10, round(@base_birth_check_interval / birth_rate))
+
     if rem(tick_number, check_interval) == 0 do
       maybe_spawn_birth(tick_number)
     end
+
     :ok
   end
 
@@ -71,9 +81,10 @@ defmodule Modus.Simulation.Lifecycle do
 
       true ->
         # Normal birth: find two joyful agents nearby
-        joyful = Enum.filter(agents, fn a ->
-          a.affect_state == :joy and a.conatus_energy > 0.7
-        end)
+        joyful =
+          Enum.filter(agents, fn a ->
+            a.affect_state == :joy and a.conatus_energy > 0.7
+          end)
 
         case find_birth_pair(joyful) do
           {parent_a, parent_b} -> spawn_child(parent_a, parent_b, tick)
@@ -83,11 +94,12 @@ defmodule Modus.Simulation.Lifecycle do
   end
 
   defp find_birth_pair(joyful) when length(joyful) < 2, do: nil
+
   defp find_birth_pair(joyful) do
     Enum.reduce_while(joyful, nil, fn a, _acc ->
       case Enum.find(joyful, fn b ->
-        b.id != a.id and in_radius?(a.position, b.position)
-      end) do
+             b.id != a.id and in_radius?(a.position, b.position)
+           end) do
         nil -> {:cont, nil}
         b -> {:halt, {a, b}}
       end
@@ -97,7 +109,9 @@ defmodule Modus.Simulation.Lifecycle do
   defp spawn_new_agent(agents, tick) do
     # Pick a random living agent as "parent"
     case agents do
-      [] -> :ok
+      [] ->
+        :ok
+
       _ ->
         parent = Enum.random(agents)
         spawn_child(parent, parent, tick)
@@ -112,45 +126,68 @@ defmodule Modus.Simulation.Lifecycle do
     child_pos = {max(0, min(px + offset_x, 49)), max(0, min(py + offset_y, 49))}
 
     names = [
-      "Dawn", "Hope", "Sky", "Sol", "Clay", "Cloud",
-      "Brook", "Breeze", "Star", "Oak", "Atlas", "Rae",
-      "Fable", "Reed", "Lake", "Sage", "Bay", "Haven"
+      "Dawn",
+      "Hope",
+      "Sky",
+      "Sol",
+      "Clay",
+      "Cloud",
+      "Brook",
+      "Breeze",
+      "Star",
+      "Oak",
+      "Atlas",
+      "Rae",
+      "Fable",
+      "Reed",
+      "Lake",
+      "Sage",
+      "Bay",
+      "Haven"
     ]
 
     name = Enum.random(names)
     occupation = Enum.random([:farmer, :builder, :explorer, :healer, :trader])
 
     # Apply mutation_rate from RulesEngine for personality variance
-    mutation_rate = try do Modus.Simulation.RulesEngine.mutation_rate() catch _, _ -> 0.3 end
-    child = if mutation_rate > 0 and function_exported?(Modus.Simulation.Agent, :new_custom, 5) do
-      parent_p = try do
-        state = Modus.Simulation.Agent.get_state(parent_a.id)
-        state.personality
+    mutation_rate =
+      try do
+        Modus.Simulation.RulesEngine.mutation_rate()
       catch
-        _, _ -> nil
+        _, _ -> 0.3
       end
 
-      if parent_p do
-        mutate = fn val ->
-          drift = (:rand.uniform() - 0.5) * mutation_rate
-          max(0.0, min(1.0, val + drift))
+    child =
+      if mutation_rate > 0 and function_exported?(Modus.Simulation.Agent, :new_custom, 5) do
+        parent_p =
+          try do
+            state = Modus.Simulation.Agent.get_state(parent_a.id)
+            state.personality
+          catch
+            _, _ -> nil
+          end
+
+        if parent_p do
+          mutate = fn val ->
+            drift = (:rand.uniform() - 0.5) * mutation_rate
+            max(0.0, min(1.0, val + drift))
+          end
+
+          personality = %{
+            openness: mutate.(parent_p.openness),
+            conscientiousness: mutate.(parent_p.conscientiousness),
+            extraversion: mutate.(parent_p.extraversion),
+            agreeableness: mutate.(parent_p.agreeableness),
+            neuroticism: mutate.(parent_p.neuroticism)
+          }
+
+          Modus.Simulation.Agent.new_custom(name, child_pos, occupation, personality, :calm)
+        else
+          Modus.Simulation.Agent.new(name, child_pos, occupation)
         end
-
-        personality = %{
-          openness: mutate.(parent_p.openness),
-          conscientiousness: mutate.(parent_p.conscientiousness),
-          extraversion: mutate.(parent_p.extraversion),
-          agreeableness: mutate.(parent_p.agreeableness),
-          neuroticism: mutate.(parent_p.neuroticism)
-        }
-
-        Modus.Simulation.Agent.new_custom(name, child_pos, occupation, personality, :calm)
       else
         Modus.Simulation.Agent.new(name, child_pos, occupation)
       end
-    else
-      Modus.Simulation.Agent.new(name, child_pos, occupation)
-    end
 
     case Modus.Simulation.AgentSupervisor.spawn_agent(child) do
       {:ok, _pid} ->
@@ -163,6 +200,7 @@ defmodule Modus.Simulation.Lifecycle do
           name: name,
           parents: [parent_a.name, parent_b.name]
         })
+
         increment_births()
         :ok
 

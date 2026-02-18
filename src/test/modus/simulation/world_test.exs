@@ -118,6 +118,7 @@ defmodule Modus.Simulation.WorldTest do
     test "biome_at returns valid biome types" do
       for x <- [0, 10, 25, 50, 75, 99], y <- [0, 10, 25, 50, 75, 99] do
         biome = World.biome_at(x, y, 42)
+
         assert biome in [:plains, :forest_village, :coastal, :mountain_pass],
                "Invalid biome #{biome} at {#{x}, #{y}}"
       end

@@ -26,41 +26,41 @@ defmodule Modus.Mind.Creativity do
   # ── Types ──────────────────────────────────────────────
 
   @type story :: %{
-    id: String.t(),
-    author: String.t(),
-    title: String.t(),
-    text: String.t(),
-    tick: integer(),
-    based_on: atom(),
-    spread_count: integer()
-  }
+          id: String.t(),
+          author: String.t(),
+          title: String.t(),
+          text: String.t(),
+          tick: integer(),
+          based_on: atom(),
+          spread_count: integer()
+        }
 
   @type named_thing :: %{
-    id: String.t(),
-    name: String.t(),
-    type: atom(),
-    named_by: String.t(),
-    tick: integer(),
-    target: String.t()
-  }
+          id: String.t(),
+          name: String.t(),
+          type: atom(),
+          named_by: String.t(),
+          tick: integer(),
+          target: String.t()
+        }
 
   @type invention :: %{
-    id: String.t(),
-    name: String.t(),
-    ingredients: [atom()],
-    discovered_by: String.t(),
-    tick: integer(),
-    usefulness: float()
-  }
+          id: String.t(),
+          name: String.t(),
+          ingredients: [atom()],
+          discovered_by: String.t(),
+          tick: integer(),
+          usefulness: float()
+        }
 
   @type art_piece :: %{
-    id: String.t(),
-    title: String.t(),
-    description: String.t(),
-    artist: String.t(),
-    tick: integer(),
-    style: atom()
-  }
+          id: String.t(),
+          title: String.t(),
+          description: String.t(),
+          artist: String.t(),
+          tick: integer(),
+          style: atom()
+        }
 
   # ── Initialization ─────────────────────────────────────
 
@@ -115,6 +115,7 @@ defmodule Modus.Mind.Creativity do
   @doc "Maybe generate a story from an agent's experience. Probabilistic."
   def maybe_generate_story(agent_id, event_type, tick, opts \\ []) do
     force = Keyword.get(opts, :force, false)
+
     if force or :rand.uniform() < @story_generation_chance do
       generate_story(agent_id, event_type, tick, opts)
     end
@@ -125,13 +126,15 @@ defmodule Modus.Mind.Creativity do
     use_llm = Keyword.get(opts, :use_llm, false)
     context = Keyword.get(opts, :context, %{})
 
-    {title, text} = if use_llm do
-      generate_story_llm(agent_id, event_type, context)
-    else
-      generate_story_template(agent_id, event_type)
-    end
+    {title, text} =
+      if use_llm do
+        generate_story_llm(agent_id, event_type, context)
+      else
+        generate_story_template(agent_id, event_type)
+      end
 
     id = random_id()
+
     story = %{
       id: id,
       author: agent_id,
@@ -148,7 +151,9 @@ defmodule Modus.Mind.Creativity do
 
   defp generate_story_template(agent_id, event_type) do
     templates = Map.get(@story_templates, event_type, Map.get(@story_templates, :wonder))
-    text = templates
+
+    text =
+      templates
       |> Enum.random()
       |> String.replace("%{agent}", agent_id)
 
@@ -166,19 +171,24 @@ defmodule Modus.Mind.Creativity do
 
     try do
       config = Modus.Intelligence.LlmProvider.get_config()
+
       case config.provider do
         :antigravity ->
           messages = [%{role: "user", content: prompt}]
+
           case Modus.Intelligence.AntigravityClient.chat_completion_direct(messages, config) do
             {:ok, text} -> {"The Tale of #{agent_id}", String.trim(text)}
             _ -> generate_story_template(agent_id, event_type)
           end
+
         :ollama ->
           messages = [%{role: "user", content: prompt}]
+
           case Modus.Intelligence.OllamaClient.chat_completion_direct(messages, config) do
             {:ok, text} -> {"The Tale of #{agent_id}", String.trim(text)}
             _ -> generate_story_template(agent_id, event_type)
           end
+
         _ ->
           generate_story_template(agent_id, event_type)
       end
@@ -304,6 +314,7 @@ defmodule Modus.Mind.Creativity do
             tick: tick,
             usefulness: ensure_float(usefulness)
           }
+
           :ets.insert(@inventions_table, {invention.id, invention})
           {:discovered, invention}
         end
@@ -397,13 +408,15 @@ defmodule Modus.Mind.Creativity do
 
   defp generate_art_title(style) do
     adjectives = ~w(Silent Golden Eternal Broken Luminous Hidden Sacred Wild)
-    nouns = case style do
-      :abstract -> ~w(Dreams Echoes Ripples Fragments Visions)
-      :naturalist -> ~w(River Mountain Forest Dawn Meadow)
-      :symbolic -> ~w(Unity Bond Circle Path Mark)
-      :narrative -> ~w(Journey Tale Chronicle Memory Legend)
-      :spiritual -> ~w(Spirit Light Breath Soul Essence)
-    end
+
+    nouns =
+      case style do
+        :abstract -> ~w(Dreams Echoes Ripples Fragments Visions)
+        :naturalist -> ~w(River Mountain Forest Dawn Meadow)
+        :symbolic -> ~w(Unity Bond Circle Path Mark)
+        :narrative -> ~w(Journey Tale Chronicle Memory Legend)
+        :spiritual -> ~w(Spirit Light Breath Soul Essence)
+      end
 
     "#{Enum.random(adjectives)} #{Enum.random(nouns)}"
   end
@@ -445,12 +458,15 @@ defmodule Modus.Mind.Creativity do
           generation: get_oral_generation(story.id) + 1,
           mutated: mutated.text != story.text
         }
+
         store_oral_record(record)
 
         # Update spread count on original
-        updated_stories = Enum.map(from_stories, fn s ->
-          if s.id == story_id, do: %{s | spread_count: s.spread_count + 1}, else: s
-        end)
+        updated_stories =
+          Enum.map(from_stories, fn s ->
+            if s.id == story_id, do: %{s | spread_count: s.spread_count + 1}, else: s
+          end)
+
         :ets.insert(@stories_table, {from_id, updated_stories})
 
         {:ok, mutated}
@@ -473,10 +489,12 @@ defmodule Modus.Mind.Creativity do
     if :rand.uniform() < @mutation_chance do
       mutated_text = mutate_text(story.text)
       new_id = random_id()
-      %{story |
-        id: new_id,
-        text: mutated_text,
-        author: "#{new_holder} (retelling #{story.author})"
+
+      %{
+        story
+        | id: new_id,
+          text: mutated_text,
+          author: "#{new_holder} (retelling #{story.author})"
       }
     else
       new_id = random_id()
@@ -494,6 +512,7 @@ defmodule Modus.Mind.Creativity do
       # Simplify
       fn t ->
         words = String.split(t)
+
         if length(words) > 5 do
           words |> Enum.take(length(words) - 2) |> Enum.join(" ") |> Kernel.<>("...")
         else
@@ -546,34 +565,44 @@ defmodule Modus.Mind.Creativity do
   @doc "Serialize an agent's creative output for display."
   def serialize(agent_id) do
     %{
-      stories: get_stories(agent_id) |> Enum.map(fn s ->
-        %{
-          id: s.id,
-          title: s.title,
-          text: s.text,
-          based_on: to_string(s.based_on),
-          tick: s.tick,
-          spread_count: s.spread_count
-        }
-      end),
-      art: get_art_by(agent_id) |> Enum.map(fn a ->
-        %{
-          id: a.id,
-          title: a.title,
-          description: a.description,
-          style: to_string(a.style),
-          tick: a.tick
-        }
-      end),
-      names: list_names()
+      stories:
+        get_stories(agent_id)
+        |> Enum.map(fn s ->
+          %{
+            id: s.id,
+            title: s.title,
+            text: s.text,
+            based_on: to_string(s.based_on),
+            tick: s.tick,
+            spread_count: s.spread_count
+          }
+        end),
+      art:
+        get_art_by(agent_id)
+        |> Enum.map(fn a ->
+          %{
+            id: a.id,
+            title: a.title,
+            description: a.description,
+            style: to_string(a.style),
+            tick: a.tick
+          }
+        end),
+      names:
+        list_names()
         |> Enum.filter(fn n -> n.named_by == agent_id end)
         |> Enum.map(fn n ->
           %{name: n.name, type: to_string(n.type), target: n.target}
         end),
-      inventions: get_inventions()
+      inventions:
+        get_inventions()
         |> Enum.filter(fn i -> i.discovered_by == agent_id end)
         |> Enum.map(fn i ->
-          %{name: i.name, ingredients: Enum.map(i.ingredients, &to_string/1), usefulness: i.usefulness}
+          %{
+            name: i.name,
+            ingredients: Enum.map(i.ingredients, &to_string/1),
+            usefulness: i.usefulness
+          }
         end)
     }
   end

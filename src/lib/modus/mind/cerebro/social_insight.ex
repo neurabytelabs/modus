@@ -40,21 +40,25 @@ defmodule Modus.Mind.Cerebro.SocialInsight do
         "You haven't met #{other_name} before."
 
       %{type: type, strength: strength, convo_count: count} ->
-        type_text = case type do
-          :close_friend -> "your close friend"
-          :friend -> "your friend"
-          :acquaintance -> "an acquaintance"
-          _ -> "someone you just met"
-        end
+        type_text =
+          case type do
+            :close_friend -> "your close friend"
+            :friend -> "your friend"
+            :acquaintance -> "an acquaintance"
+            _ -> "someone you just met"
+          end
+
         "#{other_name} is #{type_text} (strength: #{Float.round(ensure_float(strength), 2)}). You've talked #{count} times."
 
       %{type: type, strength: strength} ->
-        type_text = case type do
-          :close_friend -> "your close friend"
-          :friend -> "your friend"
-          :acquaintance -> "an acquaintance"
-          _ -> "someone you just met"
-        end
+        type_text =
+          case type do
+            :close_friend -> "your close friend"
+            :friend -> "your friend"
+            :acquaintance -> "an acquaintance"
+            _ -> "someone you just met"
+          end
+
         "#{other_name} is #{type_text} (strength: #{Float.round(ensure_float(strength), 2)})."
     end
   end
@@ -65,10 +69,13 @@ defmodule Modus.Mind.Cerebro.SocialInsight do
     memories_b = AffectMemory.recall(other_id, limit: 20)
 
     # Find memories at similar positions (within 3 tiles)
-    shared = for ma <- memories_a, mb <- memories_b,
-      {ax, ay} = ma.position, {bx, by} = mb.position,
-      abs(ax - bx) <= 3 and abs(ay - by) <= 3,
-      do: {ma, mb}
+    shared =
+      for ma <- memories_a,
+          mb <- memories_b,
+          {ax, ay} = ma.position,
+          {bx, by} = mb.position,
+          abs(ax - bx) <= 3 and abs(ay - by) <= 3,
+          do: {ma, mb}
 
     shared
     |> Enum.take(3)

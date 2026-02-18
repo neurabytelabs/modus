@@ -11,6 +11,7 @@ defmodule Modus.Persistence.AgentMemoryTest do
   setup do
     # Clean up test memories
     import Ecto.Query
+
     MemorySchema
     |> where([m], m.agent_id == ^@agent_id)
     |> Repo.delete_all()
@@ -20,7 +21,9 @@ defmodule Modus.Persistence.AgentMemoryTest do
 
   describe "record/5" do
     test "records a memory with default importance" do
-      assert {:ok, memory} = AgentMemory.record(@agent_id, @agent_name, :death, "Agent died of starvation")
+      assert {:ok, memory} =
+               AgentMemory.record(@agent_id, @agent_name, :death, "Agent died of starvation")
+
       assert memory.agent_id == @agent_id
       assert memory.agent_name == @agent_name
       assert memory.memory_type == "death"
@@ -29,19 +32,30 @@ defmodule Modus.Persistence.AgentMemoryTest do
     end
 
     test "records a memory with custom importance and tick" do
-      assert {:ok, memory} = AgentMemory.record(
-        @agent_id, @agent_name, :friendship, "Made a friend",
-        importance: 0.9, tick: 100
-      )
+      assert {:ok, memory} =
+               AgentMemory.record(
+                 @agent_id,
+                 @agent_name,
+                 :friendship,
+                 "Made a friend",
+                 importance: 0.9,
+                 tick: 100
+               )
+
       assert memory.importance == 0.9
       assert memory.tick == 100
     end
 
     test "records memory with metadata" do
-      assert {:ok, memory} = AgentMemory.record(
-        @agent_id, @agent_name, :discovery, "Found gold",
-        metadata: %{location: [10, 20]}
-      )
+      assert {:ok, memory} =
+               AgentMemory.record(
+                 @agent_id,
+                 @agent_name,
+                 :discovery,
+                 "Found gold",
+                 metadata: %{location: [10, 20]}
+               )
+
       assert memory.metadata_json != nil
       assert {:ok, meta} = Jason.decode(memory.metadata_json)
       assert meta["location"] != nil
@@ -51,8 +65,16 @@ defmodule Modus.Persistence.AgentMemoryTest do
   describe "get_memories/2" do
     test "returns memories ordered by importance" do
       AgentMemory.record(@agent_id, @agent_name, :death, "Died", importance: 1.0, tick: 10)
-      AgentMemory.record(@agent_id, @agent_name, :discovery, "Found water", importance: 0.3, tick: 20)
-      AgentMemory.record(@agent_id, @agent_name, :friendship, "Met someone", importance: 0.8, tick: 30)
+
+      AgentMemory.record(@agent_id, @agent_name, :discovery, "Found water",
+        importance: 0.3,
+        tick: 20
+      )
+
+      AgentMemory.record(@agent_id, @agent_name, :friendship, "Met someone",
+        importance: 0.8,
+        tick: 30
+      )
 
       memories = AgentMemory.get_memories(@agent_id)
       assert length(memories) == 3
@@ -88,25 +110,43 @@ defmodule Modus.Persistence.AgentMemoryTest do
 
   describe "maybe_record_from_event/5" do
     test "records death events" do
-      assert {:ok, _} = AgentMemory.maybe_record_from_event(
-        @agent_id, @agent_name, :death, 50, %{cause: "starvation"}
-      )
+      assert {:ok, _} =
+               AgentMemory.maybe_record_from_event(
+                 @agent_id,
+                 @agent_name,
+                 :death,
+                 50,
+                 %{cause: "starvation"}
+               )
+
       memories = AgentMemory.get_memories(@agent_id, type: :death)
       assert length(memories) == 1
       assert hd(memories).importance == 1.0
     end
 
     test "skips neutral conversation events" do
-      result = AgentMemory.maybe_record_from_event(
-        @agent_id, @agent_name, :conversation, 50, %{affect: :neutral}
-      )
+      result =
+        AgentMemory.maybe_record_from_event(
+          @agent_id,
+          @agent_name,
+          :conversation,
+          50,
+          %{affect: :neutral}
+        )
+
       assert result == :skip
     end
 
     test "records emotional conversation events" do
-      assert {:ok, _} = AgentMemory.maybe_record_from_event(
-        @agent_id, @agent_name, :conversation, 50, %{affect: :joy, partner: "Ayşe"}
-      )
+      assert {:ok, _} =
+               AgentMemory.maybe_record_from_event(
+                 @agent_id,
+                 @agent_name,
+                 :conversation,
+                 50,
+                 %{affect: :joy, partner: "Ayşe"}
+               )
+
       memories = AgentMemory.get_memories(@agent_id, type: :conversation)
       assert length(memories) == 1
     end

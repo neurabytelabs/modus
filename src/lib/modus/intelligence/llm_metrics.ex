@@ -16,9 +16,11 @@ defmodule Modus.Intelligence.LlmMetrics do
     if :ets.whereis(@table) == :undefined do
       :ets.new(@table, [:named_table, :public, :set, read_concurrency: true])
     end
+
     if :ets.whereis(@sparkline_table) == :undefined do
       :ets.new(@sparkline_table, [:named_table, :public, :ordered_set, read_concurrency: true])
     end
+
     reset_tick_counters()
     :ok
   end
@@ -128,6 +130,7 @@ defmodule Modus.Intelligence.LlmMetrics do
 
   defp prune_sparkline(current_tick) do
     min_tick = current_tick - @max_sparkline
+
     :ets.select_delete(@sparkline_table, [
       {{:"$1", :_}, [{:<, :"$1", min_tick}], [true]}
     ])

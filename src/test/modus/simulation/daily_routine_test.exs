@@ -4,19 +4,28 @@ defmodule Modus.Simulation.DailyRoutineTest do
   alias Modus.Simulation.DailyRoutine
 
   defp base_agent(overrides \\ %{}) do
-    Map.merge(%{
-      id: "test-agent",
-      name: "TestAgent",
-      position: {5, 5},
-      personality: %{openness: 0.5, conscientiousness: 0.5, extraversion: 0.5, agreeableness: 0.5, neuroticism: 0.5},
-      needs: %{hunger: 30.0, social: 50.0, rest: 50.0, shelter: 50.0},
-      conatus_energy: 0.7,
-      conatus_score: 5.0,
-      current_action: :idle,
-      alive?: true,
-      memory: [],
-      affect_state: :neutral
-    }, overrides)
+    Map.merge(
+      %{
+        id: "test-agent",
+        name: "TestAgent",
+        position: {5, 5},
+        personality: %{
+          openness: 0.5,
+          conscientiousness: 0.5,
+          extraversion: 0.5,
+          agreeableness: 0.5,
+          neuroticism: 0.5
+        },
+        needs: %{hunger: 30.0, social: 50.0, rest: 50.0, shelter: 50.0},
+        conatus_energy: 0.7,
+        conatus_score: 5.0,
+        current_action: :idle,
+        alive?: true,
+        memory: [],
+        affect_state: :neutral
+      },
+      overrides
+    )
   end
 
   describe "nocturnal?/1" do

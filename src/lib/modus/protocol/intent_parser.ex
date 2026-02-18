@@ -18,7 +18,11 @@ defmodule Modus.Protocol.IntentParser do
       String.contains?(text_lower, [" and ", " then ", " ve "]) ->
         {:multi, parse_multi(text)}
 
-      (match = Regex.run(~r/(north\w*|south\w*|east\w*|west\w*|kuzey\w*|güney\w*|doğu\w*|batı\w*)\s*(go|move|walk|git)|(go|move|walk|git)\s+(north\w*|south\w*|east\w*|west\w*|kuzey\w*|güney\w*|doğu\w*|batı\w*)/i, text_lower)) != nil ->
+      (match =
+         Regex.run(
+           ~r/(north\w*|south\w*|east\w*|west\w*|kuzey\w*|güney\w*|doğu\w*|batı\w*)\s*(go|move|walk|git)|(go|move|walk|git)\s+(north\w*|south\w*|east\w*|west\w*|kuzey\w*|güney\w*|doğu\w*|batı\w*)/i,
+           text_lower
+         )) != nil ->
         dir_raw = Enum.find([Enum.at(match, 1), Enum.at(match, 4)], &(&1 != nil and &1 != ""))
         direction = parse_direction(dir_raw)
         {:command, :move, direction}
@@ -43,6 +47,7 @@ defmodule Modus.Protocol.IntentParser do
 
   defp parse_direction(dir) do
     d = String.downcase(dir)
+
     cond do
       String.starts_with?(d, "north") or String.starts_with?(d, "kuzey") -> :north
       String.starts_with?(d, "south") or String.starts_with?(d, "güney") -> :south

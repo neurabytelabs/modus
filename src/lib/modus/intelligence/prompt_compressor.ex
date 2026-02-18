@@ -11,9 +11,10 @@ defmodule Modus.Intelligence.PromptCompressor do
 
   @doc "Build a compressed batch prompt for multiple agents."
   def compress_batch(agents, tick) do
-    descs = agents
-    |> Enum.map(&compress_agent/1)
-    |> Enum.join("\n")
+    descs =
+      agents
+      |> Enum.map(&compress_agent/1)
+      |> Enum.join("\n")
 
     """
     Decision engine for village sim. Choose actions for agents.
@@ -30,6 +31,7 @@ defmodule Modus.Intelligence.PromptCompressor do
     {x, y} = agent.position
     p = agent.personality
     n = agent.needs
+
     "#{agent.id}|#{agent.name}|#{x},#{y}|#{agent.occupation}|h#{ri(n.hunger)}s#{ri(n.social)}r#{ri(n.rest)}|O#{rf(p.openness)}C#{rf(p.conscientiousness)}E#{rf(p.extraversion)}A#{rf(p.agreeableness)}N#{rf(p.neuroticism)}|#{agent.current_action}"
   end
 

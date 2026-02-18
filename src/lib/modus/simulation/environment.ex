@@ -21,11 +21,11 @@ defmodule Modus.Simulation.Environment do
 
   # Ambient overlay colors for day phases
   @phase_colors %{
-    dawn:     %{color: 0xDD8833, alpha: 0.10},
-    day:      %{color: 0xFFFFCC, alpha: 0.0},
-    dusk:     %{color: 0x8844AA, alpha: 0.12},
-    night:    %{color: 0x0A1030, alpha: 0.40},
-    predawn:  %{color: 0x1A1840, alpha: 0.30}
+    dawn: %{color: 0xDD8833, alpha: 0.10},
+    day: %{color: 0xFFFFCC, alpha: 0.0},
+    dusk: %{color: 0x8844AA, alpha: 0.12},
+    night: %{color: 0x0A1030, alpha: 0.40},
+    predawn: %{color: 0x1A1840, alpha: 0.30}
   }
 
   defstruct cycle_tick: 0, time_of_day: :day
@@ -70,14 +70,15 @@ defmodule Modus.Simulation.Environment do
     phase = day_phase(progress)
     phase_config = Map.fetch!(@phase_colors, phase)
 
-    {:reply, %{
-      time_of_day: state.time_of_day,
-      cycle_tick: state.cycle_tick,
-      cycle_progress: progress,
-      day_phase: phase,
-      ambient_color: phase_config.color,
-      ambient_alpha: phase_config.alpha
-    }, state}
+    {:reply,
+     %{
+       time_of_day: state.time_of_day,
+       cycle_tick: state.cycle_tick,
+       cycle_progress: progress,
+       day_phase: phase,
+       ambient_color: phase_config.color,
+       ambient_alpha: phase_config.alpha
+     }, state}
   end
 
   def handle_call(:time_of_day, _from, state) do
@@ -105,14 +106,19 @@ defmodule Modus.Simulation.Environment do
     phase_config = Map.fetch!(@phase_colors, phase)
 
     # Broadcast on every tick (for smooth transitions)
-    Phoenix.PubSub.broadcast(Modus.PubSub, "modus:environment", {:environment_update, %{
-      time_of_day: new_tod,
-      cycle_tick: new_tick,
-      cycle_progress: progress,
-      day_phase: phase,
-      ambient_color: phase_config.color,
-      ambient_alpha: phase_config.alpha
-    }})
+    Phoenix.PubSub.broadcast(
+      Modus.PubSub,
+      "modus:environment",
+      {:environment_update,
+       %{
+         time_of_day: new_tod,
+         cycle_tick: new_tick,
+         cycle_progress: progress,
+         day_phase: phase,
+         ambient_color: phase_config.color,
+         ambient_alpha: phase_config.alpha
+       }}
+    )
 
     # Log transition
     if old_tod != new_tod do

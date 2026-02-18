@@ -51,6 +51,7 @@ defmodule Modus.Persistence.WorldPersistence do
         {:ok, world} ->
           Logger.info("World saved: #{name} (#{length(agents)} agents, tick #{tick})")
           {:ok, %{id: world.id, name: world.name, agents: length(agents), tick: tick}}
+
         {:error, changeset} ->
           {:error, inspect(changeset.errors)}
       end
@@ -78,17 +79,18 @@ defmodule Modus.Persistence.WorldPersistence do
           if Process.whereis(World), do: GenServer.stop(World)
 
           # Create new world with saved config
-          world = World.new(
-            state["world_name"] || saved.name,
-            template: String.to_atom(config["template"] || "village"),
-            danger_level: String.to_atom(config["danger_level"] || "normal"),
-            resource_abundance: String.to_atom(config["resource_abundance"] || "medium"),
-            seed: config["seed"] || :rand.uniform(1_000_000),
-            grid_size: {
-              get_in(config, ["grid_size", "x"]) || 50,
-              get_in(config, ["grid_size", "y"]) || 50
-            }
-          )
+          world =
+            World.new(
+              state["world_name"] || saved.name,
+              template: String.to_atom(config["template"] || "village"),
+              danger_level: String.to_atom(config["danger_level"] || "normal"),
+              resource_abundance: String.to_atom(config["resource_abundance"] || "medium"),
+              seed: config["seed"] || :rand.uniform(1_000_000),
+              grid_size: {
+                get_in(config, ["grid_size", "x"]) || 50,
+                get_in(config, ["grid_size", "y"]) || 50
+              }
+            )
 
           {:ok, _pid} = World.start_link(world)
 
@@ -101,8 +103,18 @@ defmodule Modus.Persistence.WorldPersistence do
           memories = Modus.Persistence.AgentMemory.load_bulk(agent_ids)
           memory_count = memories |> Map.values() |> List.flatten() |> length()
 
-          Logger.info("World loaded: #{saved.name} (#{length(restored)} agents, #{memory_count} memories, tick #{state["tick"]})")
-          {:ok, %{id: saved.id, name: saved.name, agents: length(restored), memories: memory_count, tick: state["tick"] || 0}}
+          Logger.info(
+            "World loaded: #{saved.name} (#{length(restored)} agents, #{memory_count} memories, tick #{state["tick"]})"
+          )
+
+          {:ok,
+           %{
+             id: saved.id,
+             name: saved.name,
+             agents: length(restored),
+             memories: memory_count,
+             tick: state["tick"] || 0
+           }}
         catch
           kind, reason ->
             Logger.error("World load failed: #{inspect({kind, reason})}")
@@ -117,10 +129,11 @@ defmodule Modus.Persistence.WorldPersistence do
     |> order_by(desc: :inserted_at)
     |> Repo.all()
     |> Enum.map(fn w ->
-      state = case Jason.decode(w.state_json || "{}") do
-        {:ok, s} -> s
-        _ -> %{}
-      end
+      state =
+        case Jason.decode(w.state_json || "{}") do
+          {:ok, s} -> s
+          _ -> %{}
+        end
 
       %{
         id: w.id,
@@ -149,6 +162,7 @@ defmodule Modus.Persistence.WorldPersistence do
     |> Enum.reduce([], fn {_id, pid}, acc ->
       try do
         state = GenServer.call(pid, :get_state, 2_000)
+
         agent_map = %{
           id: state.id,
           name: state.name,
@@ -173,6 +187,7 @@ defmodule Modus.Persistence.WorldPersistence do
           alive: state.alive?,
           age: state.age
         }
+
         [agent_map | acc]
       catch
         :exit, _ -> acc
@@ -185,19 +200,24 @@ defmodule Modus.Persistence.WorldPersistence do
       %{agent_id: id, type: to_string(type), strength: strength}
     end)
   end
+
   defp serialize_relationships(_), do: []
 
   defp restore_agents(agents_data) do
     Enum.reduce(agents_data, [], fn data, acc ->
       try do
         agent = %Agent{
-          id: data["id"] || Agent.__struct__().id |> then(fn _ -> :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower) end),
+          id:
+            data["id"] ||
+              Agent.__struct__().id
+              |> then(fn _ -> :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower) end),
           name: data["name"] || "Unknown",
           position: {data["position"]["x"] || 25, data["position"]["y"] || 25},
           occupation: String.to_atom(data["occupation"] || "explorer"),
           personality: %{
             openness: get_in(data, ["personality", "openness"]) || :rand.uniform(),
-            conscientiousness: get_in(data, ["personality", "conscientiousness"]) || :rand.uniform(),
+            conscientiousness:
+              get_in(data, ["personality", "conscientiousness"]) || :rand.uniform(),
             extraversion: get_in(data, ["personality", "extraversion"]) || :rand.uniform(),
             agreeableness: get_in(data, ["personality", "agreeableness"]) || :rand.uniform(),
             neuroticism: get_in(data, ["personality", "neuroticism"]) || :rand.uniform()
@@ -227,10 +247,16 @@ defmodule Modus.Persistence.WorldPersistence do
   end
 
   defp deserialize_relationships(nil), do: %{}
+
   defp deserialize_relationships(rels) when is_list(rels) do
     Enum.reduce(rels, %{}, fn rel, acc ->
-      Map.put(acc, rel["agent_id"], {String.to_atom(rel["type"] || "acquaintance"), rel["strength"] || 0.0})
+      Map.put(
+        acc,
+        rel["agent_id"],
+        {String.to_atom(rel["type"] || "acquaintance"), rel["strength"] || 0.0}
+      )
     end)
   end
+
   defp deserialize_relationships(_), do: %{}
 end

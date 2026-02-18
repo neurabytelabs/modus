@@ -21,6 +21,7 @@ defmodule Modus.Mind.Cerebro.SocialInsightTest do
       SocialNetwork.update_relationship("agent_a", "agent_b", :conversation_joy)
 
       result = SocialInsight.describe_relationships("agent_a")
+
       # Should mention the relationship (though agent name will be "Bilinmeyen" without real agent)
       assert is_binary(result)
       assert result != "You don't know anyone yet."

@@ -9,7 +9,8 @@ defmodule Modus.Simulation.WorldHistory do
   """
   use GenServer
 
-  @era_check_interval 200  # Check for era transitions every N ticks
+  # Check for era transitions every N ticks
+  @era_check_interval 200
 
   defstruct eras: [],
             current_era: nil,
@@ -17,7 +18,8 @@ defmodule Modus.Simulation.WorldHistory do
             key_figures: %{},
             era_events: %{},
             last_check_tick: 0,
-            metrics_window: []  # recent {tick, births, deaths, pop, trades, conflicts} snapshots
+            # recent {tick, births, deaths, pop, trades, conflicts} snapshots
+            metrics_window: []
 
   # ── Public API ──────────────────────────────────────────
 
@@ -81,7 +83,13 @@ defmodule Modus.Simulation.WorldHistory do
     Phoenix.PubSub.subscribe(Modus.PubSub, "modus:events")
 
     # Start with "The Founding" era
-    lang = try do Modus.I18n.current_language() catch _, _ -> "en" end
+    lang =
+      try do
+        Modus.I18n.current_language()
+      catch
+        _, _ -> "en"
+      end
+
     founding = %{
       id: "founding",
       name: Modus.I18n.era_name(lang, :founding),
@@ -97,10 +105,12 @@ defmodule Modus.Simulation.WorldHistory do
 
   @impl true
   def handle_call(:get_eras, _from, state) do
-    all = case state.current_era do
-      nil -> Enum.reverse(state.eras)
-      current -> Enum.reverse([current | state.eras])
-    end
+    all =
+      case state.current_era do
+        nil -> Enum.reverse(state.eras)
+        current -> Enum.reverse([current | state.eras])
+      end
+
     {:reply, all, state}
   end
 
@@ -117,11 +127,13 @@ defmodule Modus.Simulation.WorldHistory do
 
   @impl true
   def handle_call(:key_figures, _from, state) do
-    figures = state.key_figures
-    |> Enum.map(fn {name, data} ->
-      %{name: name, achievements: data.achievements, era: data.era, category: data.category}
-    end)
-    |> Enum.sort_by(fn f -> -length(f.achievements) end)
+    figures =
+      state.key_figures
+      |> Enum.map(fn {name, data} ->
+        %{name: name, achievements: data.achievements, era: data.era, category: data.category}
+      end)
+      |> Enum.sort_by(fn f -> -length(f.achievements) end)
+
     {:reply, figures, state}
   end
 
@@ -139,17 +151,19 @@ defmodule Modus.Simulation.WorldHistory do
 
   @impl true
   def handle_cast({:record_metrics, metrics}, state) do
-    window = [{metrics.tick, metrics} | state.metrics_window]
-    |> Enum.take(50)
+    window =
+      [{metrics.tick, metrics} | state.metrics_window]
+      |> Enum.take(50)
 
     state = %{state | metrics_window: window}
 
     # Check for era transition
-    state = if metrics.tick - state.last_check_tick >= @era_check_interval do
-      check_era_transition(state, metrics)
-    else
-      state
-    end
+    state =
+      if metrics.tick - state.last_check_tick >= @era_check_interval do
+        check_era_transition(state, metrics)
+      else
+        state
+      end
 
     {:noreply, state}
   end
@@ -158,15 +172,17 @@ defmodule Modus.Simulation.WorldHistory do
   def handle_cast({:record_figure, agent_name, achievement, category}, state) do
     era_id = if state.current_era, do: state.current_era.id, else: "unknown"
 
-    existing = Map.get(state.key_figures, agent_name, %{
-      achievements: [],
-      era: era_id,
-      category: category
-    })
+    existing =
+      Map.get(state.key_figures, agent_name, %{
+        achievements: [],
+        era: era_id,
+        category: category
+      })
 
-    updated = %{existing |
-      achievements: Enum.take([achievement | existing.achievements], 10),
-      era: era_id
+    updated = %{
+      existing
+      | achievements: Enum.take([achievement | existing.achievements], 10),
+        era: era_id
     }
 
     {:noreply, %{state | key_figures: Map.put(state.key_figures, agent_name, updated)}}
@@ -180,21 +196,24 @@ defmodule Modus.Simulation.WorldHistory do
   @impl true
   def handle_info({:event, event}, state) do
     # Track events for current era
-    state = if state.current_era do
-      era_id = state.current_era.id
-      events = Map.get(state.era_events, era_id, [])
-      entry = %{
-        tick: event.tick,
-        type: event.type,
-        summary: event_summary(event),
-        emoji: event_emoji(event.type)
-      }
-      # Keep max 100 events per era
-      updated = Enum.take([entry | events], 100)
-      %{state | era_events: Map.put(state.era_events, era_id, updated)}
-    else
-      state
-    end
+    state =
+      if state.current_era do
+        era_id = state.current_era.id
+        events = Map.get(state.era_events, era_id, [])
+
+        entry = %{
+          tick: event.tick,
+          type: event.type,
+          summary: event_summary(event),
+          emoji: event_emoji(event.type)
+        }
+
+        # Keep max 100 events per era
+        updated = Enum.take([entry | events], 100)
+        %{state | era_events: Map.put(state.era_events, era_id, updated)}
+      else
+        state
+      end
 
     # Track key figures from events
     state = track_figures_from_event(event, state)
@@ -221,12 +240,13 @@ defmodule Modus.Simulation.WorldHistory do
         # Broadcast era change
         Phoenix.PubSub.broadcast(Modus.PubSub, "story", {:era_change, new_era})
 
-        %{state |
-          eras: eras,
-          current_era: new_era,
-          era_start_tick: metrics.tick,
-          era_events: Map.put(state.era_events, new_era.id, []),
-          last_check_tick: metrics.tick
+        %{
+          state
+          | eras: eras,
+            current_era: new_era,
+            era_start_tick: metrics.tick,
+            era_events: Map.put(state.era_events, new_era.id, []),
+            last_check_tick: metrics.tick
         }
     end
   end
@@ -252,7 +272,13 @@ defmodule Modus.Simulation.WorldHistory do
 
       # Great Famine: high death rate, low population
       current_id != "famine" and death_rate > 0.3 and pop < 8 ->
-        lang = try do Modus.I18n.current_language() catch _, _ -> "en" end
+        lang =
+          try do
+            Modus.I18n.current_language()
+          catch
+            _, _ -> "en"
+          end
+
         %{
           id: "famine_#{tick}",
           name: Modus.I18n.era_name(lang, :famine),
@@ -265,7 +291,13 @@ defmodule Modus.Simulation.WorldHistory do
 
       # Expansion: growing population, many births
       current_id != "expansion" and birth_rate > 0.25 and pop > 12 ->
-        lang = try do Modus.I18n.current_language() catch _, _ -> "en" end
+        lang =
+          try do
+            Modus.I18n.current_language()
+          catch
+            _, _ -> "en"
+          end
+
         %{
           id: "expansion_#{tick}",
           name: Modus.I18n.era_name(lang, :expansion),
@@ -278,7 +310,13 @@ defmodule Modus.Simulation.WorldHistory do
 
       # Golden Age: high trade, low conflict, stable population
       current_id != "golden_age" and trade_rate > 0.2 and death_rate < 0.1 and pop > 10 ->
-        lang = try do Modus.I18n.current_language() catch _, _ -> "en" end
+        lang =
+          try do
+            Modus.I18n.current_language()
+          catch
+            _, _ -> "en"
+          end
+
         %{
           id: "golden_age_#{tick}",
           name: Modus.I18n.era_name(lang, :golden_age),
@@ -290,8 +328,17 @@ defmodule Modus.Simulation.WorldHistory do
         }
 
       # Renaissance: after a famine or conflict era, recovery with trade
-      is_binary(current_id) and (String.starts_with?(current_id, "famine_") or String.starts_with?(current_id, "conflict_")) and birth_rate > 0.15 and trade_rate > 0.1 ->
-        lang = try do Modus.I18n.current_language() catch _, _ -> "en" end
+      is_binary(current_id) and
+        (String.starts_with?(current_id, "famine_") or
+           String.starts_with?(current_id, "conflict_")) and birth_rate > 0.15 and
+          trade_rate > 0.1 ->
+        lang =
+          try do
+            Modus.I18n.current_language()
+          catch
+            _, _ -> "en"
+          end
+
         %{
           id: "renaissance_#{tick}",
           name: Modus.I18n.era_name(lang, :renaissance),
@@ -304,7 +351,13 @@ defmodule Modus.Simulation.WorldHistory do
 
       # Age of Conflict: high conflict rate
       current_id != "conflict" and conflicts > 5 and death_rate > 0.2 ->
-        lang = try do Modus.I18n.current_language() catch _, _ -> "en" end
+        lang =
+          try do
+            Modus.I18n.current_language()
+          catch
+            _, _ -> "en"
+          end
+
         %{
           id: "conflict_#{tick}",
           name: Modus.I18n.era_name(lang, :conflict),
@@ -316,8 +369,15 @@ defmodule Modus.Simulation.WorldHistory do
         }
 
       # Long peace after golden age transitions back to expansion
-      current_id not in [nil, "founding", "expansion"] and era_duration > 2000 and pop > 8 and death_rate < 0.15 ->
-        lang = try do Modus.I18n.current_language() catch _, _ -> "en" end
+      current_id not in [nil, "founding", "expansion"] and era_duration > 2000 and pop > 8 and
+          death_rate < 0.15 ->
+        lang =
+          try do
+            Modus.I18n.current_language()
+          catch
+            _, _ -> "en"
+          end
+
         %{
           id: "expansion_#{tick}",
           name: Modus.I18n.era_name(lang, :expansion),
@@ -334,11 +394,12 @@ defmodule Modus.Simulation.WorldHistory do
   end
 
   defp calculate_rates(window) when length(window) < 3, do: {0.0, 0.0, 0.0}
+
   defp calculate_rates(window) do
     recent = Enum.take(window, 10) |> Enum.map(&elem(&1, 1))
-    total_deaths = recent |> Enum.map(& &1[:deaths] || 0) |> Enum.sum()
-    total_births = recent |> Enum.map(& &1[:births] || 0) |> Enum.sum()
-    total_trades = recent |> Enum.map(& &1[:trades] || 0) |> Enum.sum()
+    total_deaths = recent |> Enum.map(&(&1[:deaths] || 0)) |> Enum.sum()
+    total_births = recent |> Enum.map(&(&1[:births] || 0)) |> Enum.sum()
+    total_trades = recent |> Enum.map(&(&1[:trades] || 0)) |> Enum.sum()
     n = length(recent)
 
     {total_deaths / max(n, 1), total_births / max(n, 1), total_trades / max(n, 1)}
@@ -350,31 +411,47 @@ defmodule Modus.Simulation.WorldHistory do
     case event.type do
       :trade ->
         name = event.data[:name] || event.data[:trader]
-        if name, do: record_figure_internal(state, to_string(name), "Completed a trade", :merchant), else: state
+
+        if name,
+          do: record_figure_internal(state, to_string(name), "Completed a trade", :merchant),
+          else: state
 
       :building_upgrade ->
         name = event.data[:name]
         level = event.data[:level] || 2
-        if name, do: record_figure_internal(state, to_string(name), "Built to level #{level}", :builder), else: state
+
+        if name,
+          do: record_figure_internal(state, to_string(name), "Built to level #{level}", :builder),
+          else: state
 
       :death ->
         # Track those who lived long
         name = event.data[:name]
         age = event.data[:age] || event.data[:ticks_lived]
+
         if name && age && age > 2000 do
           record_figure_internal(state, to_string(name), "Lived #{age} ticks — an elder", :elder)
         else
           state
         end
 
-      _ -> state
+      _ ->
+        state
     end
   end
 
   defp record_figure_internal(state, name, achievement, category) do
     era_id = if state.current_era, do: state.current_era.id, else: "unknown"
-    existing = Map.get(state.key_figures, name, %{achievements: [], era: era_id, category: category})
-    updated = %{existing | achievements: Enum.take([achievement | existing.achievements], 10), era: era_id}
+
+    existing =
+      Map.get(state.key_figures, name, %{achievements: [], era: era_id, category: category})
+
+    updated = %{
+      existing
+      | achievements: Enum.take([achievement | existing.achievements], 10),
+        era: era_id
+    }
+
     %{state | key_figures: Map.put(state.key_figures, name, updated)}
   end
 
@@ -409,29 +486,33 @@ defmodule Modus.Simulation.WorldHistory do
   # ── History Context for LLM ─────────────────────────────
 
   defp build_history_context(state) do
-    eras = case state.current_era do
-      nil -> Enum.reverse(state.eras)
-      current -> Enum.reverse([current | state.eras])
-    end
+    eras =
+      case state.current_era do
+        nil -> Enum.reverse(state.eras)
+        current -> Enum.reverse([current | state.eras])
+      end
 
     if eras == [] do
       ""
     else
-      era_lines = eras
-      |> Enum.map(fn era ->
-        status = if era.end_tick, do: "ended at tick #{era.end_tick}", else: "ongoing"
-        "- #{era.emoji} #{era.name} (tick #{era.start_tick}, #{status})"
-      end)
-      |> Enum.join("\n")
+      era_lines =
+        eras
+        |> Enum.map(fn era ->
+          status = if era.end_tick, do: "ended at tick #{era.end_tick}", else: "ongoing"
+          "- #{era.emoji} #{era.name} (tick #{era.start_tick}, #{status})"
+        end)
+        |> Enum.join("\n")
 
-      figures = state.key_figures
-      |> Enum.take(5)
-      |> Enum.map(fn {name, data} ->
-        "- #{name}: #{List.first(data.achievements) || "notable figure"}"
-      end)
-      |> Enum.join("\n")
+      figures =
+        state.key_figures
+        |> Enum.take(5)
+        |> Enum.map(fn {name, data} ->
+          "- #{name}: #{List.first(data.achievements) || "notable figure"}"
+        end)
+        |> Enum.join("\n")
 
       ctx = "World History:\n#{era_lines}"
+
       if figures != "" do
         ctx <> "\n\nKey Figures:\n#{figures}"
       else
@@ -443,10 +524,11 @@ defmodule Modus.Simulation.WorldHistory do
   # ── Chronicle Export ────────────────────────────────────
 
   defp build_chronicle_markdown(world_name, state) do
-    eras = case state.current_era do
-      nil -> Enum.reverse(state.eras)
-      current -> Enum.reverse([current | state.eras])
-    end
+    eras =
+      case state.current_era do
+        nil -> Enum.reverse(state.eras)
+        current -> Enum.reverse([current | state.eras])
+      end
 
     header = """
     # Chronicle of #{world_name}
@@ -458,53 +540,59 @@ defmodule Modus.Simulation.WorldHistory do
 
     """
 
-    era_sections = eras
-    |> Enum.map(fn era ->
-      duration = if era.end_tick do
-        "Ticks #{era.start_tick} – #{era.end_tick} (#{era.end_tick - era.start_tick} ticks)"
-      else
-        "Tick #{era.start_tick} – present (ongoing)"
-      end
+    era_sections =
+      eras
+      |> Enum.map(fn era ->
+        duration =
+          if era.end_tick do
+            "Ticks #{era.start_tick} – #{era.end_tick} (#{era.end_tick - era.start_tick} ticks)"
+          else
+            "Tick #{era.start_tick} – present (ongoing)"
+          end
 
-      events = Map.get(state.era_events, era.id, []) |> Enum.reverse() |> Enum.take(20)
-      event_lines = if events == [] do
-        "_No recorded events._"
-      else
-        events
-        |> Enum.map(fn e -> "- #{e.emoji} **[t:#{e.tick}]** #{e.summary}" end)
-        |> Enum.join("\n")
-      end
+        events = Map.get(state.era_events, era.id, []) |> Enum.reverse() |> Enum.take(20)
 
-      # Key figures for this era
-      era_figures = state.key_figures
-      |> Enum.filter(fn {_name, data} -> data.era == era.id end)
-      |> Enum.map(fn {name, data} ->
-        achievements = Enum.join(data.achievements, ", ")
-        "- **#{name}**: #{achievements}"
+        event_lines =
+          if events == [] do
+            "_No recorded events._"
+          else
+            events
+            |> Enum.map(fn e -> "- #{e.emoji} **[t:#{e.tick}]** #{e.summary}" end)
+            |> Enum.join("\n")
+          end
+
+        # Key figures for this era
+        era_figures =
+          state.key_figures
+          |> Enum.filter(fn {_name, data} -> data.era == era.id end)
+          |> Enum.map(fn {name, data} ->
+            achievements = Enum.join(data.achievements, ", ")
+            "- **#{name}**: #{achievements}"
+          end)
+
+        figures_section =
+          if era_figures == [] do
+            ""
+          else
+            "\n### Key Figures\n\n#{Enum.join(era_figures, "\n")}\n"
+          end
+
+        """
+        ## #{era.emoji} #{era.name}
+
+        _#{era.description}_
+
+        **#{duration}**
+
+        ### Events
+
+        #{event_lines}
+        #{figures_section}
+        ---
+
+        """
       end)
-
-      figures_section = if era_figures == [] do
-        ""
-      else
-        "\n### Key Figures\n\n#{Enum.join(era_figures, "\n")}\n"
-      end
-
-      """
-      ## #{era.emoji} #{era.name}
-
-      _#{era.description}_
-
-      **#{duration}**
-
-      ### Events
-
-      #{event_lines}
-      #{figures_section}
-      ---
-
-      """
-    end)
-    |> Enum.join("\n")
+      |> Enum.join("\n")
 
     footer = """
 

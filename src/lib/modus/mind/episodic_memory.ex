@@ -19,9 +19,17 @@ defmodule Modus.Mind.EpisodicMemory do
   defmodule Memory do
     @moduledoc "Episodic memory struct with typed fields."
     defstruct [
-      :id, :agent_id, :type, :tick, :position,
-      :content, :tags, :related_agent_id,
-      :emotion, :intensity, :metadata,
+      :id,
+      :agent_id,
+      :type,
+      :tick,
+      :position,
+      :content,
+      :tags,
+      :related_agent_id,
+      :emotion,
+      :intensity,
+      :metadata,
       weight: 1.0
     ]
   end
@@ -32,6 +40,7 @@ defmodule Modus.Mind.EpisodicMemory do
     if :ets.whereis(@table) == :undefined do
       :ets.new(@table, [:bag, :public, :named_table, read_concurrency: true])
     end
+
     :ok
   end
 
@@ -131,6 +140,7 @@ defmodule Modus.Mind.EpisodicMemory do
     if :ets.whereis(@table) != :undefined do
       :ets.match_delete(@table, {agent_id, :_})
     end
+
     :ok
   end
 
@@ -138,6 +148,7 @@ defmodule Modus.Mind.EpisodicMemory do
     if :ets.whereis(@table) != :undefined do
       :ets.delete_all_objects(@table)
     end
+
     :ok
   end
 
@@ -145,9 +156,11 @@ defmodule Modus.Mind.EpisodicMemory do
 
   defp enforce_limit(agent_id) do
     all = :ets.lookup(@table, agent_id)
+
     if length(all) > @max_per_agent do
       sorted = Enum.sort_by(all, fn {_, m} -> ensure_float(m.weight) end)
       to_remove = Enum.take(sorted, length(all) - @max_per_agent)
+
       for {_id, m} <- to_remove do
         :ets.match_delete(@table, {agent_id, m})
       end

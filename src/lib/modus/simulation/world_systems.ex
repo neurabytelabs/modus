@@ -24,11 +24,13 @@ defmodule Modus.Simulation.WorldSystems do
     Modus.Simulation.Lifecycle.tick(tick_number)
 
     # Wildlife ecology tick with current season
-    season = try do
-      Modus.Simulation.Seasons.current_season()
-    catch
-      _, _ -> :spring
-    end
+    season =
+      try do
+        Modus.Simulation.Seasons.current_season()
+      catch
+        _, _ -> :spring
+      end
+
     Modus.Simulation.Wildlife.tick(tick_number, season)
     {:noreply, state}
   end

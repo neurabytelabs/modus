@@ -10,12 +10,12 @@ defmodule Modus.Simulation.ResourceSystem do
   @regen_interval 50
 
   @regen_rates %{
-    forest:   %{food: {2, 5}, wood: {1, 8}},
-    grass:    %{food: {1, 3}, wild_berries: {0.5, 2}},
-    water:    %{fish: {1, 6}, fresh_water: {2, 10}},
+    forest: %{food: {2, 5}, wood: {1, 8}},
+    grass: %{food: {1, 3}, wild_berries: {0.5, 2}},
+    water: %{fish: {1, 6}, fresh_water: {2, 10}},
     mountain: %{stone: {1, 10}, ore: {0.5, 4}},
-    farm:     %{crops: {3, 12}, food: {2, 8}},
-    flowers:  %{herbs: {1, 6}, food: {0.5, 2}}
+    farm: %{crops: {3, 12}, food: {2, 8}},
+    flowers: %{herbs: {1, 6}, food: {0.5, 2}}
   }
 
   def start_link(_opts \\ []) do
@@ -47,6 +47,7 @@ defmodule Modus.Simulation.ResourceSystem do
     if rem(tick_number, @regen_interval) == 0 do
       regenerate_all()
     end
+
     {:noreply, state}
   end
 
@@ -55,11 +56,12 @@ defmodule Modus.Simulation.ResourceSystem do
   # ── Internal ────────────────────────────────────────────────
 
   defp do_gather({x, y}, resource_type, amount) do
-    world = try do
-      Modus.Simulation.World.get_state()
-    catch
-      :exit, _ -> nil
-    end
+    world =
+      try do
+        Modus.Simulation.World.get_state()
+      catch
+        :exit, _ -> nil
+      end
 
     if world == nil do
       {:error, :no_world}
@@ -69,9 +71,13 @@ defmodule Modus.Simulation.ResourceSystem do
           current = Map.get(cell.resources, resource_type, 0)
           actual = min(ensure_float(amount), ensure_float(current))
           actual = Float.round(ensure_float(actual), 1)
-          new_resources = Map.put(cell.resources, resource_type, Float.round(ensure_float(current - actual), 1))
+
+          new_resources =
+            Map.put(cell.resources, resource_type, Float.round(ensure_float(current - actual), 1))
+
           :ets.insert(world.grid_table, {{x, y}, %{cell | resources: new_resources}})
           {:ok, actual}
+
         _ ->
           {:error, :out_of_bounds}
       end
@@ -79,18 +85,20 @@ defmodule Modus.Simulation.ResourceSystem do
   end
 
   defp regenerate_all do
-    world = try do
-      Modus.Simulation.World.get_state()
-    catch
-      :exit, _ -> nil
-    end
+    world =
+      try do
+        Modus.Simulation.World.get_state()
+      catch
+        :exit, _ -> nil
+      end
 
     if world do
-      night? = try do
-        Modus.Simulation.Environment.is_night?()
-      catch
-        :exit, _ -> false
-      end
+      night? =
+        try do
+          Modus.Simulation.Environment.is_night?()
+        catch
+          :exit, _ -> false
+        end
 
       multiplier = if night?, do: 2.0, else: 1.0
       {max_x, max_y} = world.grid_size
@@ -99,16 +107,21 @@ defmodule Modus.Simulation.ResourceSystem do
         case :ets.lookup(world.grid_table, {x, y}) do
           [{{^x, ^y}, cell}] ->
             rates = Map.get(@regen_rates, cell.terrain)
+
             if rates do
-              new_resources = Enum.reduce(rates, cell.resources, fn {res, {rate, max_val}}, acc ->
-                current = ensure_float(Map.get(acc, res, 0))
-                added = ensure_float(rate) * multiplier
-                new_val = min(current + added, ensure_float(max_val))
-                Map.put(acc, res, Float.round(new_val, 1))
-              end)
+              new_resources =
+                Enum.reduce(rates, cell.resources, fn {res, {rate, max_val}}, acc ->
+                  current = ensure_float(Map.get(acc, res, 0))
+                  added = ensure_float(rate) * multiplier
+                  new_val = min(current + added, ensure_float(max_val))
+                  Map.put(acc, res, Float.round(new_val, 1))
+                end)
+
               :ets.insert(world.grid_table, {{x, y}, %{cell | resources: new_resources}})
             end
-          _ -> :ok
+
+          _ ->
+            :ok
         end
       end
     end

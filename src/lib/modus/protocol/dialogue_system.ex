@@ -30,6 +30,7 @@ defmodule Modus.Protocol.DialogueSystem do
     if :ets.whereis(@table) == :undefined do
       :ets.new(@table, [:set, :public, :named_table, read_concurrency: true])
     end
+
     :ok
   end
 
@@ -112,6 +113,7 @@ defmodule Modus.Protocol.DialogueSystem do
   @spec get_history(String.t()) :: [map()]
   def get_history(agent_id) do
     init()
+
     case :ets.lookup(@table, agent_id) do
       [{_, history}] -> history
       [] -> []
@@ -129,11 +131,19 @@ defmodule Modus.Protocol.DialogueSystem do
   defp has_danger_knowledge?(agent) do
     # Check spatial memory or recent memories for danger
     memories = agent.memory || []
+
     Enum.any?(memories, fn
-      {_tick, %{type: :danger}} -> true
-      {_tick, %{type: :wildlife_attack}} -> true
-      {_tick, event} when is_binary(event) -> String.contains?(event, ["wolf", "danger", "attack"])
-      _ -> false
+      {_tick, %{type: :danger}} ->
+        true
+
+      {_tick, %{type: :wildlife_attack}} ->
+        true
+
+      {_tick, event} when is_binary(event) ->
+        String.contains?(event, ["wolf", "danger", "attack"])
+
+      _ ->
+        false
     end)
   end
 
@@ -164,28 +174,40 @@ defmodule Modus.Protocol.DialogueSystem do
   # ── Message Generation ─────────────────────────────────
 
   defp generate_opening(agent, _partner, topic, trust) do
-    text = case topic do
-      :trade ->
-        surplus = agent.inventory |> Map.to_list() |> Enum.max_by(fn {_k, v} -> ensure_float(v) end, fn -> {:nothing, 0} end) |> elem(0)
-        "#{agent.name}: I have some #{surplus} to spare. Interested in a trade?"
+    text =
+      case topic do
+        :trade ->
+          surplus =
+            agent.inventory
+            |> Map.to_list()
+            |> Enum.max_by(fn {_k, v} -> ensure_float(v) end, fn -> {:nothing, 0} end)
+            |> elem(0)
 
-      :alliance ->
-        if trust > 0.5 do
-          "#{agent.name}: Friend, we should work together. What do you say?"
-        else
-          "#{agent.name}: These are tough times. Perhaps we could help each other?"
-        end
+          "#{agent.name}: I have some #{surplus} to spare. Interested in a trade?"
 
-      :gossip ->
-        "#{agent.name}: Have you heard what's been happening around here?"
+        :alliance ->
+          if trust > 0.5 do
+            "#{agent.name}: Friend, we should work together. What do you say?"
+          else
+            "#{agent.name}: These are tough times. Perhaps we could help each other?"
+          end
 
-      :warning ->
-        "#{agent.name}: Watch out! I've seen danger nearby."
+        :gossip ->
+          "#{agent.name}: Have you heard what's been happening around here?"
 
-      :general ->
-        greetings = ["Hello there!", "How are you doing?", "Nice to see you!", "What brings you here?"]
-        "#{agent.name}: #{Enum.random(greetings)}"
-    end
+        :warning ->
+          "#{agent.name}: Watch out! I've seen danger nearby."
+
+        :general ->
+          greetings = [
+            "Hello there!",
+            "How are you doing?",
+            "Nice to see you!",
+            "What brings you here?"
+          ]
+
+          "#{agent.name}: #{Enum.random(greetings)}"
+      end
 
     %{
       speaker: agent.name,

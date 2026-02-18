@@ -26,6 +26,7 @@ defmodule Modus.Intelligence.ResponseCache do
           Modus.Intelligence.LlmMetrics.record_cache_miss()
           nil
         end
+
       [] ->
         Modus.Intelligence.LlmMetrics.record_cache_miss()
         nil
@@ -78,14 +79,16 @@ defmodule Modus.Intelligence.ResponseCache do
   @impl true
   def handle_info(:cleanup, state) do
     # Cleanup done lazily on get(), but also do periodic sweep
-    current_tick = try do
-      Modus.Simulation.Ticker.current_tick()
-    catch
-      _, _ -> 0
-    end
+    current_tick =
+      try do
+        Modus.Simulation.Ticker.current_tick()
+      catch
+        _, _ -> 0
+      end
 
     if current_tick > 0 do
       min_tick = current_tick - @ttl_ticks
+
       :ets.select_delete(@table, [
         {{:_, :_, :"$1"}, [{:<, :"$1", min_tick}], [true]}
       ])

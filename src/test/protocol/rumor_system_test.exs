@@ -5,7 +5,13 @@ defmodule Modus.Protocol.RumorSystemTest do
 
   setup do
     RumorSystem.init()
-    try do :ets.delete_all_objects(:rumors) catch _, _ -> :ok end
+
+    try do
+      :ets.delete_all_objects(:rumors)
+    catch
+      _, _ -> :ok
+    end
+
     :ok
   end
 

@@ -13,7 +13,9 @@ defmodule Modus.Mind.Cerebro.SpatialMemory do
     fear_memories = AffectMemory.recall(agent_id, affect: :fear, min_salience: 0.5, limit: 3)
 
     case check_fear_repulsion(current_pos, fear_memories, default_target) do
-      {:repel, new_target} -> new_target
+      {:repel, new_target} ->
+        new_target
+
       :ok ->
         # Check joy attraction
         joy_memories = AffectMemory.recall(agent_id, affect: :joy, min_salience: 0.3, limit: 5)
@@ -29,10 +31,11 @@ defmodule Modus.Mind.Cerebro.SpatialMemory do
   defp check_fear_repulsion(current_pos, fear_memories, default_target) do
     {cx, cy} = current_pos
 
-    nearby_fear = Enum.find(fear_memories, fn m ->
-      {fx, fy} = m.position
-      abs(fx - cx) <= @fear_repulsion_radius and abs(fy - cy) <= @fear_repulsion_radius
-    end)
+    nearby_fear =
+      Enum.find(fear_memories, fn m ->
+        {fx, fy} = m.position
+        abs(fx - cx) <= @fear_repulsion_radius and abs(fy - cy) <= @fear_repulsion_radius
+      end)
 
     if nearby_fear do
       {fx, fy} = nearby_fear.position
@@ -51,7 +54,7 @@ defmodule Modus.Mind.Cerebro.SpatialMemory do
 
   defp pick_joy_target(_current_pos, joy_memories, default_target) do
     # Weighted random selection by salience
-    total = Enum.reduce(joy_memories, 0.0, & &2 + &1.salience)
+    total = Enum.reduce(joy_memories, 0.0, &(&2 + &1.salience))
     roll = :rand.uniform() * total
 
     selected = pick_weighted(joy_memories, roll, 0.0)
@@ -65,6 +68,7 @@ defmodule Modus.Mind.Cerebro.SpatialMemory do
   end
 
   defp pick_weighted([m], _roll, _acc), do: m
+
   defp pick_weighted([m | rest], roll, acc) do
     new_acc = acc + m.salience
     if roll <= new_acc, do: m, else: pick_weighted(rest, roll, new_acc)

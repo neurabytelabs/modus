@@ -15,6 +15,7 @@ defmodule Modus.Intelligence.BudgetTracker do
     if :ets.whereis(@table) == :undefined do
       :ets.new(@table, [:named_table, :public, :set, read_concurrency: true])
     end
+
     reset()
     :ok
   end
@@ -35,8 +36,10 @@ defmodule Modus.Intelligence.BudgetTracker do
         # High priority always allowed (user chat, etc.)
         :ets.update_counter(@table, :current_tick_calls, {2, 1}, {:current_tick_calls, 0})
         :ok
+
       _ ->
         remaining = get_remaining()
+
         if remaining > 0 do
           :ets.update_counter(@table, :calls_remaining, {2, -1}, {:calls_remaining, 0})
           :ets.update_counter(@table, :current_tick_calls, {2, 1}, {:current_tick_calls, 0})

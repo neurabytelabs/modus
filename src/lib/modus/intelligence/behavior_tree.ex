@@ -11,8 +11,17 @@ defmodule Modus.Intelligence.BehaviorTree do
 
   alias Modus.Simulation.{Agent, Building}
 
-  @type action :: :find_food | :go_home_sleep | :find_friend | :explore |
-                  :help_nearby | :gather | :idle | :build | :go_home | :upgrade_home
+  @type action ::
+          :find_food
+          | :go_home_sleep
+          | :find_friend
+          | :explore
+          | :help_nearby
+          | :gather
+          | :idle
+          | :build
+          | :go_home
+          | :upgrade_home
 
   @spec evaluate(Agent.t(), non_neg_integer()) :: action()
   def evaluate(%Agent{} = agent, tick) do
@@ -24,9 +33,13 @@ defmodule Modus.Intelligence.BehaviorTree do
               nil -> check_personality(agent, tick)
               action -> action
             end
-          action -> action
+
+          action ->
+            action
         end
-      action -> action
+
+      action ->
+        action
     end
   end
 
@@ -35,9 +48,9 @@ defmodule Modus.Intelligence.BehaviorTree do
   defp check_critical_needs(%Agent{needs: needs}) do
     cond do
       needs.hunger > 70.0 -> :find_food
-      needs.rest < 25.0   -> :go_home_sleep
+      needs.rest < 25.0 -> :go_home_sleep
       needs.social < 20.0 -> :find_friend
-      true                -> nil
+      true -> nil
     end
   end
 
@@ -49,20 +62,19 @@ defmodule Modus.Intelligence.BehaviorTree do
 
     # Check for upgrade opportunity
     home = Building.get_home(agent.id)
-    can_upgrade = home != nil and
-      Building.can_upgrade?(home, agent.conatus_energy, tick) and
-      Building.can_afford_upgrade?(agent.inventory, home)
+
+    can_upgrade =
+      home != nil and
+        Building.can_upgrade?(home, agent.conatus_energy, tick) and
+        Building.can_afford_upgrade?(agent.inventory, home)
 
     cond do
       # Upgrade home if possible (high priority)
       can_upgrade and :rand.uniform() < 0.3 -> :upgrade_home
-
       # Go home to rest if rest > 60 and has home (home benefit)
       has_home and agent.needs.rest > 60.0 and :rand.uniform() < 0.2 -> :go_home
-
       # Build a hut if no home, conatus > 0.6, has resources
       !has_home and agent.conatus_energy > 0.6 and can_build_hut -> :build
-
       true -> nil
     end
   end
@@ -73,7 +85,7 @@ defmodule Modus.Intelligence.BehaviorTree do
     cond do
       needs.hunger > 40.0 and :rand.uniform() < 0.4 -> :find_food
       needs.hunger > 40.0 and :rand.uniform() < 0.3 -> :gather
-      needs.rest < 40.0 and :rand.uniform() < 0.3   -> :go_home_sleep
+      needs.rest < 40.0 and :rand.uniform() < 0.3 -> :go_home_sleep
       needs.social < 60.0 and p.extraversion > 0.5 and :rand.uniform() < 0.5 -> :find_friend
       needs.social < 60.0 and :rand.uniform() < 0.25 -> :find_friend
       true -> nil
@@ -92,12 +104,12 @@ defmodule Modus.Intelligence.BehaviorTree do
     help_chance = p.agreeableness * 0.15
 
     cond do
-      roll < explore_chance                              -> :explore
-      roll < explore_chance + gather_chance               -> :gather
+      roll < explore_chance -> :explore
+      roll < explore_chance + gather_chance -> :gather
       roll < explore_chance + gather_chance + social_chance -> :find_friend
       roll < explore_chance + gather_chance + social_chance + help_chance -> :help_nearby
-      :rand.uniform() < 0.7                              -> :explore
-      true                                                -> :idle
+      :rand.uniform() < 0.7 -> :explore
+      true -> :idle
     end
   end
 end

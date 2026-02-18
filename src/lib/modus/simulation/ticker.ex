@@ -136,7 +136,11 @@ defmodule Modus.Simulation.Ticker do
 
     # Rebuild spatial index every 10 ticks for O(1) neighbor lookups
     if rem(new_tick, 10) == 0 do
-      try do Modus.Performance.SpatialIndex.rebuild() catch _, _ -> :ok end
+      try do
+        Modus.Performance.SpatialIndex.rebuild()
+      catch
+        _, _ -> :ok
+      end
     end
 
     # Decay unowned buildings + detect neighborhoods every 100 ticks
@@ -148,7 +152,9 @@ defmodule Modus.Simulation.Ticker do
         # Log story events for newly formed neighborhoods
         for hood <- new_hoods, not MapSet.member?(old_hoods, hood.id) do
           Modus.Simulation.EventLog.log(:neighborhood_formed, new_tick, hood.resident_ids, %{
-            name: hood.name, size: hood.size, center: hood.center
+            name: hood.name,
+            size: hood.size,
+            center: hood.center
           })
         end
       catch
@@ -165,11 +171,13 @@ defmodule Modus.Simulation.Ticker do
 
     # Record population every 10 ticks for StoryEngine graphs
     if rem(new_tick, 10) == 0 do
-      agent_count = try do
-        Registry.count(Modus.AgentRegistry)
-      catch
-        _, _ -> 0
-      end
+      agent_count =
+        try do
+          Registry.count(Modus.AgentRegistry)
+        catch
+          _, _ -> 0
+        end
+
       Modus.Simulation.StoryEngine.record_population(new_tick, agent_count)
 
       # Feed WorldHistory metrics for era detection
@@ -189,7 +197,11 @@ defmodule Modus.Simulation.Ticker do
 
     # Auto-save check (v3.7.0 Persistentia)
     if rem(new_tick, 100) == 0 do
-      try do Modus.Persistence.SaveManager.autosave(new_tick) catch _, _ -> :ok end
+      try do
+        Modus.Persistence.SaveManager.autosave(new_tick)
+      catch
+        _, _ -> :ok
+      end
     end
 
     # Schedule next tick
@@ -201,11 +213,13 @@ defmodule Modus.Simulation.Ticker do
 
   defp schedule_tick(ms) do
     # Apply RulesEngine time_speed multiplier (higher = faster = shorter interval)
-    time_speed = try do
-      Modus.Simulation.RulesEngine.time_speed()
-    catch
-      _, _ -> 1.0
-    end
+    time_speed =
+      try do
+        Modus.Simulation.RulesEngine.time_speed()
+      catch
+        _, _ -> 1.0
+      end
+
     adjusted_ms = max(10, round(ms / time_speed))
     Process.send_after(self(), :tick, adjusted_ms)
   end

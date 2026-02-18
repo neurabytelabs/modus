@@ -15,7 +15,13 @@ defmodule Modus.Simulation.TradeSystemTest do
       id: "agent-a",
       name: "Maya",
       position: {5, 5},
-      personality: %{openness: 0.7, conscientiousness: 0.6, extraversion: 0.5, agreeableness: 0.8, neuroticism: 0.3},
+      personality: %{
+        openness: 0.7,
+        conscientiousness: 0.6,
+        extraversion: 0.5,
+        agreeableness: 0.8,
+        neuroticism: 0.3
+      },
       needs: %{hunger: 40.0, social: 50.0, rest: 80.0, shelter: 70.0},
       inventory: %{wood: 10.0, stone: 2.0, food: 1.0},
       occupation: :gatherer
@@ -25,7 +31,13 @@ defmodule Modus.Simulation.TradeSystemTest do
       id: "agent-b",
       name: "Kai",
       position: {6, 5},
-      personality: %{openness: 0.4, conscientiousness: 0.8, extraversion: 0.3, agreeableness: 0.3, neuroticism: 0.6},
+      personality: %{
+        openness: 0.4,
+        conscientiousness: 0.8,
+        extraversion: 0.3,
+        agreeableness: 0.3,
+        neuroticism: 0.6
+      },
       needs: %{hunger: 70.0, social: 30.0, rest: 60.0, shelter: 80.0},
       inventory: %{wood: 1.0, stone: 8.0, food: 12.0},
       occupation: :builder
@@ -62,12 +74,15 @@ defmodule Modus.Simulation.TradeSystemTest do
     end
 
     test "rejected when insufficient inventory", %{agent_a: a, agent_b: b} do
-      assert {:error, :insufficient_resources} = TradeSystem.propose_trade(a, b, :wood, 100.0, :food, 2.0, 100)
+      assert {:error, :insufficient_resources} =
+               TradeSystem.propose_trade(a, b, :wood, 100.0, :food, 2.0, 100)
     end
 
     test "rejected when agent B lacks requested resource", %{agent_a: a, agent_b: b} do
       poor_b = %{b | inventory: %{wood: 1.0, stone: 0.0, food: 0.0}}
-      assert {:error, :insufficient_resources} = TradeSystem.propose_trade(a, poor_b, :wood, 3.0, :food, 2.0, 100)
+
+      assert {:error, :insufficient_resources} =
+               TradeSystem.propose_trade(a, poor_b, :wood, 3.0, :food, 2.0, 100)
     end
 
     test "updates stats after trade", %{agent_a: a, agent_b: b} do
@@ -91,7 +106,7 @@ defmodule Modus.Simulation.TradeSystemTest do
       disagreeable = %{agreeableness: 0.1, conscientiousness: 0.5}
 
       assert TradeSystem.personality_value_modifier(agreeable) <
-             TradeSystem.personality_value_modifier(disagreeable)
+               TradeSystem.personality_value_modifier(disagreeable)
     end
 
     test "returns float" do
@@ -142,7 +157,12 @@ defmodule Modus.Simulation.TradeSystemTest do
   describe "find_trade_opportunity/2" do
     test "finds opportunity when agent has surplus and need", %{agent_a: a, agent_b: b} do
       # Agent A has lots of wood, needs food (hunger high)
-      rich_a = %{a | inventory: %{wood: 20.0, food: 0.5}, needs: %{hunger: 70.0, social: 50.0, rest: 50.0, shelter: 50.0}}
+      rich_a = %{
+        a
+        | inventory: %{wood: 20.0, food: 0.5},
+          needs: %{hunger: 70.0, social: 50.0, rest: 50.0, shelter: 50.0}
+      }
+
       rich_b = %{b | inventory: %{wood: 0.5, food: 20.0}}
 
       assert {:ok, opp} = TradeSystem.find_trade_opportunity(rich_a, [rich_b])

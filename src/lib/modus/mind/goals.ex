@@ -22,9 +22,12 @@ defmodule Modus.Mind.Goals do
     :type,
     :target,
     :progress,
-    :status,       # :active | :completed | :failed
-    :assigned_at,  # tick
-    :completed_at  # tick | nil
+    # :active | :completed | :failed
+    :status,
+    # tick
+    :assigned_at,
+    # tick | nil
+    :completed_at
   ]
 
   @type t :: %__MODULE__{}
@@ -35,6 +38,7 @@ defmodule Modus.Mind.Goals do
     if :ets.whereis(@table) == :undefined do
       :ets.new(@table, [:named_table, :bag, :public, read_concurrency: true])
     end
+
     :ok
   end
 
@@ -44,6 +48,7 @@ defmodule Modus.Mind.Goals do
   def add_goal(agent_id, type, target \\ nil, tick \\ 0) when type in @goal_types do
     init()
     target = target || default_target(type)
+
     goal = %__MODULE__{
       id: :crypto.strong_rand_bytes(6) |> Base.encode16(case: :lower),
       agent_id: agent_id,
@@ -54,6 +59,7 @@ defmodule Modus.Mind.Goals do
       assigned_at: tick,
       completed_at: nil
     }
+
     :ets.insert(@table, {agent_id, goal})
     goal
   end
@@ -71,6 +77,7 @@ defmodule Modus.Mind.Goals do
   @doc "Get all goals for an agent."
   def get_goals(agent_id) do
     init()
+
     :ets.lookup(@table, agent_id)
     |> Enum.map(fn {_id, goal} -> goal end)
   end
@@ -88,6 +95,7 @@ defmodule Modus.Mind.Goals do
     {updated, completed} =
       Enum.reduce(goals, {[], []}, fn goal, {upd, comp} ->
         new_progress = calculate_progress(goal, agent_state)
+
         if new_progress >= 1.0 do
           done = %{goal | progress: 1.0, status: :completed, completed_at: tick}
           {[done | upd], [done | comp]}
@@ -110,14 +118,26 @@ defmodule Modus.Mind.Goals do
     existing = get_goals(agent_id) |> Enum.map(& &1.type)
 
     goals = []
-    goals = if personality.openness > 0.65 and :explore_map not in existing,
-      do: [add_goal(agent_id, :explore_map, 50, tick) | goals], else: goals
-    goals = if personality.extraversion > 0.65 and :make_friends not in existing,
-      do: [add_goal(agent_id, :make_friends, 3, tick) | goals], else: goals
-    goals = if personality.conscientiousness > 0.65 and :build_home not in existing,
-      do: [add_goal(agent_id, :build_home, nil, tick) | goals], else: goals
-    goals = if personality.neuroticism > 0.65 and :gather_resources not in existing,
-      do: [add_goal(agent_id, :gather_resources, 20, tick) | goals], else: goals
+
+    goals =
+      if personality.openness > 0.65 and :explore_map not in existing,
+        do: [add_goal(agent_id, :explore_map, 50, tick) | goals],
+        else: goals
+
+    goals =
+      if personality.extraversion > 0.65 and :make_friends not in existing,
+        do: [add_goal(agent_id, :make_friends, 3, tick) | goals],
+        else: goals
+
+    goals =
+      if personality.conscientiousness > 0.65 and :build_home not in existing,
+        do: [add_goal(agent_id, :build_home, nil, tick) | goals],
+        else: goals
+
+    goals =
+      if personality.neuroticism > 0.65 and :gather_resources not in existing,
+        do: [add_goal(agent_id, :gather_resources, 20, tick) | goals],
+        else: goals
 
     goals
   end
@@ -143,6 +163,7 @@ defmodule Modus.Mind.Goals do
     if :ets.whereis(@table) != :undefined do
       :ets.delete_all_objects(@table)
     end
+
     :ok
   end
 
@@ -164,45 +185,55 @@ defmodule Modus.Mind.Goals do
   end
 
   defp calculate_progress(%{type: :make_friends, target: target}, agent) do
-    friend_count = agent.relationships
+    friend_count =
+      agent.relationships
       |> Enum.filter(fn {_id, {type, _str}} -> type in [:friend, :close_friend] end)
       |> length()
+
     min(friend_count / max(target, 1), 1.0)
   end
 
   defp calculate_progress(%{type: :explore_map, target: target_pct}, agent) do
     # Use unique positions from affect memory as proxy for exploration
-    visited = try do
-      memories = Modus.Mind.AffectMemory.recall(agent.id, limit: 100)
-      memories
-      |> Enum.map(& &1.position)
-      |> Enum.uniq()
-      |> length()
-    catch
-      _, _ -> 0
-    end
+    visited =
+      try do
+        memories = Modus.Mind.AffectMemory.recall(agent.id, limit: 100)
+
+        memories
+        |> Enum.map(& &1.position)
+        |> Enum.uniq()
+        |> length()
+      catch
+        _, _ -> 0
+      end
+
     # Estimate world size from World state
-    total = try do
-      state = Modus.Simulation.World.get_state()
-      {w, h} = state.grid_size
-      w * h
-    catch
-      _, _ -> 2500
-    end
+    total =
+      try do
+        state = Modus.Simulation.World.get_state()
+        {w, h} = state.grid_size
+        w * h
+      catch
+        _, _ -> 2500
+      end
+
     pct = visited / max(total, 1) * 100
     min(pct / max(target_pct, 1), 1.0)
   end
 
   defp calculate_progress(%{type: :gather_resources, target: target}, agent) do
-    total = agent.inventory
+    total =
+      agent.inventory
       |> Map.values()
       |> Enum.sum()
+
     min(total / max(target, 1), 1.0)
   end
 
   defp calculate_progress(%{type: :survive_winter}, _agent) do
     try do
       state = Modus.Simulation.Seasons.get_state()
+
       cond do
         # Survived winter if we completed at least 1 year (been through all seasons)
         state.year > 1 -> 1.0

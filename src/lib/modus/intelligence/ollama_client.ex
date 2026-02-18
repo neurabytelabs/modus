@@ -24,7 +24,9 @@ defmodule Modus.Intelligence.OllamaClient do
     prompt = build_batch_prompt(agents, context)
 
     case call_generate(prompt, config) do
-      {:ok, text} -> parse_decisions(text, agents)
+      {:ok, text} ->
+        parse_decisions(text, agents)
+
       {:error, reason} ->
         Logger.warning("OllamaClient batch_decide failed: #{inspect(reason)}")
         :fallback
@@ -38,7 +40,9 @@ defmodule Modus.Intelligence.OllamaClient do
     prompt = build_conversation_prompt(agent_a, agent_b, context)
 
     case call_generate(prompt, config) do
-      {:ok, text} -> parse_conversation(text, agent_a.name, agent_b.name)
+      {:ok, text} ->
+        parse_conversation(text, agent_a.name, agent_b.name)
+
       {:error, reason} ->
         Logger.warning("OllamaClient conversation failed: #{inspect(reason)}")
         :fallback
@@ -57,6 +61,7 @@ defmodule Modus.Intelligence.OllamaClient do
           {:ok, %{"reply" => reply}} -> {:ok, reply}
           _ -> {:ok, String.trim(text)}
         end
+
       {:error, reason} ->
         Logger.warning("OllamaClient chat failed: #{inspect(reason)}")
         :fallback
@@ -66,14 +71,15 @@ defmodule Modus.Intelligence.OllamaClient do
   @doc "Direct chat completion for Bridge (takes raw messages list)."
   def chat_completion_direct(messages, config \\ %{}) do
     # Build a single prompt from messages
-    prompt = messages
-    |> Enum.map(fn
-      %{role: "system", content: c} -> "System: #{c}"
-      %{role: "user", content: c} -> "User: #{c}"
-      %{role: "assistant", content: c} -> "Assistant: #{c}"
-      _ -> ""
-    end)
-    |> Enum.join("\n\n")
+    prompt =
+      messages
+      |> Enum.map(fn
+        %{role: "system", content: c} -> "System: #{c}"
+        %{role: "user", content: c} -> "User: #{c}"
+        %{role: "assistant", content: c} -> "Assistant: #{c}"
+        _ -> ""
+      end)
+      |> Enum.join("\n\n")
 
     case call_generate(prompt, config, false) do
       {:ok, text} -> {:ok, String.trim(text)}
@@ -84,6 +90,7 @@ defmodule Modus.Intelligence.OllamaClient do
   @doc "Test connection to Ollama."
   def test_connection(config \\ %{}) do
     url = Map.get(config, :base_url, @default_url)
+
     case Req.get("#{url}/api/tags",
            receive_timeout: 10_000,
            connect_options: [timeout: 5_000],
@@ -107,6 +114,7 @@ defmodule Modus.Intelligence.OllamaClient do
       stream: false,
       options: %{temperature: 0.7, num_predict: 512}
     }
+
     body = if json_format, do: Map.put(body, :format, "json"), else: body
 
     case Req.post("#{url}/api/generate",
@@ -169,11 +177,18 @@ defmodule Modus.Intelligence.OllamaClient do
 
   defp build_chat_prompt(agent, user_message) do
     {px, py} = agent.position
-    memories = agent |> Map.get(:memory, []) |> Enum.take(-3) |> Enum.map(fn
-      {tick, {action, _params}} -> "- Tick #{tick}: #{action}"
-      {tick, action} when is_atom(action) -> "- Tick #{tick}: #{action}"
-      other -> "- #{inspect(other)}"
-    end) |> Enum.join("\n")
+
+    memories =
+      agent
+      |> Map.get(:memory, [])
+      |> Enum.take(-3)
+      |> Enum.map(fn
+        {tick, {action, _params}} -> "- Tick #{tick}: #{action}"
+        {tick, action} when is_atom(action) -> "- Tick #{tick}: #{action}"
+        other -> "- #{inspect(other)}"
+      end)
+      |> Enum.join("\n")
+
     personality_desc = describe_personality_detailed(agent.personality)
 
     """
@@ -196,11 +211,35 @@ defmodule Modus.Intelligence.OllamaClient do
 
   defp describe_personality_detailed(p) do
     traits = []
-    traits = if p.openness > 0.7, do: ["curious and open-minded" | traits], else: if(p.openness < 0.3, do: ["traditional and set in their ways" | traits], else: traits)
-    traits = if p.extraversion > 0.7, do: ["social and energetic" | traits], else: if(p.extraversion < 0.3, do: ["introverted and quiet" | traits], else: traits)
-    traits = if p.agreeableness > 0.7, do: ["helpful and kind" | traits], else: if(p.agreeableness < 0.3, do: ["competitive and independent" | traits], else: traits)
-    traits = if p.conscientiousness > 0.7, do: ["hardworking and organized" | traits], else: if(p.conscientiousness < 0.3, do: ["easygoing and spontaneous" | traits], else: traits)
-    traits = if p.neuroticism > 0.7, do: ["anxious and emotional" | traits], else: if(p.neuroticism < 0.3, do: ["calm and composed" | traits], else: traits)
+
+    traits =
+      if p.openness > 0.7,
+        do: ["curious and open-minded" | traits],
+        else:
+          if(p.openness < 0.3, do: ["traditional and set in their ways" | traits], else: traits)
+
+    traits =
+      if p.extraversion > 0.7,
+        do: ["social and energetic" | traits],
+        else: if(p.extraversion < 0.3, do: ["introverted and quiet" | traits], else: traits)
+
+    traits =
+      if p.agreeableness > 0.7,
+        do: ["helpful and kind" | traits],
+        else:
+          if(p.agreeableness < 0.3, do: ["competitive and independent" | traits], else: traits)
+
+    traits =
+      if p.conscientiousness > 0.7,
+        do: ["hardworking and organized" | traits],
+        else:
+          if(p.conscientiousness < 0.3, do: ["easygoing and spontaneous" | traits], else: traits)
+
+    traits =
+      if p.neuroticism > 0.7,
+        do: ["anxious and emotional" | traits],
+        else: if(p.neuroticism < 0.3, do: ["calm and composed" | traits], else: traits)
+
     if traits == [], do: "an ordinary person", else: Enum.join(traits, ", ")
   end
 
@@ -231,6 +270,7 @@ defmodule Modus.Intelligence.OllamaClient do
           action = normalize_action(d["action"])
           {d["id"], action, %{reason: d["reason"] || "llm"}}
         end)
+
       _ ->
         Logger.warning("OllamaClient: failed to parse decisions JSON")
         :fallback
@@ -244,12 +284,15 @@ defmodule Modus.Intelligence.OllamaClient do
         |> Enum.take(6)
         |> Enum.filter(fn d -> d["speaker"] in [name_a, name_b] end)
         |> Enum.map(fn d -> {d["speaker"], d["line"] || ""} end)
-      _ -> :fallback
+
+      _ ->
+        :fallback
     end
   end
 
   defp normalize_action(action_str) when is_binary(action_str) do
     if action_str in @valid_actions, do: String.to_atom(action_str), else: :idle
   end
+
   defp normalize_action(_), do: :idle
 end

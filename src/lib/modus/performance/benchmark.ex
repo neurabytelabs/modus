@@ -71,15 +71,22 @@ defmodule Modus.Performance.Benchmark do
   @doc "Quick benchmark — just measure current state."
   @spec quick() :: map()
   def quick do
-    agent_count = try do
-      Registry.count(Modus.AgentRegistry)
-    catch
-      _, _ -> 0
-    end
+    agent_count =
+      try do
+        Registry.count(Modus.AgentRegistry)
+      catch
+        _, _ -> 0
+      end
 
     # Time a single spatial index rebuild
     t0 = System.monotonic_time(:microsecond)
-    try do Modus.Performance.SpatialIndex.rebuild() catch _, _ -> :ok end
+
+    try do
+      Modus.Performance.SpatialIndex.rebuild()
+    catch
+      _, _ -> :ok
+    end
+
     t1 = System.monotonic_time(:microsecond)
 
     %{
@@ -95,5 +102,6 @@ defmodule Modus.Performance.Benchmark do
     idx = round(p * (length(sorted) - 1))
     Enum.at(sorted, idx)
   end
+
   defp percentile(_, _), do: 0
 end

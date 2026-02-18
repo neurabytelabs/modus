@@ -19,6 +19,7 @@ defmodule Modus.Performance.MemoryAuditTest do
     test "lists ETS tables with memory info" do
       tables = MemoryAudit.ets_tables()
       assert is_list(tables)
+
       if tables != [] do
         first = hd(tables)
         assert Map.has_key?(first, :name)

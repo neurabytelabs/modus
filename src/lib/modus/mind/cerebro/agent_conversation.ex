@@ -5,7 +5,15 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
   alias Modus.Mind.AffectMemory
   alias Modus.Intelligence.LlmProvider
   alias Modus.Simulation.{Agent, EventLog}
-  alias Modus.Protocol.{DialogueSystem, Persuasion, InformationSharing, RumorSystem, SecretKeeping}
+
+  alias Modus.Protocol.{
+    DialogueSystem,
+    Persuasion,
+    InformationSharing,
+    RumorSystem,
+    SecretKeeping
+  }
+
   require Logger
 
   @cooldown_table :conversation_cooldowns
@@ -23,11 +31,13 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
     if :ets.whereis(@cooldown_table) == :undefined do
       :ets.new(@cooldown_table, [:set, :public, :named_table])
     end
+
     # Global concurrent counter (index 1)
     unless :persistent_term.get(:convo_counter, nil) do
       counter = :counters.new(1, [:atomics])
       :persistent_term.put(:convo_counter, counter)
     end
+
     :ok
   end
 
@@ -37,15 +47,24 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
   @doc "Check if conversation should happen and trigger it async."
   def maybe_converse(agent, nearby_agent_ids, tick) do
     cond do
-      in_error_backoff?(tick) -> :skipped
-      agent.conatus_energy <= 0.3 -> :skipped
-      nearby_agent_ids == [] -> :skipped
-      agent.current_action not in [:talking, :exploring, :idle] -> :skipped
+      in_error_backoff?(tick) ->
+        :skipped
+
+      agent.conatus_energy <= 0.3 ->
+        :skipped
+
+      nearby_agent_ids == [] ->
+        :skipped
+
+      agent.current_action not in [:talking, :exploring, :idle] ->
+        :skipped
+
       true ->
         # Find eligible partner
-        partner_id = Enum.find(nearby_agent_ids, fn id ->
-          id != agent.id and not on_cooldown?(agent.id, id, tick)
-        end)
+        partner_id =
+          Enum.find(nearby_agent_ids, fn id ->
+            id != agent.id and not on_cooldown?(agent.id, id, tick)
+          end)
 
         if partner_id && under_concurrent_limit?() do
           start_conversation(agent, partner_id, tick)
@@ -60,7 +79,9 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
     case :persistent_term.get(@error_backoff_key, nil) do
       {errors, backoff_since} when errors >= @max_consecutive_errors ->
         tick - backoff_since < @error_backoff_ticks
-      _ -> false
+
+      _ ->
+        false
     end
   end
 
@@ -77,6 +98,7 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
 
   defp on_cooldown?(id1, id2, tick) do
     key = canonical_key(id1, id2)
+
     case :ets.lookup(@cooldown_table, key) do
       [{^key, last_tick}] -> tick - last_tick < @cooldown_ticks
       [] -> false
@@ -101,21 +123,26 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
         prompt = build_conversation_prompt(agent, partner, relationship)
 
         config = LlmProvider.get_config()
-        response = case config.provider do
-          :antigravity ->
-            Modus.Intelligence.AntigravityClient.chat_with_agent(agent, prompt, config)
-          _ ->
-            Modus.Intelligence.OllamaClient.chat_with_agent(agent, prompt, config)
-        end
 
-        dialogue = case response do
-          {:ok, text} ->
-            record_convo_success()
-            text
-          _ ->
-            record_convo_error(tick)
-            fallback_dialogue(agent.name, partner.name)
-        end
+        response =
+          case config.provider do
+            :antigravity ->
+              Modus.Intelligence.AntigravityClient.chat_with_agent(agent, prompt, config)
+
+            _ ->
+              Modus.Intelligence.OllamaClient.chat_with_agent(agent, prompt, config)
+          end
+
+        dialogue =
+          case response do
+            {:ok, text} ->
+              record_convo_success()
+              text
+
+            _ ->
+              record_convo_error(tick)
+              fallback_dialogue(agent.name, partner.name)
+          end
 
         # v3.4.0 Nexus: Structured dialogue with topic
         topic = DialogueSystem.determine_topic(agent, partner)
@@ -129,6 +156,7 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
         # v3.4.0: Spread rumors during gossip
         if topic == :gossip do
           spreadable = RumorSystem.get_spreadable(agent.id)
+
           case List.first(spreadable) do
             nil -> :ok
             rumor -> RumorSystem.spread_rumor(agent.id, partner.id, rumor.id, tick)
@@ -138,6 +166,7 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
         # v3.4.0: Share secrets with close friends
         if trust > 0.6 do
           shareable = SecretKeeping.shareable_secrets(agent.id, trust)
+
           case List.first(shareable) do
             nil -> :ok
             secret -> SecretKeeping.try_share(agent.id, partner.id, secret.id, trust)
@@ -171,13 +200,14 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
   end
 
   def build_conversation_prompt(agent1, agent2, relationship) do
-    rel_desc = case relationship do
-      nil -> "You're meeting for the first time."
-      %{type: :stranger} -> "You barely know each other."
-      %{type: :acquaintance} -> "You're acquaintances."
-      %{type: :friend} -> "You're friends."
-      %{type: :close_friend} -> "You're close friends."
-    end
+    rel_desc =
+      case relationship do
+        nil -> "You're meeting for the first time."
+        %{type: :stranger} -> "You barely know each other."
+        %{type: :acquaintance} -> "You're acquaintances."
+        %{type: :friend} -> "You're friends."
+        %{type: :close_friend} -> "You're close friends."
+      end
 
     memories1 = AffectMemory.memories_for_llm_context(agent1.id, 3) |> Enum.join("; ")
     _memories2 = AffectMemory.memories_for_llm_context(agent2.id, 3) |> Enum.join("; ")
@@ -198,11 +228,12 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
 
   defp apply_conversation_effects(agent, partner, relationship, tick) do
     # Determine event type based on affect
-    event_type = cond do
-      agent.affect_state == :joy and partner.affect_state == :joy -> :conversation_joy
-      agent.affect_state == :sadness or partner.affect_state == :sadness -> :conversation_sad
-      true -> :conversation_neutral
-    end
+    event_type =
+      cond do
+        agent.affect_state == :joy and partner.affect_state == :joy -> :conversation_joy
+        agent.affect_state == :sadness or partner.affect_state == :sadness -> :conversation_sad
+        true -> :conversation_neutral
+      end
 
     # Update social network
     SocialNetwork.update_relationship(agent.id, partner.id, event_type)
@@ -228,26 +259,45 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
     # Record to persistent long-term memory if emotionally significant
     if agent.affect_state in [:joy, :fear, :sadness, :desire] do
       Modus.Persistence.AgentMemory.maybe_record_from_event(
-        agent.id, agent.name, :conversation, tick,
+        agent.id,
+        agent.name,
+        :conversation,
+        tick,
         %{partner: partner.name, affect: agent.affect_state}
       )
     end
 
     # Form memories for both agents
     AffectMemory.form_memory(
-      agent.id, tick, agent.position,
-      agent.affect_state, agent.affect_state,
-      "Conversation with #{partner.name}", agent.conatus_energy
+      agent.id,
+      tick,
+      agent.position,
+      agent.affect_state,
+      agent.affect_state,
+      "Conversation with #{partner.name}",
+      agent.conatus_energy
     )
+
     AffectMemory.form_memory(
-      partner.id, tick, partner.position,
-      partner.affect_state, partner.affect_state,
-      "Conversation with #{agent.name}", partner.conatus_energy
+      partner.id,
+      tick,
+      partner.position,
+      partner.affect_state,
+      partner.affect_state,
+      "Conversation with #{agent.name}",
+      partner.conatus_energy
     )
   end
 
   defp fallback_dialogue(name1, name2) do
-    lines = ["Hello!", "How are you?", "Nice weather today.", "Watch out!", "Want to work together?"]
+    lines = [
+      "Hello!",
+      "How are you?",
+      "Nice weather today.",
+      "Watch out!",
+      "Want to work together?"
+    ]
+
     "#{name1}: #{Enum.random(lines)}\n#{name2}: #{Enum.random(lines)}"
   end
 

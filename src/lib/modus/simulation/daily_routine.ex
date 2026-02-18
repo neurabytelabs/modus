@@ -49,7 +49,7 @@ defmodule Modus.Simulation.DailyRoutine do
     openness = Map.get(personality, :openness, 0.5) |> ensure_float()
     conscientiousness = Map.get(personality, :conscientiousness, 0.5) |> ensure_float()
     score = openness * 0.6 + (1.0 - conscientiousness) * 0.4
-    score > (1.0 - @nocturnal_chance)
+    score > 1.0 - @nocturnal_chance
   end
 
   @doc "Get the current day phase from Environment."
@@ -149,9 +149,10 @@ defmodule Modus.Simulation.DailyRoutine do
   @doc "Check if agent should dream (sleeping + low energy restored enough)."
   @spec should_dream?(map()) :: boolean()
   def should_dream?(agent) do
+    # 2% chance per tick while sleeping
     agent.current_action == :sleeping and
       ensure_float(agent.conatus_energy) > 0.5 and
-      :rand.uniform() < 0.02  # 2% chance per tick while sleeping
+      :rand.uniform() < 0.02
   end
 
   @doc "Generate a dream event description (fallback, no LLM)."
@@ -165,6 +166,7 @@ defmodule Modus.Simulation.DailyRoutine do
       "#{agent.name} rüyasında büyük bir şölen vardı.",
       "#{agent.name} rüyasında gökyüzünde dans eden yıldızları izledi."
     ]
+
     Enum.random(dreams)
   end
 
@@ -191,11 +193,13 @@ defmodule Modus.Simulation.DailyRoutine do
   defp maybe_dream(agent, tick) do
     if should_dream?(agent) do
       dream = generate_dream(agent)
+
       try do
         EventLog.log(:dream, tick, [agent.id], %{agent: agent.name, dream: dream})
       catch
         _, _ -> :ok
       end
+
       # Add dream to memory
       memory = agent.memory || []
       new_memory = [{tick, {:dream, dream}} | Enum.take(memory, 19)]
@@ -217,6 +221,7 @@ defmodule Modus.Simulation.DailyRoutine do
   defp get_weather_penalty do
     try do
       weather = Modus.Simulation.Weather.current()
+
       case Map.get(weather, :type, :clear) do
         :storm -> 0.003
         :rain -> 0.001

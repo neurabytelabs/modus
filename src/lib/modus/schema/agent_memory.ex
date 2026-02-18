@@ -14,13 +14,13 @@ defmodule Modus.Schema.AgentMemory do
   import Ecto.Changeset
 
   schema "agent_memories" do
-    field :agent_id, :string
-    field :agent_name, :string
-    field :memory_type, :string
-    field :content, :string
-    field :importance, :float, default: 0.5
-    field :tick, :integer, default: 0
-    field :metadata_json, :string
+    field(:agent_id, :string)
+    field(:agent_name, :string)
+    field(:memory_type, :string)
+    field(:content, :string)
+    field(:importance, :float, default: 0.5)
+    field(:tick, :integer, default: 0)
+    field(:metadata_json, :string)
 
     timestamps()
   end
@@ -29,7 +29,15 @@ defmodule Modus.Schema.AgentMemory do
 
   def changeset(memory, attrs) do
     memory
-    |> cast(attrs, [:agent_id, :agent_name, :memory_type, :content, :importance, :tick, :metadata_json])
+    |> cast(attrs, [
+      :agent_id,
+      :agent_name,
+      :memory_type,
+      :content,
+      :importance,
+      :tick,
+      :metadata_json
+    ])
     |> validate_required([:agent_id, :memory_type, :content])
     |> validate_inclusion(:memory_type, @valid_types)
     |> validate_number(:importance, greater_than_or_equal_to: 0.0, less_than_or_equal_to: 1.0)

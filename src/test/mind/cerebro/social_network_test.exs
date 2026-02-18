@@ -16,7 +16,7 @@ defmodule Modus.Mind.Cerebro.SocialNetworkTest do
     assert SocialNetwork.get_relationship("b", "a") != nil
     # Same relationship
     assert SocialNetwork.get_relationship("a", "b").strength ==
-           SocialNetwork.get_relationship("b", "a").strength
+             SocialNetwork.get_relationship("b", "a").strength
   end
 
   test "relationship strengthens on conversation" do
@@ -37,6 +37,7 @@ defmodule Modus.Mind.Cerebro.SocialNetworkTest do
     for _ <- 1..3 do
       SocialNetwork.update_relationship("a1", "a2", :conversation_joy)
     end
+
     rel = SocialNetwork.get_relationship("a1", "a2")
     assert rel.strength == 0.24
     assert rel.type == :acquaintance

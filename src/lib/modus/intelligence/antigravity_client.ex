@@ -18,15 +18,19 @@ defmodule Modus.Intelligence.AntigravityClient do
       {failures, last_failure_at} when failures >= @max_failures ->
         elapsed = System.monotonic_time(:millisecond) - last_failure_at
         elapsed < @cooldown_ms
-      _ -> false
+
+      _ ->
+        false
     end
   end
 
   defp record_failure do
     now = System.monotonic_time(:millisecond)
+
     case :persistent_term.get(@circuit_breaker_key, nil) do
       {failures, first_at} when now - first_at < @cooldown_ms ->
         :persistent_term.put(@circuit_breaker_key, {failures + 1, first_at})
+
       _ ->
         :persistent_term.put(@circuit_breaker_key, {1, now})
     end
@@ -47,7 +51,9 @@ defmodule Modus.Intelligence.AntigravityClient do
     messages = [%{role: "user", content: prompt}]
 
     case chat_completion(messages, config, json_mode: true) do
-      {:ok, text} -> parse_decisions(text, agents)
+      {:ok, text} ->
+        parse_decisions(text, agents)
+
       {:error, reason} ->
         Logger.warning("AntigravityClient batch_decide failed: #{inspect(reason)}")
         :fallback
@@ -59,7 +65,9 @@ defmodule Modus.Intelligence.AntigravityClient do
     messages = [%{role: "user", content: prompt}]
 
     case chat_completion(messages, config, json_mode: true) do
-      {:ok, text} -> parse_conversation(text, agent_a.name, agent_b.name)
+      {:ok, text} ->
+        parse_conversation(text, agent_a.name, agent_b.name)
+
       {:error, reason} ->
         Logger.warning("AntigravityClient conversation failed: #{inspect(reason)}")
         :fallback
@@ -68,11 +76,18 @@ defmodule Modus.Intelligence.AntigravityClient do
 
   def chat_with_agent(agent, user_message, config) do
     {px, py} = agent.position
-    memories = agent |> Map.get(:memory, []) |> Enum.take(-3) |> Enum.map(fn
-      {tick, {action, _params}} -> "- Tick #{tick}: #{action}"
-      {tick, action} when is_atom(action) -> "- Tick #{tick}: #{action}"
-      other -> "- #{inspect(other)}"
-    end) |> Enum.join("\n")
+
+    memories =
+      agent
+      |> Map.get(:memory, [])
+      |> Enum.take(-3)
+      |> Enum.map(fn
+        {tick, {action, _params}} -> "- Tick #{tick}: #{action}"
+        {tick, action} when is_atom(action) -> "- Tick #{tick}: #{action}"
+        other -> "- #{inspect(other)}"
+      end)
+      |> Enum.join("\n")
+
     personality_desc = describe_personality_detailed(agent.personality)
 
     system = """
@@ -87,13 +102,16 @@ defmodule Modus.Intelligence.AntigravityClient do
 
     Stay in character. Be brief and friendly.
     """
+
     messages = [
       %{role: "system", content: system},
       %{role: "user", content: user_message}
     ]
 
     case chat_completion(messages, config) do
-      {:ok, text} -> {:ok, String.trim(text)}
+      {:ok, text} ->
+        {:ok, String.trim(text)}
+
       {:error, reason} ->
         Logger.warning("AntigravityClient chat failed: #{inspect(reason)}")
         :fallback
@@ -110,11 +128,15 @@ defmodule Modus.Intelligence.AntigravityClient do
   def test_connection(config) do
     # Bypass circuit breaker for manual test — and reset it on success
     messages = [%{role: "user", content: "Say 'ok' in one word."}]
+
     case do_chat_completion(messages, config, []) do
       {:ok, _text} ->
-        record_success()  # Reset circuit breaker on successful test
+        # Reset circuit breaker on successful test
+        record_success()
         :ok
-      {:error, reason} -> {:error, reason}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -129,6 +151,7 @@ defmodule Modus.Intelligence.AntigravityClient do
   defp chat_completion(messages, config, opts \\ []) do
     if circuit_open?() do
       Logger.debug("AntigravityClient circuit breaker OPEN — trying Gemini direct fallback")
+
       case Modus.Intelligence.GeminiClient.chat(messages) do
         {:ok, text} -> {:ok, text}
         {:error, _} -> {:error, :circuit_open}
@@ -147,17 +170,19 @@ defmodule Modus.Intelligence.AntigravityClient do
       temperature: 0.7
     }
 
-    body = if Keyword.get(opts, :json_mode, false) do
-      Map.put(body, :response_format, %{type: "json_object"})
-    else
-      body
-    end
+    body =
+      if Keyword.get(opts, :json_mode, false) do
+        Map.put(body, :response_format, %{type: "json_object"})
+      else
+        body
+      end
 
-    headers = if config.api_key do
-      [{"authorization", "Bearer #{config.api_key}"}]
-    else
-      []
-    end
+    headers =
+      if config.api_key do
+        [{"authorization", "Bearer #{config.api_key}"}]
+      else
+        []
+      end
 
     case Req.post(url,
            json: body,
@@ -168,9 +193,11 @@ defmodule Modus.Intelligence.AntigravityClient do
       {:ok, %{status: 200, body: %{"choices" => [%{"message" => %{"content" => content}} | _]}}} ->
         record_success()
         {:ok, content}
+
       {:ok, %{status: status, body: body}} ->
         record_failure()
         {:error, {:http, status, body}}
+
       {:error, err} ->
         record_failure()
         {:error, err}
@@ -225,11 +252,35 @@ defmodule Modus.Intelligence.AntigravityClient do
 
   defp describe_personality_detailed(p) do
     traits = []
-    traits = if p.openness > 0.7, do: ["curious and open-minded" | traits], else: if(p.openness < 0.3, do: ["traditional and set in their ways" | traits], else: traits)
-    traits = if p.extraversion > 0.7, do: ["social and energetic" | traits], else: if(p.extraversion < 0.3, do: ["introverted and quiet" | traits], else: traits)
-    traits = if p.agreeableness > 0.7, do: ["helpful and kind" | traits], else: if(p.agreeableness < 0.3, do: ["competitive and independent" | traits], else: traits)
-    traits = if p.conscientiousness > 0.7, do: ["hardworking and organized" | traits], else: if(p.conscientiousness < 0.3, do: ["easygoing and spontaneous" | traits], else: traits)
-    traits = if p.neuroticism > 0.7, do: ["anxious and emotional" | traits], else: if(p.neuroticism < 0.3, do: ["calm and composed" | traits], else: traits)
+
+    traits =
+      if p.openness > 0.7,
+        do: ["curious and open-minded" | traits],
+        else:
+          if(p.openness < 0.3, do: ["traditional and set in their ways" | traits], else: traits)
+
+    traits =
+      if p.extraversion > 0.7,
+        do: ["social and energetic" | traits],
+        else: if(p.extraversion < 0.3, do: ["introverted and quiet" | traits], else: traits)
+
+    traits =
+      if p.agreeableness > 0.7,
+        do: ["helpful and kind" | traits],
+        else:
+          if(p.agreeableness < 0.3, do: ["competitive and independent" | traits], else: traits)
+
+    traits =
+      if p.conscientiousness > 0.7,
+        do: ["hardworking and organized" | traits],
+        else:
+          if(p.conscientiousness < 0.3, do: ["easygoing and spontaneous" | traits], else: traits)
+
+    traits =
+      if p.neuroticism > 0.7,
+        do: ["anxious and emotional" | traits],
+        else: if(p.neuroticism < 0.3, do: ["calm and composed" | traits], else: traits)
+
     if traits == [], do: "an ordinary person", else: Enum.join(traits, ", ")
   end
 
@@ -260,6 +311,7 @@ defmodule Modus.Intelligence.AntigravityClient do
           action = normalize_action(d["action"])
           {d["id"], action, %{reason: d["reason"] || "llm"}}
         end)
+
       _ ->
         Logger.warning("AntigravityClient: failed to parse decisions JSON")
         :fallback
@@ -273,12 +325,15 @@ defmodule Modus.Intelligence.AntigravityClient do
         |> Enum.take(6)
         |> Enum.filter(fn d -> d["speaker"] in [name_a, name_b] end)
         |> Enum.map(fn d -> {d["speaker"], d["line"] || ""} end)
-      _ -> :fallback
+
+      _ ->
+        :fallback
     end
   end
 
   defp normalize_action(action_str) when is_binary(action_str) do
     if action_str in @valid_actions, do: String.to_atom(action_str), else: :idle
   end
+
   defp normalize_action(_), do: :idle
 end
