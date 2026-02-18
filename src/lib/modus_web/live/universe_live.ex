@@ -1,7 +1,7 @@
 defmodule ModusWeb.UniverseLive do
   @moduledoc """
   Main LiveView — MODUS universe dashboard with 2D renderer.
-  v3.7.0 Persistentia — Robust World Persistence + Save/Load UI.
+  v5.0.0 Forma — UI Design Overhaul with glassmorphism design system.
   """
   use ModusWeb, :live_view
   # JS alias available if needed
@@ -1490,7 +1490,7 @@ defmodule ModusWeb.UniverseLive do
           MODUS<span class="text-purple-400">_</span>
         </h1>
         <p class="text-2xl md:text-3xl font-light text-slate-300 mb-2">Create Worlds. Watch Them Live.</p>
-        <p class="text-sm text-slate-500 mb-12">v2.3.0 Amor · AI-Powered Universe Simulation</p>
+        <p class="text-sm text-slate-500 mb-12">v5.0.0 Forma · AI-Powered Universe Simulation</p>
 
         <%!-- Feature Cards --%>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
@@ -1540,7 +1540,7 @@ defmodule ModusWeb.UniverseLive do
           <h1 class="text-5xl md:text-6xl font-bold tracking-tighter mb-2">
             MODUS<span class="text-purple-400">_</span>
           </h1>
-          <p class="text-sm text-slate-500">v2.3.0 Amor · You're not limited to one world — create many.</p>
+          <p class="text-sm text-slate-500">v5.0.0 Forma · You're not limited to one world — create many.</p>
         </div>
 
         <%!-- Sort Controls --%>
@@ -1665,7 +1665,7 @@ defmodule ModusWeb.UniverseLive do
           <span class="px-2 py-1 bg-white/5 rounded border border-white/10">🌿 Nature Resources</span>
           <span class="px-2 py-1 bg-white/5 rounded border border-white/10">🎛️ Custom Rules Engine</span>
         </div>
-        <p class="text-xs text-slate-600 mb-6">v2.3.0 Amor · 30+ modules · Elixir/BEAM · Pixi.js</p>
+        <p class="text-xs text-slate-600 mb-6">v5.0.0 Forma · 92+ modules · Elixir/BEAM · Pixi.js</p>
       </div>
 
       <%!-- Create World Section --%>
@@ -2014,12 +2014,12 @@ defmodule ModusWeb.UniverseLive do
         <div class="fixed top-3 left-3 z-50 text-[10px] text-cyan-400 bg-black/50 px-2 py-1 rounded backdrop-blur-sm">📝 TEXT MODE</div>
       <% end %>
       <%!-- Top Bar --%>
-      <nav class={"border-b border-white/5 bg-[#0A0A0F]/80 backdrop-blur-md px-4 md:px-6 h-14 flex items-center justify-between shrink-0 z-20" <> if(@zen_mode, do: " hidden", else: "")}>
+      <nav class={"modus-topbar px-4 md:px-6 h-14 flex items-center justify-between shrink-0 z-20" <> if(@zen_mode, do: " hidden", else: "")}>
         <div class="flex items-center gap-3">
           <span class="text-xl font-bold tracking-tighter">
             MODUS<span class="text-purple-400">_</span>
           </span>
-          <span class="text-xs text-slate-600 hidden sm:inline">v3.5.0 · Eventus</span>
+          <span class="text-xs text-slate-600 hidden sm:inline">v5.0.0 · Forma</span>
           <%= if @rules["preset"] && @rules["preset"] != "Custom" do %>
             <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 hidden sm:inline">
               🎛️ <%= @rules["preset"] %>
@@ -2182,7 +2182,7 @@ defmodule ModusWeb.UniverseLive do
       <%!-- Main Area --%>
       <div class="flex-1 flex min-h-0 relative">
         <%!-- Left Sidebar: Event Injection + Timeline --%>
-        <div class={"shrink-0 border-r border-white/5 bg-[#0A0A0F]/90 backdrop-blur-md overflow-y-auto z-10 transition-all duration-300 " <>
+        <div class={"shrink-0 modus-sidebar overflow-y-auto z-10 transition-all duration-300 " <>
           if(@zen_mode, do: "hidden ", else: "hidden md:block ") <> if(@timeline_open, do: "md:w-64", else: "md:w-48")}>
           <div class="p-3">
             <%= if @agent_designer_open do %>
@@ -2503,7 +2503,7 @@ defmodule ModusWeb.UniverseLive do
 
         <%!-- Right Panel: Agent Detail (desktop) --%>
         <%= if @selected_agent && !@zen_mode do %>
-          <div class={"shrink-0 border-l border-white/5 bg-[#0A0A0F]/90 backdrop-blur-md overflow-y-auto z-10 transition-all duration-300 " <>
+          <div class={"shrink-0 modus-sidebar-right overflow-y-auto z-10 transition-all duration-300 " <>
             "fixed inset-x-0 bottom-0 top-14 md:static md:w-80 " <>
             if(@mobile_panel == :agent, do: "translate-y-0", else: "translate-y-full md:translate-y-0")}>
             <div class="p-4">
@@ -2872,7 +2872,7 @@ defmodule ModusWeb.UniverseLive do
 
       <%!-- Settings Modal --%>
       <%= if @settings_open do %>
-        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="fixed inset-0 modus-modal-overlay z-50 flex items-center justify-center p-4">
           <div class="bg-[#0A0A0F] border border-white/10 rounded-xl w-full max-w-md flex flex-col shadow-2xl" phx-click-away="close_settings">
             <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
               <span class="font-bold text-slate-100">⚙️ LLM Settings</span>
@@ -2959,7 +2959,7 @@ defmodule ModusWeb.UniverseLive do
 
       <%!-- Rules Engine Modal --%>
       <%= if @rules_open do %>
-        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="fixed inset-0 modus-modal-overlay z-50 flex items-center justify-center p-4">
           <div class="bg-[#0A0A0F] border border-white/10 rounded-xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl" phx-click-away="close_rules">
             <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
               <span class="font-bold text-slate-100">🎛️ World Rules</span>
@@ -3080,7 +3080,7 @@ defmodule ModusWeb.UniverseLive do
 
       <%!-- Save/Load Modal — v3.7.0 Persistentia --%>
       <%= if @save_load_open do %>
-        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="fixed inset-0 modus-modal-overlay z-50 flex items-center justify-center p-4">
           <div class="bg-[#0A0A0F]/95 backdrop-blur-xl border border-white/10 rounded-2xl w-[600px] max-h-[480px] flex flex-col shadow-2xl shadow-cyan-500/5" phx-click-away="close_save_load">
             <%!-- Header with auto-save indicator --%>
             <div class="px-5 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
@@ -3558,7 +3558,7 @@ defmodule ModusWeb.UniverseLive do
 
       <%!-- World History Modal --%>
       <%= if @history_open do %>
-        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="fixed inset-0 modus-modal-overlay z-50 flex items-center justify-center p-4">
           <div class="bg-[#0A0A0F] border border-white/10 rounded-xl w-full max-w-3xl max-h-[80vh] flex flex-col shadow-2xl" phx-click-away="close_history">
             <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
               <span class="font-bold text-slate-100">📖 World History</span>
@@ -3656,7 +3656,7 @@ defmodule ModusWeb.UniverseLive do
 
       <%!-- Chronicle Export Modal --%>
       <%= if @chronicle_open do %>
-        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="fixed inset-0 modus-modal-overlay z-50 flex items-center justify-center p-4">
           <div class="bg-[#0A0A0F] border border-white/10 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl" phx-click-away="close_chronicle">
             <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
               <span class="font-bold text-slate-100">📖 World Chronicle</span>
@@ -3675,12 +3675,12 @@ defmodule ModusWeb.UniverseLive do
 
       <%!-- Export & Share Modal --%>
       <%= if @export_open do %>
-        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="fixed inset-0 modus-modal-overlay z-50 flex items-center justify-center p-4">
           <div class="bg-[#0A0A0F] border border-white/10 rounded-xl w-full max-w-lg max-h-[80vh] flex flex-col shadow-2xl" phx-click-away="close_export">
             <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
               <div class="flex items-center gap-2">
                 <span class="font-bold text-slate-100">📤 Export & Share</span>
-                <span class="text-[9px] text-slate-600">v2.2.1 Speculum</span>
+                <span class="text-[9px] text-slate-600">v5.0.0 Forma</span>
               </div>
               <button phx-click="close_export" class="text-slate-600 hover:text-slate-400">✕</button>
             </div>
@@ -3761,13 +3761,13 @@ defmodule ModusWeb.UniverseLive do
 
       <%!-- Stats Modal --%>
       <%= if @stats_open do %>
-        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="fixed inset-0 modus-modal-overlay z-50 flex items-center justify-center p-4">
           <div class="bg-[#0A0A0F] border border-white/10 rounded-xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl" phx-click-away="close_stats">
             <%!-- Header --%>
             <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
               <div class="flex items-center gap-3">
                 <span class="font-bold text-slate-100">📊 Observatory</span>
-                <span class="text-[9px] text-slate-600">v2.2.0 Speculum</span>
+                <span class="text-[9px] text-slate-600">v5.0.0 Forma</span>
               </div>
               <div class="flex items-center gap-2">
                 <button phx-click="obs_refresh" class="text-[10px] px-2 py-1 rounded bg-white/5 border border-white/10 text-slate-500 hover:text-slate-300 hover:border-white/20 transition-all">↻ Refresh</button>
@@ -4016,65 +4016,7 @@ defmodule ModusWeb.UniverseLive do
         </div>
       <% end %>
 
-    <style>
-      .ctrl-btn {
-        padding: 4px 12px;
-        font-size: 11px;
-        font-family: monospace;
-        border-radius: 6px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        color: #94a3b8;
-        cursor: pointer;
-        transition: all 0.15s;
-      }
-      .ctrl-btn:hover { background: rgba(255, 255, 255, 0.1); color: #e2e8f0; }
-      .ctrl-btn-active {
-        background: rgba(6, 182, 212, 0.15);
-        border-color: rgba(6, 182, 212, 0.4);
-        color: #22d3ee;
-        box-shadow: 0 0 8px rgba(6, 182, 212, 0.15);
-      }
-      .ctrl-btn-active:hover { background: rgba(6, 182, 212, 0.25); color: #67e8f9; }
-      .ctrl-btn-primary {
-        background: rgba(168, 85, 247, 0.15);
-        border-color: rgba(168, 85, 247, 0.3);
-        color: #c084fc;
-      }
-      .ctrl-btn-primary:hover { background: rgba(168, 85, 247, 0.25); color: #e9d5ff; }
-      .event-btn {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        width: 100%;
-        padding: 8px 12px;
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        color: #94a3b8;
-        cursor: pointer;
-        transition: all 0.15s;
-        font-family: monospace;
-      }
-      .event-btn:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.12); color: #e2e8f0; }
-      .event-btn:active { transform: scale(0.97); }
-      .mobile-action-btn {
-        padding: 6px 12px;
-        font-size: 18px;
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.05);
-        border: none;
-        cursor: pointer;
-        transition: all 0.1s;
-      }
-      .mobile-action-btn:active { transform: scale(0.9); background: rgba(168, 85, 247, 0.2); }
-      @keyframes slide-in { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
-      .animate-slide-in { animation: slide-in 0.3s ease-out; }
-      @keyframes banner-slide { from { opacity: 0; transform: translateY(-100%); } to { opacity: 1; transform: translateY(0); } }
-      .animate-banner-slide { animation: banner-slide 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-      @keyframes toast-pop { 0% { opacity: 0; transform: translateY(-10px) scale(0.95); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
-      .animate-toast-pop { animation: toast-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
-    </style>
+    <%!-- Styles now in app.css design system (v5.0.0 Forma) --%>
     """
   end
 
