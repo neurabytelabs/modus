@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>MODUS v5.3.0 Velocitas — Performans Raporu</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'JetBrains Mono', monospace; background: #0a0a0f; color: #e0e0e0; padding: 2rem; }
+    h1 { color: #7C3AED; font-size: 1.8rem; margin-bottom: 0.5rem; }
+    h2 { color: #06B6D4; font-size: 1.2rem; margin: 1.5rem 0 0.5rem; }
+    .subtitle { color: #888; margin-bottom: 2rem; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    th, td { padding: 0.6rem 1rem; text-align: left; border-bottom: 1px solid #222; }
+    th { color: #7C3AED; background: #111118; font-weight: 600; }
+    tr:hover { background: #111118; }
+    .pass { color: #22c55e; }
+    .fail { color: #ef4444; }
+    .card { background: #111118; border: 1px solid #222; border-radius: 8px; padding: 1.5rem; margin: 1rem 0; }
+    .metric { display: inline-block; margin-right: 2rem; }
+    .metric-value { font-size: 1.5rem; color: #7C3AED; font-weight: bold; }
+    .metric-label { color: #888; font-size: 0.8rem; }
+    footer { margin-top: 2rem; color: #555; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+  <h1>⚡ MODUS v5.3.0 Velocitas — Performans Raporu</h1>
+  <p class="subtitle">Sprint v4 IT-14 | 2026-02-18 19:02:24.391837Z</p>
+
+  <h2>📊 Benchmark Sonuçları</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Agent</th><th>Ort. Tick</th><th>P95</th><th>P99</th><th>Bütçe &lt;100ms</th><th>Bellek Δ</th><th>GC Sayısı</th><th>Throughput</th>
+      </tr>
+    </thead>
+    <tbody><tr>
+  <td><strong>50</strong></td>
+  <td>0.0 ms</td>
+  <td>0 ms</td>
+  <td>0 ms</td>
+  <td>✅</td>
+  <td>-0.01 MB</td>
+  <td>1</td>
+  <td>6.25e5/s</td>
+</tr>
+<tr>
+  <td><strong>100</strong></td>
+  <td>0.0 ms</td>
+  <td>0 ms</td>
+  <td>0 ms</td>
+  <td>✅</td>
+  <td>-0.03 MB</td>
+  <td>2</td>
+  <td>892857.1/s</td>
+</tr>
+<tr>
+  <td><strong>200</strong></td>
+  <td>0.0 ms</td>
+  <td>0 ms</td>
+  <td>0 ms</td>
+  <td>✅</td>
+  <td>0.0 MB</td>
+  <td>3</td>
+  <td>909090.9/s</td>
+</tr>
+<tr>
+  <td><strong>500</strong></td>
+  <td>0.0 ms</td>
+  <td>0 ms</td>
+  <td>0 ms</td>
+  <td>✅</td>
+  <td>-0.04 MB</td>
+  <td>1</td>
+  <td>909090.9/s</td>
+</tr>
+</tbody>
+  </table>
+
+  <h2>🔥 Hotspot Analizi</h2>
+  <table>
+    <thead><tr><th>Modül</th><th>Ort.</th><th>Max</th><th>Toplam</th></tr></thead>
+    <tbody><tr><td>GcTuning.stats</td><td>25 µs</td><td>119 µs</td><td>515 µs</td></tr><tr><td>MemoryAudit.summary</td><td>1 µs</td><td>12 µs</td><td>29 µs</td></tr><tr><td>SpatialIndex.nearby</td><td>1 µs</td><td>8 µs</td><td>25 µs</td></tr><tr><td>SpatialIndex.rebuild</td><td>1 µs</td><td>2 µs</td><td>20 µs</td></tr></tbody>
+  </table>
+
+  <h2>🎯 Hedef: 200 agent @ &lt;100ms tick</h2>
+  <div class="card">
+    <p>Spatial Index (O(1) komşu arama), ETS read_concurrency, StateLimiter (10KB/agent), GC tuning (fullsweep_after: 50), delta render (sadece değişen tile gönder).</p>
+  </div>
+
+  <footer>NeuraByte Labs — "Where Spinoza Meets Silicon" | Sprint v4 Mundus</footer>
+</body>
+</html>
