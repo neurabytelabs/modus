@@ -253,7 +253,7 @@ defmodule ModusWeb.WorldChannel do
 
   # ── World Builder: Paint Terrain ──────────────────────────────
 
-  @valid_terrains ~w(grass forest water mountain desert sand farm flowers)
+  @valid_terrains ~w(grass forest water mountain desert sand farm flowers swamp tundra)
 
   def handle_in("paint_terrain", %{"x" => x, "y" => y, "terrain" => terrain}, socket)
       when is_integer(x) and is_integer(y) and terrain in @valid_terrains do
@@ -743,7 +743,8 @@ defmodule ModusWeb.WorldChannel do
     for x <- 0..(max_x - 1), y <- 0..(max_y - 1) do
       case :ets.lookup(world_state.grid_table, {x, y}) do
         [{{^x, ^y}, cell}] ->
-          base = %{x: x, y: y, terrain: cell.terrain |> to_string()}
+          biome = Map.get(cell, :biome, :plains) |> to_string()
+          base = %{x: x, y: y, terrain: cell.terrain |> to_string(), biome: biome}
           nodes = Map.get(cell, :resource_nodes, [])
           if nodes == [], do: base, else: Map.put(base, :resource_nodes, Enum.map(nodes, &to_string/1))
 

@@ -461,15 +461,20 @@ defmodule Modus.Simulation.Agent do
   # --- Terrain & Environment Effects ---
 
   defp apply_terrain_effects(agent, action) when action in [:move_to, :explore] do
-    # Check terrain at current position
-    terrain = get_terrain_at(agent.position)
-    case terrain do
-      :forest ->
-        # Forest: extra energy cost when moving
-        energy = max(agent.conatus_energy - 0.005, 0.0)
-        %{agent | conatus_energy: energy}
-      _ ->
-        agent
+    # Check biome at current position for movement cost
+    {x, y} = agent.position
+    biome = Modus.Simulation.TerrainGenerator.biome_at(x, y) || :plains
+    cost = Modus.Simulation.TerrainGenerator.movement_cost(biome)
+
+    case cost do
+      :impassable ->
+        # Shouldn't be here, but drain energy if somehow on ocean
+        %{agent | conatus_energy: max(agent.conatus_energy - 0.02, 0.0)}
+
+      c when is_number(c) ->
+        # Energy drain scales with movement cost (1.0 = baseline 0.003)
+        drain = 0.003 * c
+        %{agent | conatus_energy: max(agent.conatus_energy - drain, 0.0)}
     end
   end
   defp apply_terrain_effects(agent, _action), do: agent

@@ -68,6 +68,7 @@ defmodule Modus.Simulation.World do
       status: :initializing,
       config: %{
         template: Keyword.get(opts, :template, :village),
+        terrain_preset: Keyword.get(opts, :terrain_preset, :continent),
         resource_abundance: Keyword.get(opts, :resource_abundance, :medium),
         danger_level: Keyword.get(opts, :danger_level, :normal),
         seed: Keyword.get(opts, :seed, :rand.uniform(1_000_000))
@@ -136,6 +137,12 @@ defmodule Modus.Simulation.World do
   def init(world) do
     table = :ets.new(:modus_grid, [:set, :public, read_concurrency: true])
     world = %{world | grid_table: table, status: :paused}
+
+    # Generate terrain via TerrainGenerator (Perlin noise + biomes)
+    preset = Map.get(world.config, :terrain_preset, :continent)
+    {max_x, max_y} = world.grid_size
+    Modus.Simulation.TerrainGenerator.generate(max_x, max_y, world.config.seed, preset)
+
     generate_terrain(world)
     # Initialize buildings ETS
     Modus.Simulation.Building.init_table()
@@ -232,9 +239,10 @@ defmodule Modus.Simulation.World do
     x = :rand.uniform(max_x) - 1
     y = :rand.uniform(max_y) - 1
 
+    walkable = Modus.Simulation.TerrainGenerator.walkable?(x, y)
     case :ets.lookup(table, {x, y}) do
-      [{{^x, ^y}, %{terrain: terrain}}] when terrain in [:grass, :forest] ->
-        {x, y}
+      [{{^x, ^y}, %{terrain: terrain}}] when terrain in [:grass, :forest, :desert, :swamp, :tundra] ->
+        if walkable, do: {x, y}, else: find_walkable_position(table, max_x, max_y)
 
       _ ->
         find_walkable_position(table, max_x, max_y)
@@ -341,11 +349,28 @@ defmodule Modus.Simulation.World do
     seed = world.config.seed
     villages = generate_villages(max_x, max_y, seed)
 
+    alias Modus.Simulation.TerrainGenerator
+
     for x <- 0..(max_x - 1), y <- 0..(max_y - 1) do
-      terrain = procedural_terrain(x, y, seed, max_x, max_y, villages)
+      terrain =
+        cond do
+          on_river?(x, y, seed, max_x, max_y) -> :water
+          on_road?(x, y, villages) -> :grass
+          near_village?(x, y, villages) -> :grass
+          true ->
+            case TerrainGenerator.biome_at(x, y) do
+              nil -> :grass
+              biome -> TerrainGenerator.terrain_type(biome)
+            end
+        end
+
+      # Get biome info for enriched cell data
+      biome_data = TerrainGenerator.get(x, y)
+      biome = if biome_data, do: biome_data.biome, else: :plains
 
       cell = %{
         terrain: terrain,
+        biome: biome,
         occupants: [],
         resources: default_resources(terrain)
       }
@@ -356,65 +381,7 @@ defmodule Modus.Simulation.World do
     :ok
   end
 
-  @spec procedural_terrain(integer(), integer(), integer(), integer(), integer(), list()) :: terrain()
-  defp procedural_terrain(x, y, seed, max_x, max_y, villages) do
-    # Check structures first (roads, villages, rivers)
-    cond do
-      on_river?(x, y, seed, max_x, max_y) -> :water
-      on_road?(x, y, villages) -> :grass
-      near_village?(x, y, villages) -> :grass
-      true -> biome_terrain(x, y, seed)
-    end
-  end
-
-  defp biome_terrain(x, y, seed) do
-    biome = biome_at(x, y, seed)
-    n = value_noise(x, y, seed)
-
-    case biome do
-      :plains ->
-        cond do
-          n < 0.15 -> :water
-          n < 0.70 -> :grass
-          n < 0.85 -> :forest
-          true -> :mountain
-        end
-
-      :forest_village ->
-        cond do
-          n < 0.10 -> :water
-          n < 0.35 -> :grass
-          n < 0.85 -> :forest
-          true -> :mountain
-        end
-
-      :coastal ->
-        cond do
-          n < 0.40 -> :water
-          n < 0.70 -> :grass
-          n < 0.85 -> :forest
-          true -> :mountain
-        end
-
-      :mountain_pass ->
-        cond do
-          n < 0.10 -> :water
-          n < 0.30 -> :grass
-          n < 0.50 -> :forest
-          true -> :mountain
-        end
-    end
-  end
-
-  # Simple value noise — hash-based, deterministic, no external deps
-  @spec value_noise(integer(), integer(), integer()) :: float()
-  defp value_noise(x, y, seed) do
-    # Two octaves for variety
-    n1 = noise_at(x, y, seed, 8)
-    n2 = noise_at(x, y, seed, 16)
-    # Weighted blend
-    (n1 * 0.65 + n2 * 0.35)
-  end
+  # Legacy noise functions kept for biome_at/3 compatibility
 
   defp noise_at(x, y, seed, scale) do
     # Grid coordinates
@@ -454,6 +421,8 @@ defmodule Modus.Simulation.World do
   def default_resources(:farm), do: %{crops: 12, food: 8}
   def default_resources(:flowers), do: %{herbs: 6, food: 2}
   def default_resources(:sand), do: %{}
-  def default_resources(:desert), do: %{}
+  def default_resources(:desert), do: %{stone: 3}
+  def default_resources(:swamp), do: %{herbs: 8, food: 2}
+  def default_resources(:tundra), do: %{stone: 4, food: 1}
   def default_resources(_), do: %{}
 end
