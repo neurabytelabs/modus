@@ -784,6 +784,9 @@ defmodule ModusWeb.WorldChannel do
           friends: (try do Modus.Mind.Cerebro.SocialNetwork.get_friends(state.id) |> Enum.take(3) catch _, _ -> [] end)
                    |> Enum.take(5)
                    |> Enum.map(fn f -> %{id: f.id, strength: Float.round(ensure_float(f.strength), 2)} end),
+          age: state.age,
+          age_stage: Modus.Simulation.Aging.stage(state.age) |> to_string(),
+          age_emoji: Modus.Simulation.Aging.emoji(Modus.Simulation.Aging.stage(state.age)),
           conversing_with: Map.get(state, :conversing_with),
           group: case Modus.Mind.Cerebro.Group.get_agent_group(state.id) do
             nil -> nil
@@ -862,6 +865,8 @@ defmodule ModusWeb.WorldChannel do
           _, _ -> []
         end,
       last_reasoning: state.last_reasoning,
+      aging: Modus.Simulation.Aging.serialize(state.id, state.age),
+      population_pyramid: Modus.Simulation.Aging.population_pyramid(),
       skills: Modus.Mind.Learning.to_map(state.id),
       inventory: state.inventory || %{},
       goals: Modus.Mind.Goals.serialize(state.id),

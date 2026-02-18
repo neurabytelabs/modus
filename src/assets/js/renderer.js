@@ -353,28 +353,40 @@ export default class Renderer {
         const colorIdx = this._hashCode(agent.id) % AGENT_COLORS.length
         const color = AGENT_COLORS[colorIdx]
 
+        // Age-based radius: child=small, young=normal, adult=normal, elder=slightly larger
+        const ageStage = agent.age_stage || "adult"
+        const ageRadius = ageStage === "child" ? AGENT_RADIUS * 0.6
+          : ageStage === "young" ? AGENT_RADIUS * 0.85
+          : ageStage === "elder" ? AGENT_RADIUS * 1.1
+          : AGENT_RADIUS
+        const strokeColor = ageStage === "elder" ? 0xffd700 : 0xffffff
+        const strokeAlpha = ageStage === "elder" ? 0.7 : 0.3
+        const strokeWidth = ageStage === "elder" ? 2.5 : 1.5
+
         const agentContainer = new Container()
         agentContainer.x = px
         agentContainer.y = py
 
         const gfx = new Graphics()
-        gfx.circle(0, 0, AGENT_RADIUS)
+        gfx.circle(0, 0, ageRadius)
         gfx.fill(color)
-        gfx.circle(0, 0, AGENT_RADIUS)
-        gfx.stroke({ width: 1.5, color: 0xffffff, alpha: 0.3 })
+        gfx.circle(0, 0, ageRadius)
+        gfx.stroke({ width: strokeWidth, color: strokeColor, alpha: strokeAlpha })
         agentContainer.addChild(gfx)
 
+        // Age emoji indicator
+        const ageEmoji = agent.age_emoji || ""
         const label = new Text({
-          text: agent.name || "?",
+          text: (ageEmoji ? ageEmoji + " " : "") + (agent.name || "?"),
           style: new TextStyle({
             fontFamily: "monospace",
             fontSize: 8,
-            fill: 0xffffff,
+            fill: ageStage === "elder" ? 0xffd700 : 0xffffff,
             align: "center",
           }),
         })
         label.anchor.set(0.5, 0)
-        label.y = AGENT_RADIUS + 2
+        label.y = ageRadius + 2
         agentContainer.addChild(label)
 
         // Conatus energy bar

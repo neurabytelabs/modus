@@ -171,8 +171,10 @@ defmodule Modus.Simulation.Agent do
   @impl true
   def init(agent) do
     Phoenix.PubSub.subscribe(Modus.PubSub, "simulation:ticks")
-    # Initialize learning skills if not already set
+    # Initialize learning skills and aging
     Modus.Mind.Learning.init_skills(agent.id)
+    Modus.Simulation.Aging.init()
+    Modus.Simulation.Aging.init_agent(agent.id)
     {:ok, agent}
   end
 
@@ -294,10 +296,24 @@ defmodule Modus.Simulation.Agent do
       |> apply_neighborhood_bonus()
       |> apply_action(action, params)
       |> Modus.Simulation.DailyRoutine.process_tick(action, tick_number)
-      |> tap(fn a -> Modus.Mind.Learning.award_for_action(a.id, action) end)
+      |> tap(fn a ->
+        # Age-based learning rate modifier
+        age_mods = Modus.Simulation.Aging.modifiers(Modus.Simulation.Aging.stage(a.age))
+        lr = Map.get(age_mods, :learning_rate, 1.0)
+        if lr != 1.0 do
+          # Temporarily boost XP via multiple awards for fast learners
+          times = max(1, round(lr))
+          Enum.each(1..times, fn _ -> Modus.Mind.Learning.award_for_action(a.id, action) end)
+        else
+          Modus.Mind.Learning.award_for_action(a.id, action)
+        end
+      end)
       |> Modus.Mind.MindEngine.process_tick(action, params, tick_number)
       |> tap(fn a -> Modus.Mind.Cerebro.AgentConversation.maybe_converse(a, nearby, tick_number) end)
+      |> tap(fn a -> Modus.Simulation.Aging.maybe_teach(a.id, tick_number, nearby) end)
       |> increment_age(tick_number)
+      |> Modus.Simulation.Aging.process_tick(tick_number)
+      |> check_age_death(tick_number)
       |> check_death(tick_number)
       |> record_memory(tick_number, {action, params})
 
@@ -549,6 +565,19 @@ defmodule Modus.Simulation.Agent do
   end
 
   # --- Death Check ---
+
+  defp check_age_death(%{alive?: false} = agent, _tick), do: agent
+  defp check_age_death(agent, tick) do
+    if Modus.Simulation.Aging.should_die_of_age?(agent.id, agent.age) do
+      Modus.Simulation.EventLog.log(:death, tick, [agent.id], %{cause: "old_age", name: agent.name, age: agent.age})
+      Modus.Persistence.AgentMemory.maybe_record_from_event(agent.id, agent.name, :death, tick, %{cause: "old_age"})
+      Modus.Simulation.Lifecycle.record_death()
+      Modus.Simulation.Aging.on_death(agent.id, agent.age, tick)
+      %{agent | alive?: false, current_action: :dead}
+    else
+      agent
+    end
+  end
 
   defp check_death(agent, tick) do
     cond do
