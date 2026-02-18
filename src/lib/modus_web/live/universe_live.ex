@@ -1,12 +1,14 @@
 defmodule ModusWeb.UniverseLive do
   @moduledoc """
   Main LiveView — MODUS universe dashboard with 2D renderer.
-  v3.5.0 Eventus — Dynamic World Events v2, event chains, notification UI.
+  v3.6.0 Speculum — Data Visualization Dashboard + UI Enhancement.
   """
   use ModusWeb, :live_view
   # JS alias available if needed
 
   alias Modus.Simulation.WorldTemplates
+  alias Modus.Simulation.Observatory
+  import ModusWeb.DashboardCharts
 
   @impl true
   def mount(_params, _session, socket) do
@@ -124,6 +126,16 @@ defmodule ModusWeb.UniverseLive do
        designer_name: "",
        designer_occupation: "explorer",
        designer_mood: "calm",
+       # Speculum Dashboard
+       data_dashboard: false,
+       dash_population: [],
+       dash_resources: %{},
+       dash_nodes: [],
+       dash_edges: [],
+       dash_moods: [],
+       dash_trades: [],
+       dash_predators: 0,
+       dash_prey: 0,
        designer_o: 50,
        designer_c: 50,
        designer_e: 50,
@@ -164,6 +176,16 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("toggle_zen_mode", _params, socket) do
     {:noreply, assign(socket, zen_mode: !socket.assigns.zen_mode)}
+  end
+
+  def handle_event("keypress", %{"key" => key}, socket) when key in ["d", "D"] do
+    show = !socket.assigns.data_dashboard
+    dash_assigns = if show, do: refresh_dashboard_data(), else: %{}
+    {:noreply, socket |> assign(Map.merge(%{data_dashboard: show}, dash_assigns))}
+  end
+
+  def handle_event("close_dashboard", _params, socket) do
+    {:noreply, assign(socket, data_dashboard: false)}
   end
 
   def handle_event("keypress", %{"key" => "p"}, socket) do
@@ -1693,6 +1715,46 @@ defmodule ModusWeb.UniverseLive do
   defp render_simulation(assigns) do
     ~H"""
     <div class="h-screen flex flex-col bg-[#050508] text-slate-200 font-mono overflow-hidden" phx-window-keydown="keypress">
+      <%!-- Speculum Data Dashboard --%>
+      <%= if @data_dashboard do %>
+        <div class="fixed inset-0 z-50 bg-[#0A0A0F]/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 overflow-auto">
+          <div class="w-full max-w-7xl">
+            <div class="flex justify-between items-center mb-6">
+              <h2 class="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+                📊 SPECULUM — Analytics Dashboard
+              </h2>
+              <button phx-click="close_dashboard" class="text-slate-400 hover:text-white text-xl">✕</button>
+            </div>
+            <div class="grid grid-cols-3 gap-4">
+              <div class="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 shadow-lg shadow-cyan-500/5">
+                <h3 class="text-xs font-semibold text-cyan-400 uppercase tracking-wider mb-2">Population</h3>
+                <.population_chart data={@dash_population} />
+              </div>
+              <div class="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 shadow-lg shadow-purple-500/5">
+                <h3 class="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-2">Resources</h3>
+                <.resource_chart data={@dash_resources} />
+              </div>
+              <div class="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 shadow-lg shadow-cyan-500/5">
+                <h3 class="text-xs font-semibold text-cyan-400 uppercase tracking-wider mb-2">Relationships</h3>
+                <.relationship_chart nodes={@dash_nodes} edges={@dash_edges} />
+              </div>
+              <div class="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 shadow-lg shadow-purple-500/5">
+                <h3 class="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-2">Mood</h3>
+                <.mood_chart data={@dash_moods} />
+              </div>
+              <div class="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 shadow-lg shadow-cyan-500/5">
+                <h3 class="text-xs font-semibold text-cyan-400 uppercase tracking-wider mb-2">Trade Volume</h3>
+                <.trade_chart data={@dash_trades} />
+              </div>
+              <div class="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 shadow-lg shadow-purple-500/5">
+                <h3 class="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-2">Ecosystem</h3>
+                <.ecosystem_chart predators={@dash_predators} prey={@dash_prey} agents={@agent_count} />
+              </div>
+            </div>
+            <p class="text-center text-slate-500 text-xs mt-4">Press <kbd class="px-1.5 py-0.5 bg-white/10 rounded text-slate-300">D</kbd> to close</p>
+          </div>
+        </div>
+      <% end %>
       <%!-- Zen Mode indicator --%>
       <%= if @zen_mode do %>
         <div class="fixed top-3 right-3 z-50 text-[10px] text-slate-600 bg-black/50 px-2 py-1 rounded backdrop-blur-sm">Z</div>
@@ -3844,4 +3906,72 @@ defmodule ModusWeb.UniverseLive do
   defp event_emoji("disaster"), do: "🌋"
   defp event_emoji("migration"), do: "🚶"
   defp event_emoji(_), do: "⚡"
+
+  # ── Speculum Dashboard Data ──────────────────────────────
+
+  defp refresh_dashboard_data do
+    pop_history = try do Observatory.population_history() catch _, _ -> [] end
+    _stats = try do Observatory.world_stats() catch _, _ -> %{population: 0} end
+    {nodes, edges} = try do Observatory.relationship_network() catch _, _ -> {[], []} end
+    trades = try do Observatory.trade_timeline(pop_history) catch _, _ -> [] end
+
+    # Aggregate resources from all agents
+    agents = try do
+      Modus.Simulation.AgentSupervisor.list_agents()
+      |> Enum.map(fn id -> try do Modus.Simulation.Agent.get_state(id) catch _, _ -> nil end end)
+      |> Enum.filter(& &1)
+    catch _, _ -> [] end
+
+    resources = agents
+      |> Enum.reduce(%{wood: 0, stone: 0, food: 0, herbs: 0}, fn a, acc ->
+        inv = a.inventory || %{}
+        %{
+          wood: acc.wood + Map.get(inv, :wood, Map.get(inv, "wood", 0)),
+          stone: acc.stone + Map.get(inv, :stone, Map.get(inv, "stone", 0)),
+          food: acc.food + Map.get(inv, :food, Map.get(inv, "food", 0)),
+          herbs: acc.herbs + Map.get(inv, :herbs, Map.get(inv, "herbs", 0))
+        }
+      end)
+
+    # Mood distribution from agent needs/affect
+    mood_counts = agents
+      |> Enum.map(fn a ->
+        needs = a.needs || %{}
+        avg = (Map.get(needs, :hunger, 50.0) + Map.get(needs, :social, 50.0) +
+               Map.get(needs, :rest, 50.0)) / 3.0
+        cond do
+          avg >= 70 -> :happy
+          avg >= 50 -> :calm
+          avg >= 30 -> :anxious
+          true -> :sad
+        end
+      end)
+      |> Enum.frequencies()
+
+    moods = [
+      {"Happy", Map.get(mood_counts, :happy, 0), "#22c55e"},
+      {"Calm", Map.get(mood_counts, :calm, 0), "#06b6d4"},
+      {"Anxious", Map.get(mood_counts, :anxious, 0), "#f59e0b"},
+      {"Sad", Map.get(mood_counts, :sad, 0), "#8b5cf6"}
+    ]
+
+    # Wildlife counts
+    {predators, prey} = try do
+      wildlife = :ets.tab2list(:wildlife)
+      pred = wildlife |> Enum.count(fn {_id, w} -> w.type in [:wolf, :bear] end)
+      pr = wildlife |> Enum.count(fn {_id, w} -> w.type in [:rabbit, :deer, :fish] end)
+      {pred, pr}
+    catch _, _ -> {0, 0} end
+
+    %{
+      dash_population: pop_history,
+      dash_resources: resources,
+      dash_nodes: nodes,
+      dash_edges: edges,
+      dash_moods: moods,
+      dash_trades: trades,
+      dash_predators: predators,
+      dash_prey: prey
+    }
+  end
 end

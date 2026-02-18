@@ -37,15 +37,15 @@ defmodule ModusWeb.UniverseLiveTest do
   end
 
   # Test 4: Version check
-  test "version is 3.5.0 in mix.exs" do
+  test "version is 3.6.0 in mix.exs" do
     {:ok, content} = File.read("mix.exs")
-    assert content =~ ~s(version: "3.5.0")
+    assert content =~ ~s(version: "3.6.0")
   end
 
   # Test 5: Landing page has correct content in template
-  test "universe_live module exists and has Eventus docstring" do
+  test "universe_live module exists and has Speculum docstring" do
     {:ok, content} = File.read("lib/modus_web/live/universe_live.ex")
-    assert content =~ "v3.5.0 Eventus"
+    assert content =~ "v3.6.0 Speculum"
     assert content =~ "God Mode"
     assert content =~ "Cinematic Camera"
     assert content =~ "Screenshot"
