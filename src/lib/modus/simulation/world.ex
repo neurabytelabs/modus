@@ -143,7 +143,12 @@ defmodule Modus.Simulation.World do
     {max_x, max_y} = world.grid_size
     Modus.Simulation.TerrainGenerator.generate(max_x, max_y, world.config.seed, preset)
 
+    # Generate water features (rivers, lakes) from terrain elevation
+    Modus.Simulation.WaterSystem.generate(max_x, max_y, world.config.seed)
+
+    # Generate grid cells (uses both terrain + water data)
     generate_terrain(world)
+
     # Initialize buildings ETS
     Modus.Simulation.Building.init_table()
     {:ok, world}
@@ -239,7 +244,8 @@ defmodule Modus.Simulation.World do
     x = :rand.uniform(max_x) - 1
     y = :rand.uniform(max_y) - 1
 
-    walkable = Modus.Simulation.TerrainGenerator.walkable?(x, y)
+    walkable = Modus.Simulation.TerrainGenerator.walkable?(x, y) and
+                not Modus.Simulation.WaterSystem.blocks_movement?(x, y)
     case :ets.lookup(table, {x, y}) do
       [{{^x, ^y}, %{terrain: terrain}}] when terrain in [:grass, :forest, :desert, :swamp, :tundra] ->
         if walkable, do: {x, y}, else: find_walkable_position(table, max_x, max_y)
@@ -350,10 +356,13 @@ defmodule Modus.Simulation.World do
     villages = generate_villages(max_x, max_y, seed)
 
     alias Modus.Simulation.TerrainGenerator
+    alias Modus.Simulation.WaterSystem
 
     for x <- 0..(max_x - 1), y <- 0..(max_y - 1) do
       terrain =
         cond do
+          # WaterSystem rivers/lakes take priority
+          WaterSystem.water?(x, y) -> :water
           on_river?(x, y, seed, max_x, max_y) -> :water
           on_road?(x, y, villages) -> :grass
           near_village?(x, y, villages) -> :grass
@@ -368,11 +377,15 @@ defmodule Modus.Simulation.World do
       biome_data = TerrainGenerator.get(x, y)
       biome = if biome_data, do: biome_data.biome, else: :plains
 
+      # Enrich water cells with fishing/irrigation info
+      water_data = WaterSystem.get(x, y)
+
       cell = %{
         terrain: terrain,
         biome: biome,
         occupants: [],
-        resources: default_resources(terrain)
+        resources: default_resources(terrain),
+        water: water_data
       }
 
       :ets.insert(world.grid_table, {{x, y}, cell})
