@@ -1,5 +1,6 @@
 defmodule Modus.Protocol.Bridge do
   @moduledoc "Orchestrates the full user→agent interaction pipeline"
+  require Logger
 
   alias Modus.Protocol.IntentParser
   alias Modus.Mind.{ContextBuilder, Perception}
@@ -20,17 +21,9 @@ defmodule Modus.Protocol.Bridge do
       {:chat, text} ->
         system_prompt = ContextBuilder.build_chat_prompt(agent, text)
 
-        result =
-          case chat_with_context(agent, text, system_prompt) do
-            {:ok, reply} ->
-              Modus.Mind.ConversationMemory.record(agent_id, "user", [{agent.name, reply}], 0)
-              {:ok, reply}
-
-            _ ->
-              {:ok, fallback_reply(agent)}
-          end
-
-        result
+        {:ok, reply} = chat_with_context(agent, text, system_prompt)
+        Modus.Mind.ConversationMemory.record(agent_id, "user", [{agent.name, reply}], 0)
+        {:ok, reply}
 
       {:query, :location} ->
         perception = Perception.snapshot(agent)
@@ -88,7 +81,7 @@ defmodule Modus.Protocol.Bridge do
     end
   end
 
-  defp chat_with_context(_agent, user_message, system_prompt) do
+  defp chat_with_context(agent, user_message, system_prompt) do
     config = LlmProvider.get_config()
 
     messages = [
@@ -96,15 +89,35 @@ defmodule Modus.Protocol.Bridge do
       %{role: "user", content: user_message}
     ]
 
-    case config.provider do
-      :antigravity ->
-        Modus.Intelligence.AntigravityClient.chat_completion_direct(messages, config)
+    # Step 1: Try primary provider (Antigravity or Ollama)
+    primary_result =
+      case config.provider do
+        :antigravity ->
+          Modus.Intelligence.AntigravityClient.chat_completion_direct(messages, config)
 
-      :ollama ->
-        Modus.Intelligence.OllamaClient.chat_completion_direct(messages, config)
+        :ollama ->
+          Modus.Intelligence.OllamaClient.chat_completion_direct(messages, config)
 
-      _ ->
-        :fallback
+        _ ->
+          {:error, :no_provider}
+      end
+
+    case primary_result do
+      {:ok, reply} ->
+        {:ok, reply}
+
+      _error ->
+        Logger.warning("Bridge: primary LLM failed, trying Gemini direct fallback")
+        # Step 2: Try Gemini direct API
+        case Modus.Intelligence.GeminiClient.chat(messages) do
+          {:ok, reply} ->
+            {:ok, String.trim(reply)}
+
+          _gemini_error ->
+            Logger.warning("Bridge: Gemini direct also failed, using hardcoded fallback")
+            # Step 3: Hardcoded fallback
+            {:ok, fallback_reply(agent)}
+        end
     end
   end
 

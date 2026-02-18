@@ -6,7 +6,7 @@ defmodule Modus.Intelligence.AntigravityClient do
   """
   require Logger
 
-  @timeout 90_000
+  @timeout 10_000
   @circuit_breaker_key :antigravity_circuit_breaker
   @max_failures 3
   @cooldown_ms 60_000
