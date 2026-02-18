@@ -1,7 +1,7 @@
 defmodule ModusWeb.UniverseLive do
   @moduledoc """
   Main LiveView — MODUS universe dashboard with 2D renderer.
-  v2.0.0 Infinitum — Custom World Rules Engine, Multi-Universe Dashboard, Agent Designer, World Builder.
+  v3.5.0 Eventus — Dynamic World Events v2, event chains, notification UI.
   """
   use ModusWeb, :live_view
   # JS alias available if needed
@@ -13,6 +13,7 @@ defmodule ModusWeb.UniverseLive do
     if connected?(socket) do
       Modus.Simulation.EventLog.subscribe()
       Phoenix.PubSub.subscribe(Modus.PubSub, "story")
+      Phoenix.PubSub.subscribe(Modus.PubSub, "world_events")
     end
 
     # Load saved worlds for dashboard
@@ -137,7 +138,12 @@ defmodule ModusWeb.UniverseLive do
        llm_metrics: %{calls_this_tick: 0, total_calls: 0, cache_hit_rate: 0.0, avg_latency_ms: 0, active_model: "none", sparkline: []},
        # Performance Monitor
        perf_monitor_open: false,
-       perf_metrics: %{agent_count: 0, tick: 0, tick_state: :paused, memory_total_mb: 0.0, memory_processes_mb: 0.0, memory_ets_mb: 0.0, cpu_percent: 0.0, health: :healthy}
+       perf_metrics: %{agent_count: 0, tick: 0, tick_state: :paused, memory_total_mb: 0.0, memory_processes_mb: 0.0, memory_ets_mb: 0.0, cpu_percent: 0.0, health: :healthy},
+       # Eventus — Event Notification System
+       event_timeline: [],
+       event_timeline_open: false,
+       breaking_event: nil,
+       breaking_dismiss_at: nil
      )}
   end
 
@@ -774,7 +780,7 @@ defmodule ModusWeb.UniverseLive do
      |> push_event("inject_event", %{event_type: event_type})}
   end
 
-  @valid_world_events ~w(storm earthquake meteor_shower plague golden_age flood fire)
+  @valid_world_events ~w(storm earthquake meteor_shower plague golden_age flood fire drought famine festival discovery migration_wave conflict)
 
   def handle_event("trigger_world_event", %{"type" => event_type}, socket)
       when event_type in @valid_world_events do
@@ -786,6 +792,12 @@ defmodule ModusWeb.UniverseLive do
       "golden_age" -> "✨"
       "flood" -> "🌊"
       "fire" -> "🔥"
+      "drought" -> "🏜️"
+      "famine" -> "💀🌾"
+      "festival" -> "🎉"
+      "discovery" -> "🗺️"
+      "migration_wave" -> "🚶"
+      "conflict" -> "⚔️"
       _ -> "🌍"
     end
 
@@ -1114,6 +1126,17 @@ defmodule ModusWeb.UniverseLive do
     )}
   end
 
+  # ── Eventus: Event Timeline Toggle ──────────────────────
+
+  def handle_event("toggle_event_timeline", _params, socket) do
+    open = !socket.assigns.event_timeline_open
+    {:noreply, assign(socket, event_timeline_open: open)}
+  end
+
+  def handle_event("dismiss_breaking", _params, socket) do
+    {:noreply, assign(socket, breaking_event: nil)}
+  end
+
   def handle_event("world_event_toast", %{"emoji" => emoji, "type" => type, "severity" => severity}, socket) do
     severity_word = case severity do
       1 -> "Minor"
@@ -1219,6 +1242,82 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_info({:test_llm_result, result}, socket) do
     {:noreply, assign(socket, settings_testing: false, settings_test_result: result)}
+  end
+
+  # ── Eventus: World Events PubSub ────────────────────────
+
+  def handle_info({:world_event, event_data}, socket) when is_map(event_data) do
+    # Build timeline entry
+    severity_word = case event_data[:severity] || event_data["severity"] do
+      1 -> "Minor"
+      2 -> "Severe"
+      3 -> "Catastrophic"
+      _ -> ""
+    end
+    event_type = event_data[:type] || event_data["type"] || "unknown"
+    emoji = event_data[:emoji] || event_data["emoji"] || "⚡"
+    category = event_data[:category] || event_data["category"] || "disaster"
+    level = event_data[:level] || event_data["level"] || "toast"
+    chain_source = event_data[:chain_source] || event_data["chain_source"]
+    artifact = event_data[:artifact] || event_data["artifact"]
+
+    label = cond do
+      artifact ->
+        artifact_name = artifact[:name] || artifact["name"] || "Artifact"
+        "#{artifact_name} discovered!"
+      chain_source ->
+        "#{severity_word} #{String.replace(to_string(event_type), "_", " ")} (caused by #{chain_source})"
+      true ->
+        "#{severity_word} #{String.replace(to_string(event_type), "_", " ")} strikes!"
+    end
+
+    entry = %{
+      id: System.unique_integer([:positive]) |> to_string(),
+      emoji: emoji,
+      text: label,
+      type: to_string(event_type),
+      category: to_string(category),
+      severity: event_data[:severity] || event_data["severity"] || 1,
+      tick: socket.assigns.tick,
+      chain_source: chain_source,
+      artifact: artifact,
+      timestamp: System.system_time(:second)
+    }
+
+    # Add to timeline (max 50)
+    timeline = Enum.take([entry | socket.assigns.event_timeline], 50)
+
+    # Toast
+    toast = %{
+      id: entry.id,
+      emoji: emoji,
+      text: label,
+      tick: socket.assigns.tick
+    }
+    toasts = Enum.take([toast | socket.assigns.toasts], 5)
+    Process.send_after(self(), {:dismiss_toast, toast.id}, 5_000)
+
+    # Breaking banner for severe events
+    socket = if to_string(level) == "breaking" do
+      Process.send_after(self(), :dismiss_breaking, 10_000)
+      assign(socket, breaking_event: entry)
+    else
+      socket
+    end
+
+    # Update event feed too
+    feed_entry = %{emoji: emoji, label: label, tick: socket.assigns.tick}
+    feed = Enum.take([feed_entry | socket.assigns.event_feed], 20)
+
+    {:noreply, assign(socket, event_timeline: timeline, toasts: toasts, event_feed: feed)}
+  end
+
+  def handle_info({:event_ended, _event_data}, socket) do
+    {:noreply, socket}
+  end
+
+  def handle_info(:dismiss_breaking, socket) do
+    {:noreply, assign(socket, breaking_event: nil)}
   end
 
   def handle_info(_msg, socket), do: {:noreply, socket}
@@ -1608,7 +1707,7 @@ defmodule ModusWeb.UniverseLive do
           <span class="text-xl font-bold tracking-tighter">
             MODUS<span class="text-purple-400">_</span>
           </span>
-          <span class="text-xs text-slate-600 hidden sm:inline">v3.3.0 · Optimum</span>
+          <span class="text-xs text-slate-600 hidden sm:inline">v3.5.0 · Eventus</span>
           <%= if @rules["preset"] && @rules["preset"] != "Custom" do %>
             <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 hidden sm:inline">
               🎛️ <%= @rules["preset"] %>
@@ -1698,8 +1797,13 @@ defmodule ModusWeb.UniverseLive do
           </button>
 
           <%!-- Timeline --%>
-          <button phx-click="toggle_timeline" class={"ctrl-btn #{if @timeline_open, do: "ctrl-btn-primary"}"} title="Timeline">
+          <button phx-click="toggle_timeline" class={"ctrl-btn #{if @timeline_open, do: "ctrl-btn-primary"}"} title="Story Timeline">
             📜
+          </button>
+
+          <%!-- Event Timeline (Eventus) --%>
+          <button phx-click="toggle_event_timeline" class={"ctrl-btn #{if @event_timeline_open, do: "ctrl-btn-active"}"} title="Event Timeline">
+            🔔<%= if length(@event_timeline) > 0 do %><span class="text-[8px] text-red-400"><%= length(@event_timeline) %></span><% end %>
           </button>
 
           <%!-- LLM Metrics (M key) --%>
@@ -2004,6 +2108,35 @@ defmodule ModusWeb.UniverseLive do
                 <button phx-click="trigger_world_event" phx-value-type="fire" class="event-btn">
                   <span class="text-lg">🔥</span>
                   <span class="text-[10px]">Fire</span>
+                </button>
+              </div>
+
+              <%!-- Eventus v2: New Event Types --%>
+              <h3 class="text-[10px] uppercase tracking-wider text-slate-600 mt-4 mb-3">🎭 Eventus v2</h3>
+              <div class="grid grid-cols-2 gap-1.5">
+                <button phx-click="trigger_world_event" phx-value-type="drought" class="event-btn">
+                  <span class="text-lg">🏜️</span>
+                  <span class="text-[10px]">Drought</span>
+                </button>
+                <button phx-click="trigger_world_event" phx-value-type="famine" class="event-btn">
+                  <span class="text-lg">💀🌾</span>
+                  <span class="text-[10px]">Famine</span>
+                </button>
+                <button phx-click="trigger_world_event" phx-value-type="festival" class="event-btn">
+                  <span class="text-lg">🎉</span>
+                  <span class="text-[10px]">Festival</span>
+                </button>
+                <button phx-click="trigger_world_event" phx-value-type="discovery" class="event-btn">
+                  <span class="text-lg">🗺️</span>
+                  <span class="text-[10px]">Discovery</span>
+                </button>
+                <button phx-click="trigger_world_event" phx-value-type="migration_wave" class="event-btn">
+                  <span class="text-lg">🚶</span>
+                  <span class="text-[10px]">Migration</span>
+                </button>
+                <button phx-click="trigger_world_event" phx-value-type="conflict" class="event-btn">
+                  <span class="text-lg">⚔️</span>
+                  <span class="text-[10px]">Conflict</span>
                 </button>
               </div>
 
@@ -2936,14 +3069,112 @@ defmodule ModusWeb.UniverseLive do
         </div>
       <% end %>
 
-      <%!-- Toast Notifications --%>
+      <%!-- Event Timeline Sidebar (Eventus v3.5.0) --%>
+      <%= if @event_timeline_open do %>
+        <div class="fixed top-14 right-0 bottom-0 w-72 z-40 bg-[#0A0A0F]/95 backdrop-blur-md border-l border-white/10 overflow-hidden flex flex-col animate-slide-in">
+          <div class="px-3 py-2 border-b border-white/5 flex items-center justify-between shrink-0">
+            <span class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">🔔 Event Timeline</span>
+            <button phx-click="toggle_event_timeline" class="text-slate-600 hover:text-slate-400 text-xs">✕</button>
+          </div>
+          <div class="flex-1 overflow-y-auto px-3 py-2 space-y-1.5">
+            <%= if @event_timeline == [] do %>
+              <p class="text-xs text-slate-600 italic text-center py-8">No events yet. Let the world run...</p>
+            <% else %>
+              <% grouped = Enum.group_by(@event_timeline, fn e -> div(e.tick, 100) end) %>
+              <%= for {day_group, entries} <- Enum.sort_by(grouped, &elem(&1, 0), :desc) do %>
+                <div class="text-[9px] text-slate-600 uppercase tracking-wider mt-2 mb-1 flex items-center gap-2">
+                  <span class="flex-1 h-px bg-white/5"></span>
+                  <span>Day <%= day_group + 1 %></span>
+                  <span class="flex-1 h-px bg-white/5"></span>
+                </div>
+                <%= for entry <- entries do %>
+                  <% card_color = case entry.category do
+                    "disaster" -> "border-l-red-500 bg-red-500/5"
+                    "celebration" -> "border-l-amber-500 bg-amber-500/5"
+                    "discovery" -> "border-l-cyan-500 bg-cyan-500/5"
+                    "migration" -> "border-l-emerald-500 bg-emerald-500/5"
+                    _ -> "border-l-purple-500 bg-purple-500/5"
+                  end %>
+                  <% severity_dots = case entry.severity do
+                    3 -> "🔴🔴🔴"
+                    2 -> "🟡🟡"
+                    _ -> "🟢"
+                  end %>
+                  <div class={"border-l-2 rounded-r-lg p-2 #{card_color}"}>
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-sm"><%= entry.emoji %></span>
+                      <span class="text-[10px] text-slate-300 flex-1 truncate"><%= entry.text %></span>
+                    </div>
+                    <div class="flex items-center gap-2 mt-1">
+                      <span class="text-[8px] text-slate-600">t:<%= entry.tick %></span>
+                      <span class="text-[8px]"><%= severity_dots %></span>
+                      <%= if entry.chain_source do %>
+                        <span class="text-[8px] text-purple-400/60">⛓ <%= entry.chain_source %></span>
+                      <% end %>
+                      <%= if entry.artifact do %>
+                        <span class="text-[8px] text-cyan-400">
+                          <%= (entry.artifact[:emoji] || entry.artifact["emoji"] || "🗺️") %>
+                          <%= (entry.artifact[:name] || entry.artifact["name"] || "") %>
+                        </span>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <%!-- Breaking Event Banner (Eventus v3.5.0) --%>
+      <%= if @breaking_event do %>
+        <% banner_color = case @breaking_event.category do
+          "disaster" -> "from-red-900/90 to-red-800/80 border-red-500/50"
+          "celebration" -> "from-amber-900/90 to-yellow-800/80 border-amber-500/50"
+          "discovery" -> "from-cyan-900/90 to-teal-800/80 border-cyan-500/50"
+          "migration" -> "from-emerald-900/90 to-green-800/80 border-emerald-500/50"
+          _ -> "from-purple-900/90 to-indigo-800/80 border-purple-500/50"
+        end %>
+        <% text_color = case @breaking_event.category do
+          "disaster" -> "text-red-200"
+          "celebration" -> "text-amber-200"
+          "discovery" -> "text-cyan-200"
+          "migration" -> "text-emerald-200"
+          _ -> "text-purple-200"
+        end %>
+        <div class={"fixed top-14 inset-x-0 z-50 animate-banner-slide"}>
+          <div class={"flex items-center justify-center gap-3 px-6 py-3 bg-gradient-to-r #{banner_color} border-b backdrop-blur-md"}>
+            <span class="text-2xl animate-pulse"><%= @breaking_event.emoji %></span>
+            <div class="flex flex-col">
+              <span class={"text-sm font-bold uppercase tracking-wider #{text_color}"}>
+                ⚡ Breaking Event
+              </span>
+              <span class={"text-xs #{text_color} opacity-80"}><%= @breaking_event.text %></span>
+            </div>
+            <%= if @breaking_event.chain_source do %>
+              <span class="text-[9px] text-white/40 ml-2">chain: <%= @breaking_event.chain_source %></span>
+            <% end %>
+            <button phx-click="dismiss_breaking" class="ml-4 text-white/40 hover:text-white/80 text-sm">✕</button>
+          </div>
+        </div>
+      <% end %>
+
+      <%!-- Toast Notifications (color-coded by category) --%>
       <%= if @toasts != [] do %>
-        <div class="fixed top-16 right-4 z-50 space-y-2 pointer-events-none">
+        <div class={"fixed top-#{if @breaking_event, do: "28", else: "16"} left-1/2 -translate-x-1/2 z-50 space-y-2 pointer-events-none flex flex-col items-center"}>
           <%= for toast <- @toasts do %>
-            <div class="pointer-events-auto flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0A0A0F]/95 border border-purple-500/30 shadow-lg shadow-purple-500/10 backdrop-blur-md animate-slide-in max-w-xs">
+            <% toast_category = Enum.find(@event_timeline, fn e -> e.id == toast.id end) %>
+            <% toast_border = case toast_category && toast_category.category do
+              "disaster" -> "border-red-500/40 shadow-red-500/10"
+              "celebration" -> "border-amber-500/40 shadow-amber-500/10"
+              "discovery" -> "border-cyan-500/40 shadow-cyan-500/10"
+              "migration" -> "border-emerald-500/40 shadow-emerald-500/10"
+              _ -> "border-purple-500/30 shadow-purple-500/10"
+            end %>
+            <div class={"pointer-events-auto flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0A0A0F]/95 border shadow-lg backdrop-blur-md animate-toast-pop max-w-sm #{toast_border}"}>
               <span class="text-lg"><%= toast.emoji %></span>
               <div class="flex-1 min-w-0">
-                <p class="text-xs text-slate-200 truncate"><%= toast.text %></p>
+                <p class="text-xs text-slate-200"><%= toast.text %></p>
                 <span class="text-[9px] text-slate-600">tick <%= toast.tick %></span>
               </div>
               <button phx-click="dismiss_toast" phx-value-id={toast.id} class="text-slate-600 hover:text-slate-400 text-xs ml-1">✕</button>
@@ -3466,6 +3697,10 @@ defmodule ModusWeb.UniverseLive do
       .mobile-action-btn:active { transform: scale(0.9); background: rgba(168, 85, 247, 0.2); }
       @keyframes slide-in { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
       .animate-slide-in { animation: slide-in 0.3s ease-out; }
+      @keyframes banner-slide { from { opacity: 0; transform: translateY(-100%); } to { opacity: 1; transform: translateY(0); } }
+      .animate-banner-slide { animation: banner-slide 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+      @keyframes toast-pop { 0% { opacity: 0; transform: translateY(-10px) scale(0.95); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+      .animate-toast-pop { animation: toast-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
     </style>
     """
   end
