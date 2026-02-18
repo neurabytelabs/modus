@@ -39,6 +39,7 @@ defmodule Modus.Application do
       Modus.Simulation.StoryEngine,
       Modus.Simulation.WorldHistory,
       Modus.Simulation.WorldEvents,
+      Modus.Simulation.DivineIntervention,
       Modus.Simulation.Seasons,
       Modus.Simulation.Weather,
       Modus.Simulation.Wildlife,

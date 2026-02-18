@@ -162,7 +162,12 @@ defmodule ModusWeb.UniverseLive do
        event_timeline: [],
        event_timeline_open: false,
        breaking_event: nil,
-       breaking_dismiss_at: nil
+       breaking_dismiss_at: nil,
+       # Imperium — Divine Intervention
+       divine_panel_open: false,
+       divine_tab: :events,
+       divine_history: [],
+       divine_status: nil
      )}
   end
 
@@ -1161,6 +1166,57 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, breaking_event: nil)}
   end
 
+  # ── Imperium: Divine Intervention Panel ─────────────────
+
+  def handle_event("toggle_divine_panel", _params, socket) do
+    open = !socket.assigns.divine_panel_open
+    history = if open do
+      try do Modus.Simulation.DivineIntervention.history(limit: 30) catch _, _ -> [] end
+    else
+      []
+    end
+    {:noreply, assign(socket, divine_panel_open: open, divine_history: history, divine_status: nil)}
+  end
+
+  def handle_event("divine_tab", %{"tab" => tab}, socket) do
+    {:noreply, assign(socket, divine_tab: String.to_existing_atom(tab))}
+  end
+
+  def handle_event("divine_command", %{"cmd" => cmd} = params, socket) do
+    command = String.to_existing_atom(cmd)
+    cmd_params = params
+      |> Map.delete("cmd")
+      |> Map.delete("_target")
+      |> Enum.map(fn {k, v} -> {String.to_atom(k), v} end)
+      |> Map.new()
+
+    # Add selected agent id if agent command
+    cmd_params = if socket.assigns.selected_agent && Map.get(cmd_params, :agent_id) == nil do
+      Map.put(cmd_params, :agent_id, socket.assigns.selected_agent["id"])
+    else
+      cmd_params
+    end
+
+    result = try do
+      Modus.Simulation.DivineIntervention.execute(command, cmd_params)
+    catch
+      _, reason -> {:error, "#{inspect(reason)}"}
+    end
+
+    status = case result do
+      {:ok, data} -> "✅ #{cmd}: #{inspect(data)}"
+      {:error, reason} -> "❌ #{reason}"
+    end
+
+    history = try do Modus.Simulation.DivineIntervention.history(limit: 30) catch _, _ -> [] end
+    {:noreply, assign(socket, divine_history: history, divine_status: status)}
+  end
+
+  def handle_event("divine_clear_history", _params, socket) do
+    Modus.Simulation.DivineIntervention.clear_history()
+    {:noreply, assign(socket, divine_history: [], divine_status: "🗑️ Geçmiş temizlendi")}
+  end
+
   def handle_event("world_event_toast", %{"emoji" => emoji, "type" => type, "severity" => severity}, socket) do
     severity_word = case severity do
       1 -> "Minor"
@@ -1829,6 +1885,126 @@ defmodule ModusWeb.UniverseLive do
           </div>
         </div>
       <% end %>
+      <%!-- Imperium: Divine Intervention Panel --%>
+      <%= if @divine_panel_open do %>
+        <div class="fixed inset-0 z-50 bg-[#0A0A0F]/95 backdrop-blur-xl flex flex-col items-center justify-start p-6 overflow-auto">
+          <div class="w-full max-w-4xl">
+            <%!-- Header --%>
+            <div class="flex justify-between items-center mb-6">
+              <div>
+                <h2 class="text-2xl font-bold bg-gradient-to-r from-amber-400 to-red-400 bg-clip-text text-transparent">
+                  ⚡👑 IMPERIUM — İlahi Müdahale
+                </h2>
+                <p class="text-xs text-slate-500 mt-1">Deus sive Natura — Tanrılar izler, bazen müdahale eder.</p>
+              </div>
+              <button phx-click="toggle_divine_panel" class="text-slate-400 hover:text-white text-xl">✕</button>
+            </div>
+
+            <%!-- Tab Navigation --%>
+            <div class="flex gap-2 mb-6">
+              <%= for {tab, label, emoji} <- [{:events, "Olaylar", "🌍"}, {:agents, "Ajanlar", "👤"}, {:world, "Dünya", "🌤️"}, {:chains, "Zincirler", "⛓️"}, {:history, "Geçmiş", "📜"}] do %>
+                <button phx-click="divine_tab" phx-value-tab={tab}
+                  class={"px-4 py-2 text-xs rounded-lg border transition-all #{if @divine_tab == tab, do: "border-amber-500/50 bg-amber-500/10 text-amber-300", else: "border-white/10 bg-white/5 text-slate-500 hover:border-white/20"}"}>
+                  <%= emoji %> <%= label %>
+                </button>
+              <% end %>
+            </div>
+
+            <%!-- Status Message --%>
+            <%= if @divine_status do %>
+              <div class="mb-4 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-xs text-slate-300">
+                <%= @divine_status %>
+              </div>
+            <% end %>
+
+            <%!-- Tab Content --%>
+            <%= case @divine_tab do %>
+              <% :events -> %>
+                <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                  <%= for cmd <- Enum.filter(Modus.Simulation.DivineIntervention.available_commands(), &(&1.category == :event)) do %>
+                    <button phx-click="divine_command" phx-value-cmd={cmd.id}
+                      class="flex flex-col items-center gap-2 p-4 rounded-xl border border-white/10 bg-white/[0.03] hover:border-amber-500/40 hover:bg-amber-500/5 transition-all group">
+                      <span class="text-3xl group-hover:scale-110 transition-transform"><%= cmd.emoji %></span>
+                      <span class="text-[11px] font-medium text-slate-300"><%= cmd.label %></span>
+                      <span class="text-[9px] text-slate-600"><%= cmd.desc %></span>
+                    </button>
+                  <% end %>
+                </div>
+
+              <% :agents -> %>
+                <div class="space-y-4">
+                  <%= if @selected_agent do %>
+                    <div class="px-4 py-3 rounded-xl border border-purple-500/30 bg-purple-500/5 mb-4">
+                      <span class="text-xs text-purple-300">Seçili Ajan: <strong><%= @selected_agent["name"] %></strong></span>
+                    </div>
+                  <% else %>
+                    <div class="px-4 py-3 rounded-xl border border-amber-500/30 bg-amber-500/5 mb-4">
+                      <span class="text-xs text-amber-300">⚠️ Ajan komutları için önce haritadan bir ajan seçin</span>
+                    </div>
+                  <% end %>
+                  <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <%= for cmd <- Enum.filter(Modus.Simulation.DivineIntervention.available_commands(), &(&1.category == :agent)) do %>
+                      <button phx-click="divine_command" phx-value-cmd={cmd.id}
+                        class={"flex flex-col items-center gap-2 p-4 rounded-xl border transition-all group #{if @selected_agent || cmd.id == :spawn_agent, do: "border-white/10 bg-white/[0.03] hover:border-purple-500/40 hover:bg-purple-500/5", else: "border-white/5 bg-white/[0.01] opacity-50 cursor-not-allowed"}"}>
+                        <span class="text-3xl group-hover:scale-110 transition-transform"><%= cmd.emoji %></span>
+                        <span class="text-[11px] font-medium text-slate-300"><%= cmd.label %></span>
+                        <span class="text-[9px] text-slate-600"><%= cmd.desc %></span>
+                      </button>
+                    <% end %>
+                  </div>
+                </div>
+
+              <% :world -> %>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <%= for cmd <- Enum.filter(Modus.Simulation.DivineIntervention.available_commands(), &(&1.category == :world)) do %>
+                    <button phx-click="divine_command" phx-value-cmd={cmd.id}
+                      class="flex flex-col items-center gap-2 p-4 rounded-xl border border-white/10 bg-white/[0.03] hover:border-cyan-500/40 hover:bg-cyan-500/5 transition-all group">
+                      <span class="text-3xl group-hover:scale-110 transition-transform"><%= cmd.emoji %></span>
+                      <span class="text-[11px] font-medium text-slate-300"><%= cmd.label %></span>
+                      <span class="text-[9px] text-slate-600"><%= cmd.desc %></span>
+                    </button>
+                  <% end %>
+                </div>
+
+              <% :chains -> %>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <%= for cmd <- Enum.filter(Modus.Simulation.DivineIntervention.available_commands(), &(&1.category == :chain)) do %>
+                    <button phx-click="divine_command" phx-value-cmd={cmd.id}
+                      class="flex flex-col items-center gap-3 p-6 rounded-xl border border-white/10 bg-white/[0.03] hover:border-red-500/40 hover:bg-red-500/5 transition-all group">
+                      <span class="text-4xl group-hover:scale-110 transition-transform"><%= cmd.emoji %></span>
+                      <span class="text-sm font-bold text-slate-200"><%= cmd.label %></span>
+                      <span class="text-[10px] text-slate-500"><%= cmd.desc %></span>
+                    </button>
+                  <% end %>
+                </div>
+
+              <% :history -> %>
+                <div class="space-y-2">
+                  <div class="flex justify-between items-center mb-3">
+                    <span class="text-xs text-slate-500">
+                      Toplam komut: <span class="text-amber-400"><%= try do Modus.Simulation.DivineIntervention.total_commands() catch _, _ -> 0 end %></span>
+                    </span>
+                    <button phx-click="divine_clear_history" class="text-[10px] text-red-400 hover:text-red-300 px-2 py-1 rounded border border-red-500/20 hover:border-red-500/40">
+                      🗑️ Temizle
+                    </button>
+                  </div>
+                  <%= if @divine_history == [] do %>
+                    <p class="text-xs text-slate-600 italic text-center py-8">Henüz ilahi müdahale yok...</p>
+                  <% else %>
+                    <%= for entry <- @divine_history do %>
+                      <div class="flex items-center gap-3 px-3 py-2 rounded-lg border border-white/5 bg-white/[0.02]">
+                        <span class={"w-2 h-2 rounded-full #{if entry.result == :ok, do: "bg-green-500", else: "bg-red-500"}"} />
+                        <span class="text-xs text-amber-400 font-mono"><%= entry.command %></span>
+                        <span class="text-[10px] text-slate-600 ml-auto tabular-nums">t:<%= entry.tick %></span>
+                      </div>
+                    <% end %>
+                  <% end %>
+                </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
       <%!-- Zen Mode indicator --%>
       <%= if @zen_mode do %>
         <div class="fixed top-3 right-3 z-50 text-[10px] text-slate-600 bg-black/50 px-2 py-1 rounded backdrop-blur-sm">Z</div>
@@ -1925,6 +2101,11 @@ defmodule ModusWeb.UniverseLive do
           <%!-- God Mode --%>
           <button phx-click="toggle_god_mode" class={"ctrl-btn #{if @god_mode, do: "ctrl-btn-active"}"} title="God Mode — See All Agent Internals">
             👁️
+          </button>
+
+          <%!-- Divine Intervention (Imperium) --%>
+          <button phx-click="toggle_divine_panel" class={"ctrl-btn #{if @divine_panel_open, do: "ctrl-btn-active"}"} title="Divine Intervention — God Commands">
+            ⚡👑
           </button>
 
           <%!-- Cinematic Camera --%>
