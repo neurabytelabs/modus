@@ -16,6 +16,24 @@
 13. Test isolation: use `Modus.TestHelper.setup_isolated_env()` (create if missing)
 14. Elixir best practices: pattern matching, pipe operator, with statements
 15. @moduledoc for every new module
+16. ALL reports, commit messages, and announcements MUST be in TURKISH (Türkçe)
+17. After each iteration, take a SCREENSHOT of localhost:4000 and send to Telegram:
+    - Use browser tool: navigate to http://localhost:4000, wait 3 seconds, take screenshot
+    - Save screenshot to /Users/morty/Developer/neurabytelabs/modus/demo/screenshots/vX.Y.Z.png
+    - Send to Telegram group -5191394304 with Turkish caption describing what's new
+    - If browser tool unavailable, use: `curl -s http://localhost:4000 > /dev/null && echo 'App running'` and note in report
+18. Iteration completion report format (TURKISH):
+    ```
+    ✅ vX.Y.Z [Codename] — Tamamlandı!
+    
+    🆕 Yeni özellikler:
+    - [feature 1]
+    - [feature 2]
+    
+    🧪 Test: X passed, Y failed
+    📊 Modül: N | Satır: N
+    🖼️ Ekran görüntüsü: [attached]
+    ```
 
 ## Docker Volume Mount
 The `src/` directory is mounted into the container. Edit files at:
