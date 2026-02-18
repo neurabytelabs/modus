@@ -6,6 +6,34 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v5.4.0 · **Harmonia** — _Sprint v4 Final Integration & Genesis_
+_18 Şubat 2026_
+
+### 🎯 Sprint v4 "Mundus" Final
+- **686 test, 0 hata** — Tam test suite geçti
+- **100 modül, 28,459 satır kod** — Sprint v3'ten %35 büyüme
+- **0 derleme hatası** — Temiz build
+- **Versiyon testi düzeltildi** — v5.2.0→v5.4.0 assertion güncellendi
+- **CHANGELOG güncellendi** — Tam sprint v4 geçmişi
+- **Docker rebuild** — Temiz build tüm Sprint v4 özellikleriyle
+- **Sprint Genesis** — Sprint v5 "Anima" planlaması ve raporlama
+
+### Sprint v4 Mundus Özeti (IT-01→IT-14)
+- **Terrain Generation** — Perlin noise, 7 biyom, şablon haritalar
+- **Water System** — Nehirler, göller, balıkçılık, sulama
+- **Road/Path System** — Yürüyerek yol oluşturma
+- **Weather System** — Yağmur, kar, rüzgar, mevsimsel etki
+- **Resource Respawn** — Ekosistem dengeli yeniden büyüme
+- **Sleep Cycles** — Gece/gündüz agent davranışı
+- **Ruins & Archaeology** — Ölü medeniyetler iz bırakır
+- **Map Zoom** — Dünya → bölge → yerel görünüm
+- **Divine Intervention** — God Mode komut paneli
+- **UI Overhaul** — Glassmorphism tasarım sistemi
+- **Quality Pass** — Testler, dokümantasyon, kapsam
+- **Performance Benchmark** — 200+ agent 60fps hedefi
+
+---
+
 ## v3.8.0 · **Harmonia** — _Integration & Polish_
 _18 Şubat 2026_
 
