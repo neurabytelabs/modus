@@ -1,6 +1,6 @@
 /**
  * MODUS 2D Renderer — Pixi.js v8
- * v1.1.0 Harmonia — UI/UX polish + performance optimizations
+ * v4.8.0 Conspectus — Map zoom levels (World/Region/Local) + fog of war
  *
  * Renders the 50x50 tile world with terrain, agents, camera controls.
  * Features: sprite pooling, mini-map, tooltips, keyboard shortcuts.
@@ -112,6 +112,18 @@ export default class Renderer {
     this.worldEventsLayer = null
     this.worldEventOverlays = new Map() // id -> {gfx, container}
 
+    // Zoom levels: world (1x), region (4x), local (16x)
+    this.zoomLevel = "local" // "world" | "region" | "local"
+    this.zoomPresets = { world: 0.35, region: 0.8, local: 1.5 }
+
+    // Fog of war
+    this.fogOfWar = false
+    this.exploredTiles = new Set() // "x,y" strings
+    this.fogLayer = null
+
+    // Zoom level indicator callback
+    this.onZoomLevelChange = null
+
     // Camera state
     this.dragging = false
     this.didDrag = false
@@ -175,6 +187,7 @@ export default class Renderer {
     this._setupCamera()
     this._setupMinimap()
     this._setupTooltip()
+    this._setupFogOfWar()
     this._startAnimLoop()
 
     // Hide loading skeleton
@@ -449,6 +462,9 @@ export default class Renderer {
 
       // ── Mini-map (every 3 frames for perf) ──
       if (Math.floor(glowPhase * 10) % 3 === 0) this._updateMinimap()
+
+      // ── Fog of War (every 5 frames) ──
+      if (this.fogOfWar && Math.floor(glowPhase * 10) % 5 === 0) this._updateFogOfWar()
 
       for (const [id, sprite] of this.agentSprites) {
         const c = sprite.container
@@ -879,6 +895,14 @@ export default class Renderer {
       this.worldContainer.x = mx - wx * this.scale
       this.worldContainer.y = my - wy * this.scale
       this._chunksDirty = true
+
+      // Update zoom level based on scale
+      const oldLevel = this.zoomLevel
+      this.zoomLevel = this.getZoomLevel()
+      if (oldLevel !== this.zoomLevel) {
+        this._updateDetailVisibility()
+        if (this.onZoomLevelChange) this.onZoomLevelChange(this.zoomLevel)
+      }
     }, { passive: false })
   }
 
@@ -1251,6 +1275,138 @@ export default class Renderer {
       overlay.gfx.destroy()
       this.worldEventOverlays.delete(eventId)
     }
+  }
+
+  // ── Fog of War ────────────────────────────────────────────
+
+  _setupFogOfWar() {
+    this.fogLayer = new Graphics()
+    // Insert above everything as a dark overlay
+    this.worldContainer.addChild(this.fogLayer)
+    this.fogLayer.visible = false
+  }
+
+  toggleFogOfWar() {
+    this.fogOfWar = !this.fogOfWar
+    if (this.fogLayer) this.fogLayer.visible = this.fogOfWar
+    if (this.fogOfWar) this._updateFogOfWar()
+    return this.fogOfWar
+  }
+
+  _updateFogOfWar() {
+    if (!this.fogOfWar || !this.fogLayer) return
+
+    // Mark tiles near agents as explored
+    for (const [_id, sprite] of this.agentSprites) {
+      const tx = Math.floor(sprite.targetX / TILE_SIZE)
+      const ty = Math.floor(sprite.targetY / TILE_SIZE)
+      const viewRange = 5
+      for (let dx = -viewRange; dx <= viewRange; dx++) {
+        for (let dy = -viewRange; dy <= viewRange; dy++) {
+          const ex = tx + dx
+          const ey = ty + dy
+          if (ex >= 0 && ex < GRID_W && ey >= 0 && ey < GRID_H) {
+            this.exploredTiles.add(`${ex},${ey}`)
+          }
+        }
+      }
+    }
+
+    // Redraw fog — only unexplored tiles get dark overlay
+    this.fogLayer.clear()
+
+    // Calculate visible tile range
+    const camX = -this.worldContainer.x / this.scale
+    const camY = -this.worldContainer.y / this.scale
+    const vpW = this.app.screen.width / this.scale
+    const vpH = this.app.screen.height / this.scale
+    const minTX = Math.max(0, Math.floor(camX / TILE_SIZE) - 1)
+    const minTY = Math.max(0, Math.floor(camY / TILE_SIZE) - 1)
+    const maxTX = Math.min(GRID_W - 1, Math.ceil((camX + vpW) / TILE_SIZE) + 1)
+    const maxTY = Math.min(GRID_H - 1, Math.ceil((camY + vpH) / TILE_SIZE) + 1)
+
+    for (let x = minTX; x <= maxTX; x++) {
+      for (let y = minTY; y <= maxTY; y++) {
+        if (!this.exploredTiles.has(`${x},${y}`)) {
+          this.fogLayer.rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+          this.fogLayer.fill({ color: 0x0a0a1a, alpha: 0.85 })
+        }
+      }
+    }
+  }
+
+  // ── Zoom Levels ──────────────────────────────────────────
+
+  setZoomLevel(level) {
+    if (!this.zoomPresets[level]) return
+    this.zoomLevel = level
+    const targetScale = this.zoomPresets[level]
+
+    // Animate zoom to center of screen
+    const cx = this.app.screen.width / 2
+    const cy = this.app.screen.height / 2
+    const wx = (cx - this.worldContainer.x) / this.scale
+    const wy = (cy - this.worldContainer.y) / this.scale
+
+    this.scale = targetScale
+    this.worldContainer.scale.set(this.scale)
+    this.worldContainer.x = cx - wx * this.scale
+    this.worldContainer.y = cy - wy * this.scale
+    this._chunksDirty = true
+
+    // Update detail visibility based on zoom level
+    this._updateDetailVisibility()
+
+    if (this.onZoomLevelChange) this.onZoomLevelChange(level)
+    return level
+  }
+
+  getZoomLevel() {
+    // Determine level from current scale
+    if (this.scale <= 0.5) return "world"
+    if (this.scale <= 1.0) return "region"
+    return "local"
+  }
+
+  _updateDetailVisibility() {
+    const level = this.zoomLevel
+
+    // World view: hide labels, small agents, hide buildings detail
+    const showLabels = level !== "world"
+    const showActionEmoji = level === "local"
+    const showConatusBars = level === "local"
+
+    for (const [_id, sprite] of this.agentSprites) {
+      if (sprite.label) sprite.label.visible = showLabels
+      if (sprite.actionEmoji) sprite.actionEmoji.visible = showActionEmoji
+      if (sprite.conatusBar) sprite.conatusBar.visible = showConatusBars
+      if (sprite.convoBubble) sprite.convoBubble.visible = showLabels
+    }
+
+    // Building labels visibility
+    if (this.neighborhoodLabels) {
+      for (const [_id, label] of this.neighborhoodLabels) {
+        label.visible = level !== "world"
+      }
+    }
+
+    // Resource nodes: hide at world level
+    if (this.resourceNodeLayer) {
+      this.resourceNodeLayer.visible = level !== "world"
+    }
+
+    // Relationship lines: only at local level
+    if (this.relationshipLayer) {
+      this.relationshipLayer.visible = level === "local"
+    }
+  }
+
+  // Cycle through zoom levels: local → region → world → local
+  cycleZoomLevel() {
+    const order = ["local", "region", "world"]
+    const idx = order.indexOf(this.zoomLevel)
+    const next = order[(idx + 1) % order.length]
+    return this.setZoomLevel(next)
   }
 
   _hashCode(str) {

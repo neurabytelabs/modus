@@ -81,6 +81,11 @@ Hooks.WorldCanvas = {
       this.rendererReady = true
       window.__modusRenderer = this.renderer
       window.__modusSocket = this.worldSocket
+      // Update zoom level indicator in top bar
+      this.renderer.onZoomLevelChange = (level) => {
+        const el = document.getElementById("zoom-level-indicator")
+        if (el) el.textContent = level.toUpperCase()
+      }
       console.log("[MODUS] Renderer initialized, exposed on window.__modusRenderer")
     }).catch(err => {
       console.error("[MODUS] Renderer failed:", err)
@@ -512,6 +517,39 @@ document.addEventListener("keydown", (e) => {
       {
         const hook = document.getElementById("world-canvas")?.__modusHook
         if (hook) hook.pushEvent("toggle_zen_mode", {})
+      }
+      break
+    case "Equal": // + key
+    case "NumpadAdd":
+      // Zoom in one level
+      if (window.__modusRenderer) {
+        const r = window.__modusRenderer
+        const levels = ["world", "region", "local"]
+        const idx = levels.indexOf(r.zoomLevel)
+        if (idx < levels.length - 1) {
+          const lvl = r.setZoomLevel(levels[idx + 1])
+          console.log("[MODUS] Zoom:", lvl)
+        }
+      }
+      break
+    case "Minus":
+    case "NumpadSubtract":
+      // Zoom out one level
+      if (window.__modusRenderer) {
+        const r = window.__modusRenderer
+        const levels = ["world", "region", "local"]
+        const idx = levels.indexOf(r.zoomLevel)
+        if (idx > 0) {
+          const lvl = r.setZoomLevel(levels[idx - 1])
+          console.log("[MODUS] Zoom:", lvl)
+        }
+      }
+      break
+    case "KeyF":
+      // Fog of war toggle
+      if (window.__modusRenderer) {
+        const fow = window.__modusRenderer.toggleFogOfWar()
+        console.log("[MODUS] Fog of War:", fow ? "ON" : "OFF")
       }
       break
     case "Escape":

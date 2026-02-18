@@ -1865,6 +1865,11 @@ defmodule ModusWeb.UniverseLive do
               <span class="text-sm"><%= @weather_emoji %></span>
               <span class="text-slate-300 font-medium text-[10px] uppercase tracking-wider"><%= @weather_name %></span>
             </div>
+            <%!-- Zoom level indicator --%>
+            <div class="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/50 hidden sm:flex" title="Zoom: +/- keys | F: Fog of War">
+              <span class="text-sm">🔍</span>
+              <span class="text-slate-300 font-medium text-[10px] uppercase tracking-wider" id="zoom-level-indicator">LOCAL</span>
+            </div>
             <div class="flex items-center gap-1.5">
               <span class="text-sm"><%= if @time_of_day == "night", do: "🌙", else: "☀️" %></span>
               <span class="text-slate-600 hidden sm:inline">TICK</span>
