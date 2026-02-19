@@ -97,8 +97,20 @@ defmodule Modus.Nexus.Router do
     InsightEngine.format_response(sub, data)
   end
 
+  def dispatch(%{intent: :action, sub_intent: sub_intent, raw: raw}) do
+    alias Modus.Nexus.ActionEngine
+
+    params = ActionEngine.parse_params(sub_intent, raw)
+
+    case ActionEngine.execute(sub_intent, params) do
+      {:ok, msg} -> msg
+      {:error, msg} -> msg
+      {:confirm, msg} -> msg
+    end
+  end
+
   def dispatch(%{intent: intent}) do
-    "⚠️ dispatch only handles :insight intents, got :#{intent}"
+    "⚠️ dispatch only handles :insight/:action intents, got :#{intent}"
   end
 
   defp extract_agent_id(raw) do

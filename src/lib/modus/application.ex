@@ -45,6 +45,7 @@ defmodule Modus.Application do
       Modus.Simulation.Wildlife,
       {Task.Supervisor, name: Modus.Nexus.InsightEngine.TaskSupervisor},
       Modus.Nexus.InsightEngine,
+      Modus.Nexus.ActionEngine,
       ModusWeb.Endpoint
     ]
 
