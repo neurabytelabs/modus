@@ -223,4 +223,7 @@ defmodule Modus.Simulation.Ticker do
     adjusted_ms = max(10, round(ms / time_speed))
     Process.send_after(self(), :tick, adjusted_ms)
   end
+
+  # Catch-all for unexpected messages
+  def handle_info(_msg, state), do: {:noreply, state}
 end

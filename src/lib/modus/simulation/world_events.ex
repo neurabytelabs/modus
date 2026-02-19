@@ -688,4 +688,8 @@ defmodule Modus.Simulation.WorldEvents do
       remaining: max(0, event.start_tick + event.duration - current_tick)
     }
   end
+
+  # Catch-all for unexpected messages
+  @impl true
+  def handle_info(_msg, state), do: {:noreply, state}
 end

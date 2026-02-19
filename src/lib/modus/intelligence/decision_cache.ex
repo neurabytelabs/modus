@@ -71,6 +71,8 @@ defmodule Modus.Intelligence.DecisionCache do
     {:noreply, state}
   end
 
+  def handle_info(_msg, state), do: {:noreply, state}
+
   defp schedule_cleanup do
     Process.send_after(self(), :cleanup, @cleanup_interval_ms)
   end

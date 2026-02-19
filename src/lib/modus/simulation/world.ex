@@ -444,8 +444,12 @@ defmodule Modus.Simulation.World do
     ensure_float(h) / 1_000_000.0
   end
 
+  # Catch-all for unexpected messages (prevents GenServer crash)
+  @impl true
+  def handle_info(_msg, state), do: {:noreply, state}
+
   defp ensure_float(val) when is_float(val), do: val
-  defp ensure_float(val) when is_integer(val), do: val / 1
+  defp ensure_float(val) when is_integer(val), do: val * 1.0
   defp ensure_float(_), do: 0.0
 
   def default_resources(:grass), do: %{food: 3, wild_berries: 2}

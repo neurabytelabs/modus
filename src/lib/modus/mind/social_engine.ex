@@ -579,6 +579,10 @@ defmodule Modus.Mind.SocialEngine do
 
   # ── Helpers ────────────────────────────────────────────
 
+  # Catch-all for unexpected messages
+  @impl true
+  def handle_info(_msg, state), do: {:noreply, state}
+
   defp ensure_float(val) when is_float(val), do: val
   defp ensure_float(val) when is_integer(val), do: val * 1.0
   defp ensure_float(_), do: 0.0

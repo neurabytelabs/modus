@@ -173,4 +173,8 @@ defmodule Modus.Intelligence.LlmProvider do
     Logger.warning("LlmProvider: unknown provider #{p} for #{op}")
     :fallback
   end
+
+  # Catch-all for unexpected messages
+  @impl true
+  def handle_info(_msg, state), do: {:noreply, state}
 end

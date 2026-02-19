@@ -486,8 +486,12 @@ defmodule Modus.Persistence.SaveManager do
   defp slot_path(slot), do: Path.join(save_dir(), "slot_#{slot}.json.gz")
   defp autosave_path, do: Path.join(save_dir(), @autosave_file)
 
+  # Catch-all for unexpected messages
+  @impl true
+  def handle_info(_msg, state), do: {:noreply, state}
+
   defp ensure_float(val) when is_float(val), do: val
-  defp ensure_float(val) when is_integer(val), do: val / 1
+  defp ensure_float(val) when is_integer(val), do: val * 1.0
   defp ensure_float(_), do: 0.0
 
   defp serialize_relationships(rels) when is_map(rels) do
