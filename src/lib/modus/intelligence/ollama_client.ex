@@ -93,8 +93,8 @@ defmodule Modus.Intelligence.OllamaClient do
 
     case Req.get("#{url}/api/tags",
            receive_timeout: 10_000,
-           connect_options: [timeout: 5_000],
-           finch: Modus.Finch
+           
+           
          ) do
       {:ok, %{status: 200}} -> :ok
       {:ok, %{status: s}} -> {:error, "HTTP #{s}"}
@@ -120,8 +120,8 @@ defmodule Modus.Intelligence.OllamaClient do
     case Req.post("#{url}/api/generate",
            json: body,
            receive_timeout: @timeout,
-           connect_options: [timeout: 5_000],
-           finch: Modus.Finch
+           
+           
          ) do
       {:ok, %{status: 200, body: %{"response" => text}}} -> {:ok, text}
       {:ok, %{status: status, body: body}} -> {:error, {:http, status, body}}
