@@ -20,9 +20,34 @@ defmodule Modus.Performance.SpatialIndex do
     :ok
   end
 
-  @doc "Clear and rebuild the index from the agent registry."
+  @doc "Mark spatial index as dirty (call on agent position change)."
+  @spec mark_dirty() :: :ok
+  def mark_dirty do
+    :persistent_term.put(:spatial_dirty, true)
+    :ok
+  end
+
+  @doc "Check if rebuild is needed. Returns false if no agents moved since last rebuild."
+  @spec dirty?() :: boolean()
+  def dirty? do
+    try do
+      :persistent_term.get(:spatial_dirty, true)
+    catch
+      _, _ -> true
+    end
+  end
+
+  @doc "Clear and rebuild the index from the agent registry. Skips if not dirty (v7.9)."
   @spec rebuild() :: :ok
   def rebuild do
+    if dirty?() do
+      do_rebuild()
+    else
+      :ok
+    end
+  end
+
+  defp do_rebuild do
     init()
     :ets.delete_all_objects(@table)
 
@@ -37,6 +62,7 @@ defmodule Modus.Performance.SpatialIndex do
         :ok
     end)
 
+    :persistent_term.put(:spatial_dirty, false)
     :ok
   end
 
@@ -50,6 +76,7 @@ defmodule Modus.Performance.SpatialIndex do
     if old_cell != new_cell do
       :ets.delete_object(@table, {old_cell, agent_id})
       :ets.insert(@table, {new_cell, agent_id})
+      mark_dirty()
     end
 
     :ok

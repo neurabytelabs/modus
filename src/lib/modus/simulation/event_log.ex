@@ -23,6 +23,9 @@ defmodule Modus.Simulation.EventLog do
   @pubsub Modus.PubSub
   @topic "events"
   @ets_table :event_log_cache
+  # v7.9: Prune :event_log_by_tick entries older than this many ticks
+  @tick_ttl 5000
+  @prune_every 100
 
   defstruct events: [], counter: 0
 
@@ -182,6 +185,11 @@ defmodule Modus.Simulation.EventLog do
 
     Phoenix.PubSub.broadcast(@pubsub, @topic, {:event, event})
 
+    # v7.9: Prune expired entries from :event_log_by_tick every @prune_every inserts
+    if rem(id, @prune_every) == 0 do
+      prune_expired_tick_events(tick)
+    end
+
     {:noreply, %{state | events: events, counter: id}}
   end
 
@@ -193,6 +201,27 @@ defmodule Modus.Simulation.EventLog do
 
   defp maybe_filter_type(events, nil), do: events
   defp maybe_filter_type(events, type), do: Enum.filter(events, fn e -> e.type == type end)
+
+  # v7.9: Remove entries from :event_log_by_tick older than @tick_ttl ticks
+  defp prune_expired_tick_events(current_tick) do
+    cutoff_tick = max(current_tick - @tick_ttl, 0)
+
+    case :ets.whereis(:event_log_by_tick) do
+      :undefined -> :ok
+      _ ->
+        prune_before(:ets.first(:event_log_by_tick), cutoff_tick)
+    end
+  rescue
+    _ -> :ok
+  end
+
+  defp prune_before(:"$end_of_table", _cutoff), do: :ok
+  defp prune_before({tick, _id} = key, cutoff) when tick < cutoff do
+    next = :ets.next(:event_log_by_tick, key)
+    :ets.delete(:event_log_by_tick, key)
+    prune_before(next, cutoff)
+  end
+  defp prune_before(_key, _cutoff), do: :ok
 
   # Catch-all for unexpected messages
   @impl true

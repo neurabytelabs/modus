@@ -188,7 +188,8 @@ defmodule Modus.Simulation.Ticker do
       _, _ -> :ok
     end
 
-    # Record population every 10 ticks for StoryEngine graphs
+    # v7.9: Batch non-critical updates — StoryEngine population every 10 ticks,
+    # WorldHistory metrics + Observatory every 50 ticks to reduce PubSub overhead
     if rem(new_tick, 10) == 0 do
       agent_count =
         try do
@@ -216,18 +217,20 @@ defmodule Modus.Simulation.Ticker do
         end
       end
 
-      # Feed WorldHistory metrics for era detection
-      try do
-        Modus.Simulation.WorldHistory.record_metrics(%{
-          tick: new_tick,
-          population: agent_count,
-          births: 0,
-          deaths: 0,
-          trades: 0,
-          conflicts: 0
-        })
-      catch
-        _, _ -> :ok
+      # v7.9: WorldHistory metrics batched to every 50 ticks (was every 10)
+      if rem(new_tick, 50) == 0 do
+        try do
+          Modus.Simulation.WorldHistory.record_metrics(%{
+            tick: new_tick,
+            population: agent_count,
+            births: 0,
+            deaths: 0,
+            trades: 0,
+            conflicts: 0
+          })
+        catch
+          _, _ -> :ok
+        end
       end
     end
 

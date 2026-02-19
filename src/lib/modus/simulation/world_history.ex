@@ -19,7 +19,9 @@ defmodule Modus.Simulation.WorldHistory do
             era_events: %{},
             last_check_tick: 0,
             # recent {tick, births, deaths, pop, trades, conflicts} snapshots
-            metrics_window: []
+            metrics_window: [],
+            # v7.9: Track death causes per era for decline analysis
+            deaths_by_cause: %{}
 
   # ── Public API ──────────────────────────────────────────
 
@@ -49,6 +51,12 @@ defmodule Modus.Simulation.WorldHistory do
   @spec key_figures() :: [map()]
   def key_figures do
     GenServer.call(__MODULE__, :key_figures)
+  end
+
+  @doc "Get death cause breakdown for the current era (v7.9)."
+  @spec deaths_by_cause() :: %{String.t() => non_neg_integer()}
+  def deaths_by_cause do
+    GenServer.call(__MODULE__, :deaths_by_cause)
   end
 
   @doc "Export full world history as 'Chronicle of [World]' markdown."
@@ -138,6 +146,11 @@ defmodule Modus.Simulation.WorldHistory do
   end
 
   @impl true
+  def handle_call(:deaths_by_cause, _from, state) do
+    {:reply, state.deaths_by_cause, state}
+  end
+
+  @impl true
   def handle_call({:export_chronicle, world_name}, _from, state) do
     md = build_chronicle_markdown(world_name, state)
     {:reply, md, state}
@@ -215,6 +228,16 @@ defmodule Modus.Simulation.WorldHistory do
         state
       end
 
+    # v7.9: Track death causes for decline analysis
+    state =
+      if event.type == :death do
+        cause = to_string(event.data[:cause] || "unknown")
+        deaths = Map.update(state.deaths_by_cause, cause, 1, &(&1 + 1))
+        %{state | deaths_by_cause: deaths}
+      else
+        state
+      end
+
     # Track key figures from events
     state = track_figures_from_event(event, state)
 
@@ -246,7 +269,8 @@ defmodule Modus.Simulation.WorldHistory do
             current_era: new_era,
             era_start_tick: metrics.tick,
             era_events: Map.put(state.era_events, new_era.id, []),
-            last_check_tick: metrics.tick
+            last_check_tick: metrics.tick,
+            deaths_by_cause: %{}
         }
     end
   end

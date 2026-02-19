@@ -195,13 +195,35 @@ defmodule Modus.Simulation.StateSnapshots do
     end)
   end
 
-  # Reconstruct full states from mixed full/delta snapshots (newest first)
+  # Reconstruct full states from mixed full/delta snapshots (newest first).
+  # Deltas are applied against the nearest full snapshot base (scanning forward = older).
   defp reconstruct_snapshots(snapshots) do
-    # Find the nearest full snapshot, then apply deltas forward
-    Enum.map(snapshots, fn
-      {tick, {:full, state}} -> {tick, state}
-      {tick, {:delta, delta}} -> {tick, delta}  # Best-effort: delta alone = partial state
-      {tick, state} when is_map(state) -> {tick, state}  # Legacy format
-    end)
+    # Pass 1: find the last full snapshot as base, then reconstruct deltas
+    # Snapshots are newest-first, so we reverse to process oldest-first
+    reversed = Enum.reverse(snapshots)
+
+    {result, _last_full} =
+      Enum.reduce(reversed, {[], nil}, fn entry, {acc, last_full} ->
+        case entry do
+          {tick, {:full, state}} ->
+            {[{tick, state} | acc], state}
+
+          {tick, {:delta, delta}} ->
+            case last_full do
+              nil ->
+                # No base snapshot available — return delta as partial (best-effort)
+                {[{tick, delta} | acc], nil}
+              base ->
+                reconstructed = Map.merge(base, delta)
+                {[{tick, reconstructed} | acc], base}
+            end
+
+          {tick, state} when is_map(state) ->
+            # Legacy format
+            {[{tick, state} | acc], state}
+        end
+      end)
+
+    result
   end
 end
