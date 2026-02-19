@@ -7,25 +7,38 @@ defmodule ModusWeb.DemoLive do
   use ModusWeb, :live_view
 
   alias Modus.Simulation.{World, Ticker, Observatory}
+  alias ModusWeb.Presence
+
+  @presence_topic "demo:viewers"
 
   @impl true
   def mount(_params, _session, socket) do
     world_running? = Process.whereis(World) != nil
 
-    if connected?(socket) and world_running? do
-      Modus.Simulation.EventLog.subscribe()
-      Phoenix.PubSub.subscribe(Modus.PubSub, "story")
-      Phoenix.PubSub.subscribe(Modus.PubSub, "world_events")
-      Phoenix.PubSub.subscribe(Modus.PubSub, "prayers")
-      Phoenix.PubSub.subscribe(Modus.PubSub, "agent_chats")
+    if connected?(socket) do
+      if world_running? do
+        Modus.Simulation.EventLog.subscribe()
+        Phoenix.PubSub.subscribe(Modus.PubSub, "story")
+        Phoenix.PubSub.subscribe(Modus.PubSub, "world_events")
+        Phoenix.PubSub.subscribe(Modus.PubSub, "prayers")
+        Phoenix.PubSub.subscribe(Modus.PubSub, "agent_chats")
+      end
+
+      # Track this viewer via Presence
+      Phoenix.PubSub.subscribe(Modus.PubSub, @presence_topic)
+      viewer_id = "viewer_" <> Base.encode16(:crypto.strong_rand_bytes(4))
+      {:ok, _} = Presence.track(self(), @presence_topic, viewer_id, %{joined_at: System.system_time(:second)})
     end
 
     {tick, agent_count, avg_conatus} = if world_running?, do: fetch_metrics(), else: {0, 0, 0.0}
+
+    viewer_count = Presence.list(@presence_topic) |> map_size()
 
     {:ok,
      assign(socket,
        page_title: "MODUS — Demo",
        world_running: world_running?,
+       viewer_count: viewer_count,
        tick: tick,
        agent_count: agent_count,
        avg_conatus: avg_conatus,
@@ -113,6 +126,11 @@ defmodule ModusWeb.DemoLive do
     {:noreply, assign(socket, chat_feed: feed)}
   end
 
+  def handle_info(%Phoenix.Socket.Broadcast{event: "presence_diff"}, socket) do
+    viewer_count = Presence.list(@presence_topic) |> map_size()
+    {:noreply, assign(socket, viewer_count: viewer_count)}
+  end
+
   def handle_info(_msg, socket), do: {:noreply, socket}
 
   # ── Tick updates from JS (via phx-hook) ────────────────────
@@ -177,6 +195,7 @@ defmodule ModusWeb.DemoLive do
       <div class="bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-b border-amber-500/30 px-4 py-2 text-center">
         <span class="text-sm font-bold text-amber-300">👁️ DEMO MODE</span>
         <span class="text-xs text-amber-400/70 ml-2">Read-only observation · No commands</span>
+        <span class="text-xs text-amber-400/50 ml-3">👥 <%= @viewer_count %> watching</span>
       </div>
 
       <%= if !@world_running do %>

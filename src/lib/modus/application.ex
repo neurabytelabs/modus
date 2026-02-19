@@ -18,6 +18,7 @@ defmodule Modus.Application do
     Modus.Mind.Goals.init()
     Modus.Mind.Culture.init()
     Modus.Performance.SpatialIndex.init()
+    Modus.Simulation.Observatory.init()
     Modus.Performance.GcTuning.apply_defaults()
 
     children = [
@@ -50,6 +51,7 @@ defmodule Modus.Application do
       Modus.Nexus.InsightEngine,
       Modus.Nexus.ActionEngine,
       Modus.Nexus.TraceEngine,
+      ModusWeb.Presence,
       ModusWeb.Endpoint
     ]
 

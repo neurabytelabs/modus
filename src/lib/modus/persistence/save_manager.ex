@@ -21,7 +21,8 @@ defmodule Modus.Persistence.SaveManager do
   defstruct autosave_interval: @default_autosave_interval,
             last_autosave_tick: 0,
             last_autosave_at: nil,
-            enabled: true
+            enabled: true,
+            slot_cache: nil
 
   # ── Public API ──────────────────────────────────────────────
 
@@ -111,13 +112,13 @@ defmodule Modus.Persistence.SaveManager do
   def init(opts) do
     ensure_save_dir()
     interval = Keyword.get(opts, :autosave_interval, @default_autosave_interval)
-    {:ok, %__MODULE__{autosave_interval: interval}}
+    {:ok, %__MODULE__{autosave_interval: interval, slot_cache: nil}}
   end
 
   @impl true
   def handle_call({:save_slot, slot, name}, _from, state) do
     result = do_save_slot(slot, name)
-    {:reply, result, state}
+    {:reply, result, %{state | slot_cache: nil}}
   end
 
   def handle_call({:load_slot, slot}, _from, state) do
@@ -125,41 +126,19 @@ defmodule Modus.Persistence.SaveManager do
     {:reply, result, state}
   end
 
+  def handle_call(:list_slots, _from, %{slot_cache: cached} = state) when cached != nil do
+    {:reply, cached, state}
+  end
+
   def handle_call(:list_slots, _from, state) do
-    slots =
-      Enum.map(1..@max_slots, fn slot ->
-        path = slot_path(slot)
-
-        if File.exists?(path) do
-          case read_gzip(path) do
-            {:ok, data} ->
-              %{
-                slot: slot,
-                name: data["meta"]["name"] || "Slot #{slot}",
-                world_name: get_in(data, ["world", "name"]) || "Unknown",
-                tick: get_in(data, ["world", "tick"]) || 0,
-                population: length(data["agents"] || []),
-                day_count: div(get_in(data, ["world", "tick"]) || 0, 100) + 1,
-                saved_at: data["meta"]["saved_at"],
-                seed: get_in(data, ["world", "config", "seed"]),
-                size_bytes: File.stat!(path).size
-              }
-
-            _ ->
-              %{slot: slot, empty: true}
-          end
-        else
-          %{slot: slot, empty: true}
-        end
-      end)
-
-    {:reply, slots, state}
+    slots = build_slot_list()
+    {:reply, slots, %{state | slot_cache: slots}}
   end
 
   def handle_call({:delete_slot, slot}, _from, state) do
     path = slot_path(slot)
     if File.exists?(path), do: File.rm(path)
-    {:reply, :ok, state}
+    {:reply, :ok, %{state | slot_cache: nil}}
   end
 
   def handle_call(:autosave_status, _from, state) do
@@ -188,6 +167,34 @@ defmodule Modus.Persistence.SaveManager do
   end
 
   # ── Private ─────────────────────────────────────────────────
+
+  defp build_slot_list do
+    Enum.map(1..@max_slots, fn slot ->
+      path = slot_path(slot)
+
+      if File.exists?(path) do
+        case read_gzip(path) do
+          {:ok, data} ->
+            %{
+              slot: slot,
+              name: data["meta"]["name"] || "Slot #{slot}",
+              world_name: get_in(data, ["world", "name"]) || "Unknown",
+              tick: get_in(data, ["world", "tick"]) || 0,
+              population: length(data["agents"] || []),
+              day_count: div(get_in(data, ["world", "tick"]) || 0, 100) + 1,
+              saved_at: data["meta"]["saved_at"],
+              seed: get_in(data, ["world", "config", "seed"]),
+              size_bytes: File.stat!(path).size
+            }
+
+          _ ->
+            %{slot: slot, empty: true}
+        end
+      else
+        %{slot: slot, empty: true}
+      end
+    end)
+  end
 
   defp do_save_slot(slot, name) do
     try do

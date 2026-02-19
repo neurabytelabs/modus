@@ -4,11 +4,33 @@ defmodule Modus.Simulation.Observatory do
 
   Collects population trends, happiness index, trade volume, building counts,
   birth/death ratios, agent leaderboards, and relationship network data.
-  Pure data aggregation — no GenServer needed.
+
+  ## ETS Cache (v7.2)
+
+  `world_stats/0` reads from an ETS cache updated every tick by the Ticker,
+  providing O(1) reads without GenServer.call blocking. Falls back to
+  live computation if the cache is empty.
   """
 
   alias Modus.Simulation.{Agent, AgentSupervisor, Building, Economy, Lifecycle, StoryEngine}
   alias Modus.Mind.Cerebro.SocialNetwork
+
+  @stats_table :observatory_stats
+
+  @doc "Initialize the ETS table for cached stats. Call from Application.start/2."
+  @spec init() :: :ok
+  def init do
+    :ets.new(@stats_table, [:named_table, :set, :public, read_concurrency: true])
+    :ok
+  end
+
+  @doc "Update the cached world stats. Called from Ticker every N ticks."
+  @spec update_cache() :: :ok
+  def update_cache do
+    stats = compute_world_stats()
+    :ets.insert(@stats_table, {:world_stats, stats})
+    :ok
+  end
 
   @type world_stats :: %{
           population: non_neg_integer(),
@@ -34,9 +56,20 @@ defmodule Modus.Simulation.Observatory do
           type: atom()
         }
 
-  @doc "Get comprehensive world statistics snapshot."
+  @doc "Get comprehensive world statistics snapshot (O(1) ETS read, falls back to live computation)."
   @spec world_stats() :: world_stats()
   def world_stats do
+    case :ets.lookup(@stats_table, :world_stats) do
+      [{:world_stats, stats}] -> stats
+      [] -> compute_world_stats()
+    end
+  rescue
+    ArgumentError -> compute_world_stats()
+  end
+
+  @doc false
+  @spec compute_world_stats() :: world_stats()
+  def compute_world_stats do
     agents = get_all_agent_states()
 
     eco =

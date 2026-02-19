@@ -1064,6 +1064,10 @@ body {
   margin-top: 2rem;
 }
 
+.ml-3 {
+  margin-left: 0.75rem;
+}
+
 .block {
   display: block;
 }
@@ -2703,6 +2707,10 @@ body {
 .text-yellow-400 {
   --tw-text-opacity: 1;
   color: rgb(250 204 21 / var(--tw-text-opacity, 1));
+}
+
+.text-amber-400\/50 {
+  color: rgb(251 191 36 / 0.5);
 }
 
 .placeholder-slate-600::-moz-placeholder {

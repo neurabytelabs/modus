@@ -92,11 +92,11 @@ defmodule Modus.Simulation.EventLog do
 
   defp maybe_filter_agent(events, nil), do: events
 
-  # Catch-all for unexpected messages
-  @impl true
-  def handle_info(_msg, state), do: {:noreply, state}
-
   defp maybe_filter_agent(events, agent_id) do
     Enum.filter(events, fn e -> agent_id in e.agents end)
   end
+
+  # Catch-all for unexpected messages
+  @impl true
+  def handle_info(_msg, state), do: {:noreply, state}
 end

@@ -474,6 +474,7 @@ Hooks.DemoCanvas = {
     initWithTimeout.then(() => {
       this.rendererReady = true
       console.log("[MODUS Demo] Renderer initialized")
+      this._setupDemoKeyboardShortcuts()
     }).catch(err => {
       console.error("[MODUS Demo] Renderer failed:", err)
       const skel = document.getElementById("canvas-skeleton")
@@ -543,8 +544,63 @@ Hooks.DemoCanvas = {
   },
 
   destroyed() {
+    if (this._demoKeyHandler) document.removeEventListener("keydown", this._demoKeyHandler)
     if (this.worldSocket) this.worldSocket.disconnect()
     if (this.renderer) this.renderer.destroy()
+  },
+
+  _setupDemoKeyboardShortcuts() {
+    const PAN_STEP = 40
+    const self = this
+    this._demoKeyHandler = (e) => {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return
+      if (!self.rendererReady || !self.renderer) return
+
+      const r = self.renderer
+      switch (e.code) {
+        case "ArrowUp":
+          e.preventDefault()
+          if (r.stage) r.stage.y += PAN_STEP
+          break
+        case "ArrowDown":
+          e.preventDefault()
+          if (r.stage) r.stage.y -= PAN_STEP
+          break
+        case "ArrowLeft":
+          e.preventDefault()
+          if (r.stage) r.stage.x += PAN_STEP
+          break
+        case "ArrowRight":
+          e.preventDefault()
+          if (r.stage) r.stage.x -= PAN_STEP
+          break
+        case "Equal":
+        case "NumpadAdd":
+          e.preventDefault()
+          if (r.setZoomLevel) {
+            const levels = ["world", "region", "local"]
+            const idx = levels.indexOf(r.zoomLevel)
+            if (idx < levels.length - 1) r.setZoomLevel(levels[idx + 1])
+          } else if (r.stage) {
+            r.stage.scale.x = Math.min(r.stage.scale.x * 1.2, 5)
+            r.stage.scale.y = Math.min(r.stage.scale.y * 1.2, 5)
+          }
+          break
+        case "Minus":
+        case "NumpadSubtract":
+          e.preventDefault()
+          if (r.setZoomLevel) {
+            const levels = ["world", "region", "local"]
+            const idx = levels.indexOf(r.zoomLevel)
+            if (idx > 0) r.setZoomLevel(levels[idx - 1])
+          } else if (r.stage) {
+            r.stage.scale.x = Math.max(r.stage.scale.x / 1.2, 0.2)
+            r.stage.scale.y = Math.max(r.stage.scale.y / 1.2, 0.2)
+          }
+          break
+      }
+    }
+    document.addEventListener("keydown", this._demoKeyHandler)
   },
 }
 

@@ -127,6 +127,7 @@ defmodule Modus.Simulation.Ticker do
   def handle_info(:tick, %{state: :paused} = s), do: {:noreply, s}
 
   def handle_info(:tick, s) do
+    tick_start = System.monotonic_time()
     new_tick = s.tick + 1
 
     # Broadcast tick event to channels/scheduler
@@ -180,6 +181,13 @@ defmodule Modus.Simulation.Ticker do
 
       Modus.Simulation.StoryEngine.record_population(new_tick, agent_count)
 
+      # Update Observatory ETS cache (v7.2 — O(1) reads)
+      try do
+        Modus.Simulation.Observatory.update_cache()
+      catch
+        _, _ -> :ok
+      end
+
       # Feed WorldHistory metrics for era detection
       try do
         Modus.Simulation.WorldHistory.record_metrics(%{
@@ -204,10 +212,29 @@ defmodule Modus.Simulation.Ticker do
       end
     end
 
+    # Emit telemetry (v7.2 — LiveDashboard compatible)
+    tick_duration = System.monotonic_time() - tick_start
+
+    agent_count =
+      try do
+        Registry.count(Modus.AgentRegistry)
+      catch
+        _, _ -> 0
+      end
+
+    :telemetry.execute(
+      [:modus, :ticker, :tick],
+      %{duration: tick_duration, agent_count: agent_count},
+      %{tick_number: new_tick}
+    )
+
     # Schedule next tick
     ref = schedule_tick(s.interval_ms)
     {:noreply, %{s | tick: new_tick, timer_ref: ref}}
   end
+
+  # Catch-all for unexpected messages
+  def handle_info(_msg, state), do: {:noreply, state}
 
   # ── Internal ────────────────────────────────────────────────
 
@@ -224,6 +251,4 @@ defmodule Modus.Simulation.Ticker do
     Process.send_after(self(), :tick, adjusted_ms)
   end
 
-  # Catch-all for unexpected messages
-  def handle_info(_msg, state), do: {:noreply, state}
 end
