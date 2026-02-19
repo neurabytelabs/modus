@@ -294,11 +294,11 @@ defmodule Modus.Simulation.Agent do
         :explore ->
           if agent.explore_ticks > 0 and agent.explore_target != nil do
             # Keep current explore target
-            {action, %{params | target: agent.explore_target},
+            {action, Map.put(params, :target, agent.explore_target),
              %{agent | explore_ticks: agent.explore_ticks - 1}}
           else
             # Pick new target and persist it
-            target = params[:target] || params.target
+            target = Map.get(params, :target) || random_explore_target(agent, context)
             # Bias explore target via spatial memory
             target =
               Modus.Mind.Cerebro.SpatialMemory.bias_explore_target(
@@ -767,6 +767,14 @@ defmodule Modus.Simulation.Agent do
   end
 
   defp via(id), do: {:via, Registry, {Modus.AgentRegistry, id, {0, 0, true}}}
+
+  defp random_explore_target(agent, context) do
+    {ax, ay} = agent.position
+    {max_x, max_y} = Map.get(context, :world_size, {50, 50})
+    dx = Enum.random(-5..5)
+    dy = Enum.random(-5..5)
+    {max(0, min(ax + dx, max_x - 1)), max(0, min(ay + dy, max_y - 1))}
+  end
 
   defp generate_id, do: :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
 

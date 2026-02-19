@@ -90,9 +90,12 @@ defmodule Modus.Protocol.Persuasion do
 
     store_log(persuader.id, log_entry)
 
-    Logger.debug(
-      "[Persuasion] #{persuader.name} -> #{target.name} (#{topic}): #{result} (#{Float.round(persuasion_score, 2)} vs #{Float.round(resistance_score, 2)})"
-    )
+    # Rate-limit persuasion logs to ~5% to reduce log spam
+    if Enum.random(1..20) == 1 do
+      Logger.debug(
+        "[Persuasion] #{persuader.name} -> #{target.name} (#{topic}): #{result} (#{Float.round(persuasion_score, 2)} vs #{Float.round(resistance_score, 2)})"
+      )
+    end
 
     {:ok, result, persuasion_score}
   end

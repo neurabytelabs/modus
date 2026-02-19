@@ -126,7 +126,7 @@ defmodule Modus.Intelligence.FallbackChain do
             _ -> fallback_action(agent)
           end
 
-        {agent.id, action, %{reason: "behavior_tree"}}
+        {agent.id, action, %{reason: "behavior_tree", target: nil}}
       end)
 
     {:ok, decisions, "behavior_tree"}

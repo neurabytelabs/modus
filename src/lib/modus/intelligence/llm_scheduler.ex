@@ -100,7 +100,7 @@ defmodule Modus.Intelligence.LlmScheduler do
                     # Use behavior tree
                     for agent <- uncached_agents do
                       action = BehaviorTree.evaluate(agent, tick)
-                      DecisionCache.put(agent.id, {action, %{reason: "behavior_tree"}})
+                      DecisionCache.put(agent.id, {action, %{reason: "behavior_tree", target: nil}})
                     end
 
                   decisions when is_list(decisions) ->

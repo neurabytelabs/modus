@@ -138,12 +138,20 @@ defmodule Modus.Simulation.Building do
   # ── ETS Setup ─────────────────────────────────────────────
 
   def init_table do
-    if :ets.whereis(:buildings) == :undefined do
-      :ets.new(:buildings, [:named_table, :set, :public, read_concurrency: true])
+    try do
+      if :ets.whereis(:buildings) == :undefined do
+        :ets.new(:buildings, [:named_table, :set, :public, read_concurrency: true])
+      end
+    rescue
+      ArgumentError -> :ok
     end
 
-    if :ets.whereis(:neighborhoods) == :undefined do
-      :ets.new(:neighborhoods, [:named_table, :set, :public, read_concurrency: true])
+    try do
+      if :ets.whereis(:neighborhoods) == :undefined do
+        :ets.new(:neighborhoods, [:named_table, :set, :public, read_concurrency: true])
+      end
+    rescue
+      ArgumentError -> :ok
     end
 
     :ok

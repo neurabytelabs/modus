@@ -29,9 +29,12 @@ defmodule ModusWeb.UniverseLive do
     # Always start at landing page
     initial_phase = :landing
 
+    app_version = Application.spec(:modus, :vsn) |> to_string()
+
     {:ok,
      assign(socket,
        page_title: "MODUS",
+       app_version: app_version,
        # Dashboard
        dashboard_worlds: saved_worlds,
        dashboard_sort: "newest",
@@ -1942,7 +1945,7 @@ defmodule ModusWeb.UniverseLive do
           MODUS<span class="text-purple-400">_</span>
         </h1>
         <p class="text-2xl md:text-3xl font-light text-slate-300 mb-2">Create Worlds. Watch Them Live.</p>
-        <p class="text-sm text-slate-500 mb-12">v5.6.0 Nexus · AI-Powered Universe Simulation</p>
+        <p class="text-sm text-slate-500 mb-12">v<%= @app_version %> Nexus · AI-Powered Universe Simulation</p>
 
         <%!-- Feature Cards --%>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
@@ -1992,7 +1995,7 @@ defmodule ModusWeb.UniverseLive do
           <h1 class="text-5xl md:text-6xl font-bold tracking-tighter mb-2">
             MODUS<span class="text-purple-400">_</span>
           </h1>
-          <p class="text-sm text-slate-500">v5.6.0 Nexus · You're not limited to one world — create many.</p>
+          <p class="text-sm text-slate-500">v<%= @app_version %> Nexus · You're not limited to one world — create many.</p>
         </div>
 
         <%!-- Sort Controls --%>
@@ -2117,7 +2120,7 @@ defmodule ModusWeb.UniverseLive do
           <span class="px-2 py-1 bg-white/5 rounded border border-white/10">🌿 Nature Resources</span>
           <span class="px-2 py-1 bg-white/5 rounded border border-white/10">🎛️ Custom Rules Engine</span>
         </div>
-        <p class="text-xs text-slate-600 mb-6">v5.6.0 Nexus · 92+ modules · Elixir/BEAM · Pixi.js</p>
+        <p class="text-xs text-slate-600 mb-6">v<%= @app_version %> Nexus · 92+ modules · Elixir/BEAM · Pixi.js</p>
       </div>
 
       <%!-- Create World Section --%>
@@ -2471,7 +2474,7 @@ defmodule ModusWeb.UniverseLive do
           <span class="text-xl font-bold tracking-tighter">
             MODUS<span class="text-purple-400">_</span>
           </span>
-          <span class="text-xs text-slate-600 hidden sm:inline">v5.0.0 · Forma</span>
+          <span class="text-xs text-slate-600 hidden sm:inline">v<%= @app_version %> · Nexus</span>
           <%= if @rules["preset"] && @rules["preset"] != "Custom" do %>
             <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 hidden sm:inline">
               🎛️ <%= @rules["preset"] %>
@@ -4150,7 +4153,7 @@ defmodule ModusWeb.UniverseLive do
             <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
               <div class="flex items-center gap-2">
                 <span class="font-bold text-slate-100">📤 Export & Share</span>
-                <span class="text-[9px] text-slate-600">v5.6.0 Nexus</span>
+                <span class="text-[9px] text-slate-600">v<%= @app_version %> Nexus</span>
               </div>
               <button phx-click="close_export" class="text-slate-600 hover:text-slate-400">✕</button>
             </div>
@@ -4237,7 +4240,7 @@ defmodule ModusWeb.UniverseLive do
             <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
               <div class="flex items-center gap-3">
                 <span class="font-bold text-slate-100">📊 Observatory</span>
-                <span class="text-[9px] text-slate-600">v5.6.0 Nexus</span>
+                <span class="text-[9px] text-slate-600">v<%= @app_version %> Nexus</span>
               </div>
               <div class="flex items-center gap-2">
                 <button phx-click="obs_refresh" class="text-[10px] px-2 py-1 rounded bg-white/5 border border-white/10 text-slate-500 hover:text-slate-300 hover:border-white/20 transition-all">↻ Refresh</button>

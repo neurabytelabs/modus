@@ -412,8 +412,8 @@ defmodule Modus.Simulation.WorldEvents do
       population: population,
       # Simplified
       food_ratio: 0.6,
-      ticks_since_last_event: tick - state.last_event_tick,
-      active_event_count: length(active_events)
+      ticks_since_last_event: tick - (state.last_event_tick || 0),
+      active_event_count: length(active_events || [])
     }
   end
 

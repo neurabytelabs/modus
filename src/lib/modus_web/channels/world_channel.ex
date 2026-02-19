@@ -333,7 +333,7 @@ defmodule ModusWeb.WorldChannel do
     building_type = String.to_existing_atom(type)
     tick = if Process.whereis(Ticker), do: Ticker.current_tick(), else: 0
     building = Building.place(building_type, {x, y}, nil, tick)
-    EventLog.log(:building, tick, [], %{type: building_type, position: {x, y}, god_mode: true})
+    EventLog.log(:building, tick, [], %{type: building_type, position: [x, y], god_mode: true})
 
     broadcast!(socket, "building_placed", %{
       building: hd(Building.serialize_all() |> Enum.filter(&(&1.id == building.id)))

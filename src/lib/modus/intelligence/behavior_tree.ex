@@ -24,6 +24,10 @@ defmodule Modus.Intelligence.BehaviorTree do
           | :upgrade_home
 
   @spec evaluate(Agent.t(), non_neg_integer()) :: action()
+  def evaluate(nil, _tick), do: :idle
+  def evaluate(%Agent{needs: nil}, _tick), do: :idle
+  def evaluate(%Agent{personality: nil}, _tick), do: :idle
+
   def evaluate(%Agent{} = agent, tick) do
     case check_critical_needs(agent) do
       nil ->

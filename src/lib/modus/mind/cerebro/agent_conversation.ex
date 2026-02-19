@@ -28,8 +28,12 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
   defp ensure_float(_), do: 0.0
 
   def init do
-    if :ets.whereis(@cooldown_table) == :undefined do
-      :ets.new(@cooldown_table, [:set, :public, :named_table])
+    try do
+      if :ets.whereis(@cooldown_table) == :undefined do
+        :ets.new(@cooldown_table, [:set, :public, :named_table])
+      end
+    rescue
+      ArgumentError -> :ok
     end
 
     # Global concurrent counter (index 1)
@@ -45,6 +49,10 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
   def on_cooldown_public?(id1, id2, tick), do: on_cooldown?(id1, id2, tick)
 
   @doc "Check if conversation should happen and trigger it async."
+  def maybe_converse(nil, _nearby_agent_ids, _tick), do: :skipped
+  def maybe_converse(_agent, nil, _tick), do: :skipped
+  def maybe_converse(%{id: nil}, _nearby_agent_ids, _tick), do: :skipped
+
   def maybe_converse(agent, nearby_agent_ids, tick) do
     cond do
       in_error_backoff?(tick) ->
@@ -99,15 +107,19 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
   defp on_cooldown?(id1, id2, tick) do
     key = canonical_key(id1, id2)
 
-    case :ets.lookup(@cooldown_table, key) do
-      [{^key, last_tick}] -> tick - last_tick < @cooldown_ticks
-      [] -> false
+    try do
+      case :ets.lookup(@cooldown_table, key) do
+        [{^key, last_tick}] -> tick - last_tick < @cooldown_ticks
+        [] -> false
+      end
+    rescue
+      ArgumentError -> false
     end
   end
 
   defp under_concurrent_limit? do
-    counter = :persistent_term.get(:convo_counter)
-    :counters.get(counter, 1) < @max_concurrent
+    counter = :persistent_term.get(:convo_counter, nil)
+    if counter, do: :counters.get(counter, 1) < @max_concurrent, else: true
   end
 
   defp start_conversation(agent, partner_id, tick) do
