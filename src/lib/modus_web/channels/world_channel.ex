@@ -203,7 +203,7 @@ defmodule ModusWeb.WorldChannel do
   def handle_in("set_llm_config", payload, socket) do
     provider =
       case payload["provider"] do
-        "antigravity" -> :antigravity
+        "gemini" -> :gemini
         _ -> :ollama
       end
 

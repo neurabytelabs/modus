@@ -96,11 +96,11 @@ defmodule Modus.Protocol.Bridge do
       %{role: "user", content: user_message}
     ]
 
-    # Step 1: Try primary provider (Antigravity or Ollama)
+    # Step 1: Try primary provider (Gemini or Ollama)
     primary_result =
       case config.provider do
-        :antigravity ->
-          Modus.Intelligence.AntigravityClient.chat_completion_direct(messages, config)
+        :gemini ->
+          Modus.Intelligence.GeminiClient.chat_completion_direct(messages, config)
 
         :ollama ->
           Modus.Intelligence.OllamaClient.chat_completion_direct(messages, config)

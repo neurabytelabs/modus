@@ -138,8 +138,8 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
 
         response =
           case config.provider do
-            :antigravity ->
-              Modus.Intelligence.AntigravityClient.chat_with_agent(agent, prompt, config)
+            :gemini ->
+              Modus.Intelligence.GeminiClient.chat_with_agent(agent, prompt, config)
 
             _ ->
               Modus.Intelligence.OllamaClient.chat_with_agent(agent, prompt, config)

@@ -64,18 +64,18 @@ defmodule ModusWeb.UniverseLive do
        # Settings
        settings_open: false,
        settings_provider:
-         if(System.get_env("ANTIGRAVITY_API_KEY"), do: "antigravity", else: "ollama"),
+         if(System.get_env("GEMINI_API_KEY"), do: "gemini", else: "ollama"),
        settings_model:
-         if(System.get_env("ANTIGRAVITY_API_KEY"),
-           do: "gemini-3-flash",
+         if(System.get_env("GEMINI_API_KEY"),
+           do: "gemini-2.0-flash",
            else: "llama3.2:3b-instruct-q4_K_M"
          ),
        settings_base_url:
-         if(System.get_env("ANTIGRAVITY_API_KEY"),
-           do: "http://host.docker.internal:8045",
+         if(System.get_env("GEMINI_API_KEY"),
+           do: "https://generativelanguage.googleapis.com/v1beta",
            else: "http://modus-llm:11434"
          ),
-       settings_api_key: System.get_env("ANTIGRAVITY_API_KEY") || "",
+       settings_api_key: System.get_env("GEMINI_API_KEY") || "",
        settings_test_result: nil,
        settings_saved: false,
        settings_testing: false,
@@ -786,7 +786,7 @@ defmodule ModusWeb.UniverseLive do
     {base_url, model} =
       if provider_changed do
         case provider do
-          "antigravity" -> {"http://host.docker.internal:8045", "gemini-3-flash"}
+          "gemini" -> {"https://generativelanguage.googleapis.com/v1beta", "gemini-2.0-flash"}
           _ -> {"http://modus-llm:11434", "llama3.2:3b-instruct-q4_K_M"}
         end
       else
@@ -794,8 +794,8 @@ defmodule ModusWeb.UniverseLive do
       end
 
     api_key =
-      if provider_changed and provider == "antigravity" do
-        System.get_env("ANTIGRAVITY_API_KEY") || socket.assigns.settings_api_key
+      if provider_changed and provider == "gemini" do
+        System.get_env("GEMINI_API_KEY") || socket.assigns.settings_api_key
       else
         params["api_key"] || socket.assigns.settings_api_key
       end
@@ -827,14 +827,14 @@ defmodule ModusWeb.UniverseLive do
 
     provider =
       case socket.assigns.settings_provider do
-        "antigravity" -> :antigravity
+        "gemini" -> :gemini
         _ -> :ollama
       end
 
     api_key =
-      if provider == :antigravity and
+      if provider == :gemini and
            (socket.assigns.settings_api_key == nil or socket.assigns.settings_api_key == "") do
-        System.get_env("ANTIGRAVITY_API_KEY") || ""
+        System.get_env("GEMINI_API_KEY") || ""
       else
         socket.assigns.settings_api_key
       end
@@ -854,7 +854,7 @@ defmodule ModusWeb.UniverseLive do
     # Save config first temporarily
     provider =
       case socket.assigns.settings_provider do
-        "antigravity" -> :antigravity
+        "gemini" -> :gemini
         _ -> :ollama
       end
 
@@ -2626,7 +2626,7 @@ defmodule ModusWeb.UniverseLive do
           <%!-- LLM indicator + Settings --%>
           <button phx-click="open_settings" class="ctrl-btn flex items-center gap-1.5" title="LLM Settings">
             <span class="text-[9px] text-slate-500 hidden sm:inline">
-              <%= if @settings_provider == "antigravity", do: "🚀", else: "🦙" %>
+              <%= if @settings_provider == "gemini", do: "✨", else: "🦙" %>
               <%= String.slice(@settings_model, 0..12) %>
             </span>
             ⚙️
@@ -3340,7 +3340,7 @@ defmodule ModusWeb.UniverseLive do
                 <select name="provider"
                   class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50">
                   <option value="ollama" selected={@settings_provider == "ollama"}>🦙 Ollama (local)</option>
-                  <option value="antigravity" selected={@settings_provider == "antigravity"}>🚀 Antigravity (gateway)</option>
+                  <option value="gemini" selected={@settings_provider == "gemini"}>✨ Gemini (Google AI)</option>
                 </select>
               </div>
 
@@ -3352,15 +3352,12 @@ defmodule ModusWeb.UniverseLive do
                   <%= if @settings_provider == "ollama" do %>
                     <option value="llama3.2:3b-instruct-q4_K_M" selected={@settings_model == "llama3.2:3b-instruct-q4_K_M"}>🦙 Llama 3.2 3B (Q4)</option>
                   <% else %>
-                    <option value="gemini-3-flash" selected={@settings_model == "gemini-3-flash"}>⚡ Gemini 3 Flash</option>
-                    <option value="gemini-3-pro-high" selected={@settings_model == "gemini-3-pro-high"}>🧠 Gemini 3 Pro High</option>
-                    <option value="claude-sonnet-4-5-thinking" selected={@settings_model == "claude-sonnet-4-5-thinking"}>💜 Claude Sonnet 4.5</option>
-                    <option value="claude-opus-4-6-thinking" selected={@settings_model == "claude-opus-4-6-thinking"}>👑 Claude Opus 4.6</option>
-                    <option value="gpt-4.1" selected={@settings_model == "gpt-4.1"}>🟢 GPT-4.1</option>
-                    <option value="__custom__" selected={@settings_model not in ~w(gemini-3-flash gemini-3-pro-high claude-sonnet-4-5-thinking claude-opus-4-6-thinking gpt-4.1)}>✏️ Custom...</option>
+                    <option value="gemini-2.0-flash" selected={@settings_model == "gemini-2.0-flash"}>⚡ Gemini 2.0 Flash (Free)</option>
+                    <option value="gemini-2.0-flash-lite" selected={@settings_model == "gemini-2.0-flash-lite"}>💨 Gemini 2.0 Flash Lite (Free)</option>
+                    <option value="__custom__" selected={@settings_model not in ~w(gemini-2.0-flash gemini-2.0-flash-lite)}>✏️ Custom...</option>
                   <% end %>
                 </select>
-                <%= if @settings_provider == "antigravity" and @settings_model not in ~w(gemini-3-flash gemini-3-pro-high claude-sonnet-4-5-thinking claude-opus-4-6-thinking gpt-4.1) do %>
+                <%= if @settings_provider == "gemini" and @settings_model not in ~w(gemini-2.0-flash gemini-2.0-flash-lite) do %>
                   <input type="text" name="model" value={@settings_model} placeholder="Custom model name..."
                     class="w-full mt-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50" />
                 <% end %>
@@ -3374,7 +3371,7 @@ defmodule ModusWeb.UniverseLive do
               </div>
 
               <%!-- API Key --%>
-              <%= if @settings_provider == "antigravity" do %>
+              <%= if @settings_provider == "gemini" do %>
                 <div>
                   <label class="text-[10px] uppercase tracking-wider text-slate-600 block mb-1">API Key</label>
                   <input type="password" name="api_key" value={@settings_api_key}

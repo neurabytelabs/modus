@@ -2,13 +2,12 @@ defmodule Modus.Intelligence.FallbackChain do
   @moduledoc """
   FallbackChain — Cascading LLM provider fallback.
 
-  Order: Antigravity → Gemini Direct → Ollama → Hardcoded Behavior Tree.
+  Order: Gemini → Ollama → Hardcoded Behavior Tree.
   Each provider is tried in order; on failure, falls through to next.
   """
   require Logger
 
   alias Modus.Intelligence.{
-    AntigravityClient,
     GeminiClient,
     OllamaClient,
     BehaviorTree,
@@ -23,7 +22,7 @@ defmodule Modus.Intelligence.FallbackChain do
     start = System.monotonic_time(:millisecond)
 
     result =
-      try_antigravity(agents, context, config)
+      try_gemini(agents, context, config)
       |> or_try(fn -> try_gemini_batch(agents, tick) end)
       |> or_try(fn -> try_ollama(agents, context, config) end)
       |> or_fallback(fn -> behavior_tree_fallback(agents, tick) end)
@@ -51,8 +50,8 @@ defmodule Modus.Intelligence.FallbackChain do
 
     result =
       case config.provider do
-        :antigravity ->
-          case AntigravityClient.chat_with_agent(agent, message, config) do
+        :gemini ->
+          case GeminiClient.chat_with_agent(agent, message, config) do
             {:ok, text} -> {:ok, text}
             _ -> try_gemini_chat(agent, message)
           end
@@ -74,19 +73,19 @@ defmodule Modus.Intelligence.FallbackChain do
 
   # ── Private ────────────────────────────────────────────
 
-  defp try_antigravity(agents, context, %{provider: :antigravity} = config) do
-    case AntigravityClient.batch_decide(agents, context, config) do
+  defp try_gemini(agents, context, %{provider: :gemini} = config) do
+    case GeminiClient.batch_decide(agents, context, config) do
       :fallback -> :fallback
       decisions when is_list(decisions) -> {:ok, decisions, config.model}
       _ -> :fallback
     end
   rescue
     e ->
-      Logger.warning("FallbackChain: Antigravity failed: #{inspect(e)}")
+      Logger.warning("FallbackChain: Gemini failed: #{inspect(e)}")
       :fallback
   end
 
-  defp try_antigravity(_agents, _context, _config), do: :fallback
+  defp try_gemini(_agents, _context, _config), do: :fallback
 
   defp try_gemini_batch(agents, tick) do
     prompt = Modus.Intelligence.PromptCompressor.compress_batch(agents, tick)
@@ -138,7 +137,6 @@ defmodule Modus.Intelligence.FallbackChain do
   defp fallback_action(_), do: :explore
 
   defp try_gemini_chat(_agent, _message) do
-    # Simple fallback — just return a generic response
     {:ok, "I'm thinking... (connection issues)"}
   end
 

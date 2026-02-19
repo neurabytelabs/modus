@@ -3,7 +3,7 @@ defmodule Modus.Intelligence.GeminiClient do
   GeminiClient — Direct Google Gemini API client.
 
   Uses Gemini REST API directly (no gateway). Free tier: 15 req/min, 1M tokens/day.
-  Drop-in replacement for AntigravityClient with same interface.
+  Primary LLM provider with same interface as OllamaClient.
   """
   require Logger
 

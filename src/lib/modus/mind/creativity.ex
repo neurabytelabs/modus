@@ -173,10 +173,10 @@ defmodule Modus.Mind.Creativity do
       config = Modus.Intelligence.LlmProvider.get_config()
 
       case config.provider do
-        :antigravity ->
+        :gemini ->
           messages = [%{role: "user", content: prompt}]
 
-          case Modus.Intelligence.AntigravityClient.chat_completion_direct(messages, config) do
+          case Modus.Intelligence.GeminiClient.chat_completion_direct(messages, config) do
             {:ok, text} -> {"The Tale of #{agent_id}", String.trim(text)}
             _ -> generate_story_template(agent_id, event_type)
           end

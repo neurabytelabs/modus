@@ -395,24 +395,6 @@ defmodule Modus.Simulation.Agent do
     move_with_terrain_check(agent, target, :exploring)
   end
 
-  # Shared movement with terrain walkability check
-  defp move_with_terrain_check(agent, target, action_label) do
-    {ax, ay} = agent.position
-    {tx, ty} = target
-    dx = clamp(tx - ax, -1, 1)
-    dy = clamp(ty - ay, -1, 1)
-    new_pos = {ax + dx, ay + dy}
-
-    terrain = get_terrain_at(new_pos)
-
-    if terrain in [:water, :ocean] do
-      # Can't walk on water — stay in place, pick new explore target
-      %{agent | current_action: :idle, explore_target: nil, explore_ticks: 0}
-    else
-      %{agent | position: new_pos, current_action: action_label}
-    end
-  end
-
   defp apply_action(agent, :gather, params) do
     # Determine what to gather based on terrain
     terrain = get_terrain_at(agent.position)
@@ -565,6 +547,23 @@ defmodule Modus.Simulation.Agent do
 
   defp apply_action(agent, _action, _params) do
     %{agent | current_action: :idle}
+  end
+
+  # Shared movement with terrain walkability check
+  defp move_with_terrain_check(agent, target, action_label) do
+    {ax, ay} = agent.position
+    {tx, ty} = target
+    dx = clamp(tx - ax, -1, 1)
+    dy = clamp(ty - ay, -1, 1)
+    new_pos = {ax + dx, ay + dy}
+
+    terrain = get_terrain_at(new_pos)
+
+    if terrain in [:water, :ocean] do
+      %{agent | current_action: :idle, explore_target: nil, explore_ticks: 0}
+    else
+      %{agent | position: new_pos, current_action: action_label}
+    end
   end
 
   # --- Terrain & Environment Effects ---
