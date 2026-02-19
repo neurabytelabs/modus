@@ -158,3 +158,15 @@ Key features:
 - Demo Mode — /demo public showcase URL
 - RUNE Prompt Engine — native Elixir prompt template engine
 - Test stabilization — 77 race conditions fixed, 0 failures
+
+## Sprint v6.1 — Bug Fix & Demo Polish — 2026-02-19 15:55 CET
+
+Bugs found: 2
+Bugs fixed: 2
+
+Details:
+1. **Missing DemoCanvas JS hook** — Demo LiveView template uses `phx-hook="DemoCanvas"` but only `WorldCanvas` hook existed in app.js. Created a read-only `DemoCanvas` hook that initializes Pixi.js renderer, connects to `world:lobby` WebSocket channel, receives full_state and delta updates, and pushes tick_update events to LiveView — all without any god mode, build mode, or agent interaction features. This was the primary reason the demo showed only a loading spinner.
+
+2. **Mismatched PubSub message tuples in DemoLive** — `handle_info` matched `{:prayer, ...}` and `{:agent_chat, ...}` but PrayerSystem broadcasts `{:new_prayer, ...}` and AgentChatViewer broadcasts `{:new_agent_chat, ...}`. Fixed both handlers to match the actual broadcast tuples.
+
+Test: Elixir/mix not installed on this machine — compilation verification pending.

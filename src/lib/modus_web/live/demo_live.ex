@@ -90,7 +90,7 @@ defmodule ModusWeb.DemoLive do
     {:noreply, assign(socket, event_feed: feed)}
   end
 
-  def handle_info({:prayer, prayer}, socket) do
+  def handle_info({:new_prayer, prayer}, socket) do
     entry = %{
       emoji: "🙏",
       agent: prayer[:agent_name] || prayer["agent_name"] || "Agent",
@@ -102,7 +102,7 @@ defmodule ModusWeb.DemoLive do
     {:noreply, assign(socket, prayer_feed: feed)}
   end
 
-  def handle_info({:agent_chat, chat}, socket) do
+  def handle_info({:new_agent_chat, chat}, socket) do
     entry = %{
       speaker: chat[:speaker] || chat["speaker"] || "Agent",
       text: chat[:text] || chat["text"] || chat[:line] || chat["line"] || "...",

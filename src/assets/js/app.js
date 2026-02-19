@@ -458,6 +458,96 @@ Hooks.WorldCanvas = {
   },
 }
 
+// ── Demo Canvas Hook (read-only, no god mode) ──────────────
+
+Hooks.DemoCanvas = {
+  mounted() {
+    this.renderer = new Renderer(this.el)
+    this.worldSocket = null
+    this.rendererReady = false
+
+    const initWithTimeout = Promise.race([
+      this.renderer.init(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Pixi init timeout (5s)")), 5000))
+    ])
+
+    initWithTimeout.then(() => {
+      this.rendererReady = true
+      console.log("[MODUS Demo] Renderer initialized")
+    }).catch(err => {
+      console.error("[MODUS Demo] Renderer failed:", err)
+      const skel = document.getElementById("canvas-skeleton")
+      if (skel) skel.innerHTML = '<div style="color:#f87171;font-size:14px;text-align:center;padding:20px"><p>⚠️ ' + err.message + '</p><p style="color:#64748b;font-size:11px;margin-top:8px">Simulation running — visual renderer unavailable</p></div>'
+    })
+
+    // Connect to world:lobby in read-only mode
+    this.worldSocket = new WorldSocket({
+      onFullState: (state) => {
+        if (this.rendererReady) {
+          if (state.grid_width && state.grid_height) {
+            this.renderer.setGridSize(state.grid_width, state.grid_height)
+          }
+          if (state.grid) this.renderer.renderTerrain(state.grid)
+          if (state.agents) this.renderer.updateAgents(state.agents)
+          if (state.buildings) this.renderer.updateBuildings(state.buildings)
+          if (state.neighborhoods) this.renderer.updateNeighborhoods(state.neighborhoods)
+          if (state.world_events) this.renderer.updateWorldEvents(state.world_events)
+          if (state.time_of_day) this.renderer.updateEnvironment(state)
+          if (state.season) this.renderer.updateSeason(state.season)
+        }
+        this.pushEvent("tick_update", {
+          tick: state.tick || 0,
+          agent_count: state.agents ? state.agents.length : 0,
+          time_of_day: state.time_of_day || "day",
+          season: state.season || null,
+          weather: state.weather || null,
+        })
+      },
+      onDelta: (delta) => {
+        if (this.rendererReady) {
+          if (delta.agents) this.renderer.updateAgents(delta.agents)
+          if (delta.buildings) this.renderer.updateBuildings(delta.buildings)
+          if (delta.neighborhoods) this.renderer.updateNeighborhoods(delta.neighborhoods)
+          if (delta.world_events) this.renderer.updateWorldEvents(delta.world_events)
+          if (delta.cycle_progress != null) this.renderer.updateEnvironment(delta)
+          if (delta.season) this.renderer.updateSeason(delta.season)
+        }
+        if (delta.tick != null) {
+          this.pushEvent("tick_update", {
+            tick: delta.tick,
+            agent_count: delta.agent_count || 0,
+            time_of_day: delta.time_of_day || "day",
+            day_phase: delta.day_phase || "day",
+            season: delta.season || null,
+            weather: delta.weather || null,
+          })
+        }
+      },
+      onTick: () => {},
+      onStatus: () => {},
+      onChatReply: () => {},
+      onAgentDetailUpdate: () => {},
+    })
+    this.worldSocket.connect()
+
+    // Season change updates
+    if (this.worldSocket) {
+      this.worldSocket.onSeasonChange = (data) => {
+        if (this.rendererReady) this.renderer.updateSeason(data)
+      }
+      this.worldSocket.onWorldEvent = () => {}
+      this.worldSocket.onWorldEventEnded = (data) => {
+        if (this.rendererReady) this.renderer.removeWorldEvent(data.id)
+      }
+    }
+  },
+
+  destroyed() {
+    if (this.worldSocket) this.worldSocket.disconnect()
+    if (this.renderer) this.renderer.destroy()
+  },
+}
+
 // ── Keyboard Shortcuts ─────────────────────────────────────
 
 document.addEventListener("keydown", (e) => {

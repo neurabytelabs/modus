@@ -4,32 +4,24 @@ defmodule Modus.Intelligence.LlmProvider do
 
   Supports:
   - :ollama (local Ollama instance)
-  - :antigravity (OpenAI-compatible Antigravity Gateway)
+  - :gemini (Google Gemini API — free tier)
 
   Stores current config in state. Exposes decide/2, conversation/3, chat/2.
   """
   use GenServer
   require Logger
 
-  alias Modus.Intelligence.{OllamaClient, AntigravityClient}
-
-  # Default config reads from env — prefers Antigravity if configured
-  #   @default_config %{
-  #     provider: :ollama,
-  #     model: "llama3.2:3b-instruct-q4_K_M",
-  #     base_url: "http://modus-llm:11434",
-  #     api_key: nil
-  #   }
+  alias Modus.Intelligence.{OllamaClient, GeminiClient}
 
   defp init_config do
-    antigravity_key = System.get_env("ANTIGRAVITY_API_KEY")
+    gemini_key = System.get_env("GEMINI_API_KEY")
 
-    if antigravity_key && antigravity_key != "" do
+    if gemini_key && gemini_key != "" do
       %{
-        provider: :antigravity,
-        model: System.get_env("ANTIGRAVITY_MODEL") || "gemini-3-flash",
-        base_url: System.get_env("ANTIGRAVITY_URL") || "http://host.docker.internal:8045",
-        api_key: antigravity_key
+        provider: :gemini,
+        model: System.get_env("GEMINI_MODEL") || "gemini-2.0-flash",
+        base_url: "https://generativelanguage.googleapis.com/v1beta",
+        api_key: gemini_key
       }
     else
       %{
@@ -47,12 +39,9 @@ defmodule Modus.Intelligence.LlmProvider do
       ollama: [
         %{id: "llama3.2:3b-instruct-q4_K_M", name: "Llama 3.2 3B (Q4)", local: true}
       ],
-      antigravity: [
-        %{id: "gemini-3-flash", name: "Gemini 3 Flash", local: false},
-        %{id: "gemini-3-pro-high", name: "Gemini 3 Pro High", local: false},
-        %{id: "claude-sonnet-4-5-thinking", name: "Claude Sonnet 4.5", local: false},
-        %{id: "claude-opus-4-6-thinking", name: "Claude Opus 4.6", local: false},
-        %{id: "gpt-4.1", name: "GPT-4.1", local: false}
+      gemini: [
+        %{id: "gemini-2.0-flash", name: "Gemini 2.0 Flash (Free)", local: false},
+        %{id: "gemini-2.0-flash-lite", name: "Gemini 2.0 Flash Lite (Free)", local: false}
       ]
     }
   end
@@ -93,7 +82,7 @@ defmodule Modus.Intelligence.LlmProvider do
 
     case config.provider do
       :ollama -> OllamaClient.chat_with_agent(agent, user_message, config)
-      :antigravity -> AntigravityClient.chat_with_agent(agent, user_message, config)
+      :gemini -> GeminiClient.chat_with_agent(agent, user_message, config)
       _ -> :fallback
     end
   end
@@ -112,8 +101,7 @@ defmodule Modus.Intelligence.LlmProvider do
     )
 
     :persistent_term.put(:llm_config, config)
-    # Reset circuit breaker on startup
-    AntigravityClient.reset_circuit_breaker()
+    GeminiClient.reset_circuit_breaker()
     {:ok, config}
   end
 
@@ -148,7 +136,7 @@ defmodule Modus.Intelligence.LlmProvider do
     result =
       case config.provider do
         :ollama -> OllamaClient.test_connection(config)
-        :antigravity -> AntigravityClient.test_connection(config)
+        :gemini -> GeminiClient.test_connection(config)
         _ -> {:error, "Unknown provider: #{config.provider}"}
       end
 
@@ -161,24 +149,24 @@ defmodule Modus.Intelligence.LlmProvider do
     OllamaClient.batch_decide(agents, context, c)
   end
 
-  defp dispatch(:decide, [agents, context], %{provider: :antigravity} = c) do
-    AntigravityClient.batch_decide(agents, context, c)
+  defp dispatch(:decide, [agents, context], %{provider: :gemini} = c) do
+    GeminiClient.batch_decide(agents, context, c)
   end
 
   defp dispatch(:conversation, [a, b, ctx], %{provider: :ollama} = c) do
     OllamaClient.conversation(a, b, ctx, c)
   end
 
-  defp dispatch(:conversation, [a, b, ctx], %{provider: :antigravity} = c) do
-    AntigravityClient.conversation(a, b, ctx, c)
+  defp dispatch(:conversation, [a, b, ctx], %{provider: :gemini} = c) do
+    GeminiClient.conversation(a, b, ctx, c)
   end
 
   defp dispatch(:chat, [agent, msg], %{provider: :ollama} = c) do
     OllamaClient.chat_with_agent(agent, msg, c)
   end
 
-  defp dispatch(:chat, [agent, msg], %{provider: :antigravity} = c) do
-    AntigravityClient.chat_with_agent(agent, msg, c)
+  defp dispatch(:chat, [agent, msg], %{provider: :gemini} = c) do
+    GeminiClient.chat_with_agent(agent, msg, c)
   end
 
   defp dispatch(op, _args, %{provider: p}) do
