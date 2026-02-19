@@ -229,6 +229,11 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, zen_mode: !socket.assigns.zen_mode)}
   end
 
+  # Ignore keyboard shortcuts when chat is open (user is typing)
+  def handle_event("keypress", _params, %{assigns: %{chat_open: true}} = socket) do
+    {:noreply, socket}
+  end
+
   def handle_event("keypress", %{"key" => key}, socket) when key in ["d", "D"] do
     show = !socket.assigns.data_dashboard
     dash_assigns = if show, do: refresh_dashboard_data(), else: %{}
@@ -239,12 +244,7 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, data_dashboard: false)}
   end
 
-  def handle_event("keypress", %{"key" => "p"}, socket) do
-    send(self(), :toggle_perf_monitor)
-    {:noreply, socket}
-  end
-
-  def handle_event("keypress", %{"key" => "P"}, socket) do
+  def handle_event("keypress", %{"key" => key}, socket) when key in ["p", "P"] do
     send(self(), :toggle_perf_monitor)
     {:noreply, socket}
   end

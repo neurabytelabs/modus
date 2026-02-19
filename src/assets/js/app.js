@@ -526,7 +526,10 @@ Hooks.DemoCanvas = {
       },
       onTick: () => {},
       onStatus: () => {},
-      onChatReply: () => {},
+      onChatReply: (data) => {
+        console.log("[MODUS Demo] chat_reply received:", data)
+        this.pushEvent("chat_response", { reply: data.reply })
+      },
       onAgentDetailUpdate: () => {},
     })
     this.worldSocket.connect()
