@@ -127,9 +127,35 @@ defmodule Modus.Simulation.Agent do
 
   # --- Public API ---
 
-  @doc "Get the agent's current state by id."
-  @spec get_state(String.t()) :: t()
+  @agent_states_table :agent_states_cache
+
+  @doc "Initialize ETS table for agent state mirroring. Call from Application.start/2."
+  @spec init_state_cache() :: :ok
+  def init_state_cache do
+    if :ets.whereis(@agent_states_table) == :undefined do
+      :ets.new(@agent_states_table, [:named_table, :set, :public, read_concurrency: true])
+    end
+    :ok
+  end
+
+  @doc "Get agent state from ETS cache (O(1), no GenServer.call). Falls back to GenServer."
+  @spec get_state(String.t()) :: t() | nil
   def get_state(agent_id) do
+    case :ets.whereis(@agent_states_table) do
+      :undefined -> get_state_live(agent_id)
+      _ ->
+        case :ets.lookup(@agent_states_table, agent_id) do
+          [{^agent_id, state}] -> state
+          [] -> get_state_live(agent_id)
+        end
+    end
+  rescue
+    _ -> get_state_live(agent_id)
+  end
+
+  @doc "Get agent state directly from GenServer (live, may block)."
+  @spec get_state_live(String.t()) :: t()
+  def get_state_live(agent_id) do
     GenServer.call(via(agent_id), :get_state)
   end
 
@@ -173,7 +199,7 @@ defmodule Modus.Simulation.Agent do
 
   @impl true
   def init(agent) do
-    Phoenix.PubSub.subscribe(Modus.PubSub, "simulation:ticks")
+    Phoenix.PubSub.subscribe(Modus.PubSub, "modus:tick")
     # Initialize learning skills and aging
     Modus.Mind.Learning.init_skills(agent.id)
     Modus.Simulation.Aging.init()
@@ -403,6 +429,15 @@ defmodule Modus.Simulation.Agent do
 
     # Trim state to enforce 10KB limit
     agent = Modus.Performance.StateLimiter.trim(agent)
+
+    # v7.6: Mirror state to ETS for O(1) reads
+    try do
+      if :ets.whereis(:agent_states_cache) != :undefined do
+        :ets.insert(:agent_states_cache, {agent.id, agent})
+      end
+    catch
+      _, _ -> :ok
+    end
 
     {:noreply, agent}
   end

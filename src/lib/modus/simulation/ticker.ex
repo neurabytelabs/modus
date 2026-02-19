@@ -25,13 +25,17 @@ defmodule Modus.Simulation.Ticker do
   defstruct tick: 0,
             state: :paused,
             interval_ms: @default_interval_ms,
-            timer_ref: nil
+            timer_ref: nil,
+            consecutive_lags: 0,
+            total_lags: 0
 
   @type t :: %__MODULE__{
           tick: non_neg_integer(),
           state: :running | :paused,
           interval_ms: pos_integer(),
-          timer_ref: reference() | nil
+          timer_ref: reference() | nil,
+          consecutive_lags: non_neg_integer(),
+          total_lags: non_neg_integer()
         }
 
   # ── Public API ──────────────────────────────────────────────
@@ -63,6 +67,10 @@ defmodule Modus.Simulation.Ticker do
   def set_speed(server \\ __MODULE__, multiplier) when multiplier in [1, 5, 10] do
     GenServer.call(server, {:set_speed, multiplier})
   end
+
+  @doc "Get ticker health metrics (v7.6)."
+  @spec health(pid() | atom()) :: map()
+  def health(server \\ __MODULE__), do: GenServer.call(server, :health)
 
   @doc "Subscribe to tick events."
   @spec subscribe() :: :ok | {:error, term()}
@@ -107,6 +115,17 @@ defmodule Modus.Simulation.Ticker do
   end
 
   @impl true
+  def handle_call(:health, _from, s) do
+    {:reply, %{
+      tick: s.tick,
+      state: s.state,
+      interval_ms: s.interval_ms,
+      consecutive_lags: s.consecutive_lags,
+      total_lags: s.total_lags
+    }, s}
+  end
+
+  @impl true
   def handle_call({:set_speed, multiplier}, _from, s) do
     new_interval = div(@default_interval_ms, multiplier)
     new_state = %{s | interval_ms: new_interval}
@@ -131,10 +150,8 @@ defmodule Modus.Simulation.Ticker do
     tick_start = System.monotonic_time()
     new_tick = s.tick + 1
 
-    # Broadcast tick event to channels/scheduler
+    # Broadcast tick event to all subscribers (v7.6: consolidated single broadcast)
     Phoenix.PubSub.broadcast(@pubsub, @topic, {:tick, new_tick})
-    # Broadcast to agents (self-tick)
-    Phoenix.PubSub.broadcast(@pubsub, "simulation:ticks", {:tick, new_tick})
 
     # Rebuild spatial index every 10 ticks for O(1) neighbor lookups
     if rem(new_tick, 10) == 0 do
@@ -229,18 +246,40 @@ defmodule Modus.Simulation.Ticker do
       %{tick_number: new_tick}
     )
 
-    # v7.3: Tick lag detection — warn if tick processing exceeds interval
+    # v7.6: Tick lag detection with consecutive tracking + event logging
     tick_ms = System.convert_time_unit(tick_duration, :native, :millisecond)
 
-    if tick_ms > s.interval_ms do
-      Logger.warning(
-        "Tick lag detected: tick ##{new_tick} took #{tick_ms}ms (interval: #{s.interval_ms}ms, agents: #{agent_count})"
-      )
-    end
+    {consecutive_lags, total_lags} =
+      if tick_ms > s.interval_ms do
+        new_consecutive = s.consecutive_lags + 1
+        new_total = s.total_lags + 1
+
+        Logger.warning(
+          "Tick lag detected: tick ##{new_tick} took #{tick_ms}ms (interval: #{s.interval_ms}ms, agents: #{agent_count}, streak: #{new_consecutive})"
+        )
+
+        # Log critical lag event after 5 consecutive lags
+        if new_consecutive >= 5 and rem(new_consecutive, 5) == 0 do
+          try do
+            Modus.Simulation.EventLog.log(:tick_lag, new_tick, [], %{
+              consecutive: new_consecutive,
+              tick_ms: tick_ms,
+              interval_ms: s.interval_ms,
+              agent_count: agent_count
+            })
+          catch
+            _, _ -> :ok
+          end
+        end
+
+        {new_consecutive, new_total}
+      else
+        {0, s.total_lags}
+      end
 
     # Schedule next tick
     ref = schedule_tick(s.interval_ms)
-    {:noreply, %{s | tick: new_tick, timer_ref: ref}}
+    {:noreply, %{s | tick: new_tick, timer_ref: ref, consecutive_lags: consecutive_lags, total_lags: total_lags}}
   end
 
   # Catch-all for unexpected messages

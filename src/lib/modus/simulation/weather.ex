@@ -285,7 +285,7 @@ defmodule Modus.Simulation.Weather do
     initial = %{state | current: :clear, ticks_remaining: 30 + :rand.uniform(50)}
     store_state(initial)
 
-    Phoenix.PubSub.subscribe(Modus.PubSub, "simulation:ticks")
+    Phoenix.PubSub.subscribe(Modus.PubSub, "modus:tick")
     {:ok, initial}
   end
 

@@ -4,22 +4,29 @@ defmodule Modus.Simulation.EventLog do
 
   Stores typed events, keeps max 100 recent, broadcasts via PubSub.
 
+  ## v7.6: ETS Read Path
+
+  Events are mirrored to ETS for O(1) reads from WorldChannel/Observatory.
+  `recent/1` and `counts_by_type/0` read directly from ETS without GenServer.call.
+
   ## Event Types
   - :conversation — two agents talked
   - :resource_gathered — agent collected a resource
   - :conflict — agents clashed
   - :birth — new agent spawned
   - :death — agent died
+  - :tick_lag — ticker performance degradation (v7.6)
   """
   use GenServer
 
   @max_events 100
   @pubsub Modus.PubSub
   @topic "events"
+  @ets_table :event_log_cache
 
   defstruct events: [], counter: 0
 
-  @type event_type :: :conversation | :resource_gathered | :conflict | :birth | :death
+  @type event_type :: :conversation | :resource_gathered | :conflict | :birth | :death | :tick_lag
   @type event :: %{
           id: integer(),
           type: event_type(),
@@ -41,18 +48,42 @@ defmodule Modus.Simulation.EventLog do
     GenServer.cast(__MODULE__, {:log, type, tick, agent_ids, data})
   end
 
-  @doc "Get recent events, optionally filtered by agent_id and/or type."
+  @doc "Get recent events, optionally filtered. Reads from ETS (v7.6 — no GenServer.call)."
   @spec recent(keyword()) :: [event()]
   def recent(opts \\ []) do
-    GenServer.call(__MODULE__, {:recent, opts})
+    agent_id = Keyword.get(opts, :agent_id)
+    type = Keyword.get(opts, :type)
+    limit = Keyword.get(opts, :limit, 20)
+
+    case :ets.whereis(@ets_table) do
+      :undefined -> []
+      _ ->
+        case :ets.lookup(@ets_table, :events) do
+          [{:events, events}] ->
+            events
+            |> maybe_filter_agent(agent_id)
+            |> maybe_filter_type(type)
+            |> Enum.take(limit)
+          [] -> []
+        end
+    end
+  rescue
+    _ -> []
   end
 
-  @doc "Get event counts by type (v7.3 — for dashboard stats)."
+  @doc "Get event counts by type. Reads from ETS (v7.6)."
   @spec counts_by_type() :: %{event_type() => non_neg_integer()}
   def counts_by_type do
-    GenServer.call(__MODULE__, :counts_by_type)
-  catch
-    :exit, _ -> %{}
+    case :ets.whereis(@ets_table) do
+      :undefined -> %{}
+      _ ->
+        case :ets.lookup(@ets_table, :counts) do
+          [{:counts, counts}] -> counts
+          [] -> %{}
+        end
+    end
+  rescue
+    _ -> %{}
   end
 
   @doc "Subscribe to event broadcasts."
@@ -63,7 +94,12 @@ defmodule Modus.Simulation.EventLog do
   # ── GenServer ───────────────────────────────────────────
 
   @impl true
-  def init(state), do: {:ok, state}
+  def init(state) do
+    :ets.new(@ets_table, [:named_table, :set, :public, read_concurrency: true])
+    :ets.insert(@ets_table, {:events, []})
+    :ets.insert(@ets_table, {:counts, %{}})
+    {:ok, state}
+  end
 
   @impl true
   def handle_cast({:log, type, tick, agent_ids, data}, state) do
@@ -80,29 +116,13 @@ defmodule Modus.Simulation.EventLog do
 
     events = Enum.take([event | state.events], @max_events)
 
+    # Update ETS cache
+    :ets.insert(@ets_table, {:events, events})
+    :ets.insert(@ets_table, {:counts, Enum.frequencies_by(events, & &1.type)})
+
     Phoenix.PubSub.broadcast(@pubsub, @topic, {:event, event})
 
     {:noreply, %{state | events: events, counter: id}}
-  end
-
-  @impl true
-  def handle_call({:recent, opts}, _from, state) do
-    agent_id = Keyword.get(opts, :agent_id)
-    type = Keyword.get(opts, :type)
-    limit = Keyword.get(opts, :limit, 20)
-
-    result =
-      state.events
-      |> maybe_filter_agent(agent_id)
-      |> maybe_filter_type(type)
-      |> Enum.take(limit)
-
-    {:reply, result, state}
-  end
-
-  def handle_call(:counts_by_type, _from, state) do
-    counts = Enum.frequencies_by(state.events, & &1.type)
-    {:reply, counts, state}
   end
 
   defp maybe_filter_agent(events, nil), do: events

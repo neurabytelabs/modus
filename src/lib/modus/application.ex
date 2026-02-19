@@ -19,6 +19,7 @@ defmodule Modus.Application do
     Modus.Mind.Culture.init()
     Modus.Performance.SpatialIndex.init()
     Modus.Simulation.Observatory.init()
+    Modus.Simulation.Agent.init_state_cache()
     Modus.Performance.GcTuning.apply_defaults()
 
     children = [

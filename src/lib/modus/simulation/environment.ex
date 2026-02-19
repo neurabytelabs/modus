@@ -60,7 +60,7 @@ defmodule Modus.Simulation.Environment do
 
   @impl true
   def init(state) do
-    Phoenix.PubSub.subscribe(Modus.PubSub, "simulation:ticks")
+    Phoenix.PubSub.subscribe(Modus.PubSub, "modus:tick")
     {:ok, state}
   end
 

@@ -79,7 +79,7 @@ defmodule Modus.Simulation.WorldHistory do
 
   @impl true
   def init(state) do
-    Phoenix.PubSub.subscribe(Modus.PubSub, "simulation:ticks")
+    Phoenix.PubSub.subscribe(Modus.PubSub, "modus:tick")
     Phoenix.PubSub.subscribe(Modus.PubSub, "modus:events")
 
     # Start with "The Founding" era

@@ -6,6 +6,31 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v5.6.6 · **Divinus** — _Sprint v7.6 — PubSub Consolidation + ETS Everywhere_
+_19 Şubat 2026_
+
+### 🎯 Sprint v7.6 — 5 Tasks, ~30 min
+
+1. **[Bug] PubSub consolidation** — Removed duplicate `simulation:ticks` topic. All 7 subscribers migrated to single `modus:tick` topic. Reduces PubSub overhead by ~50%.
+
+2. **[Optimization] Agent state ETS mirror** — New `:agent_states_cache` ETS table. `Agent.get_state/1` reads from ETS (O(1)) instead of GenServer.call. State mirrored after each tick. Init in Application.start.
+
+3. **[Optimization] EventLog ETS read path** — `recent/1` and `counts_by_type/0` now read directly from `:event_log_cache` ETS. No more GenServer.call blocking for event queries.
+
+4. **[Feature] Ticker health metrics** — Tracks `consecutive_lags` and `total_lags`. Logs `:tick_lag` events to EventLog after 5+ consecutive lags. New `Ticker.health/0` API.
+
+5. **[Feature] WorldChannel health endpoint** — New `"get_ticker_health"` channel event returns ticker health + event type counts for dashboard integration.
+
+### Files Changed
+- `lib/modus/simulation/ticker.ex` — Health tracking, single PubSub, adaptive factor
+- `lib/modus/simulation/agent.ex` — ETS mirror (init_state_cache, get_state via ETS)
+- `lib/modus/simulation/event_log.ex` — Full ETS rewrite for reads
+- `lib/modus/application.ex` — Agent.init_state_cache() call
+- `lib/modus_web/channels/world_channel.ex` — get_ticker_health endpoint
+- 7 subscriber files — PubSub topic migration
+
+---
+
 ## v5.6.0 · **Divinus** — _Sprint v6 Final — God Mode + Prayer + Demo + RUNE_
 _19 Şubat 2026_
 

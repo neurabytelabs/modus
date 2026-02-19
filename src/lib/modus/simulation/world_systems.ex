@@ -13,7 +13,7 @@ defmodule Modus.Simulation.WorldSystems do
 
   @impl true
   def init(:ok) do
-    Phoenix.PubSub.subscribe(Modus.PubSub, "simulation:ticks")
+    Phoenix.PubSub.subscribe(Modus.PubSub, "modus:tick")
     {:ok, %{}}
   end
 

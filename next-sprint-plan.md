@@ -1,20 +1,20 @@
-# MODUS Sprint v7.3 — Next 5 Tasks
+# MODUS Sprint v7.7 — Next 5 Tasks
 
-## Completed (v7.2)
-- ✅ ETS-based read path for Observatory.world_stats()
-- ✅ Phoenix.Presence for DemoLive viewer tracking
-- ✅ Telemetry events in Ticker ([:modus, :ticker, :tick])
-- ✅ SaveManager slot metadata caching
-- ✅ DemoCanvas keyboard shortcuts (arrow pan, +/- zoom)
+## Completed (v7.6)
+- ✅ PubSub consolidation — single "modus:tick" topic (removed "simulation:ticks" duplication)
+- ✅ Agent state ETS mirror — O(1) reads via :agent_states_cache, no GenServer.call blocking
+- ✅ EventLog ETS read path — recent/1 and counts_by_type/0 read from ETS directly
+- ✅ Ticker health metrics — consecutive lag tracking, :tick_lag events, health/0 API
+- ✅ WorldChannel health endpoint — "get_ticker_health" returns ticker health + event counts
 
-## v7.3 Tasks
+## v7.7 Tasks
 
-1. **[Bug] Observatory.world_stats rescue on missing ETS table at boot** — Race condition: if world_stats() is called before Application.start inits the ETS table, ArgumentError. Add defensive `:ets.whereis` check or wrap in try/rescue consistently.
+1. **[Bug] Agent ETS cleanup on termination** — When agent dies/terminates, its entry remains in :agent_states_cache. Add terminate/2 callback to delete from ETS, or periodic sweep in Ticker.
 
-2. **[Optimization] Ticker batch PubSub — single broadcast per tick** — Currently broadcasts to `modus:tick` AND `simulation:ticks` separately. Consolidate into one topic with tagged messages to reduce PubSub overhead.
+2. **[Optimization] Batch ETS writes for agent states** — Currently each agent writes to ETS individually every tick. Batch into a single :ets.insert/2 call from Ticker after all agents processed to reduce ETS contention.
 
-3. **[Feature] DemoLive mini-map toggle** — Add M key shortcut + UI button to toggle minimap in demo mode. Wire to renderer.toggleMinimap() already available.
+3. **[Feature] LiveDashboard integration** — Register :telemetry_metrics_summary for [:modus, :ticker, :tick] with custom LiveDashboard page showing agent count, tick duration, lag streak.
 
-4. **[Optimization] Agent state ETS mirror for read-heavy paths** — Agent.get_state/1 does GenServer.call. Mirror agent state to ETS on each tick for O(1) reads from Observatory, leaderboards, and export.
+4. **[Optimization] EventLog ETS — ordered_set for time-range queries** — Switch from :set to :ordered_set keyed by tick number for efficient "events since tick N" queries.
 
-5. **[Feature] LiveDashboard telemetry panel for MODUS metrics** — Register `:telemetry_metrics_summary` for [:modus, :ticker, :tick] duration/agent_count. Add custom LiveDashboard page or metrics config.
+5. **[Feature] Agent state snapshots for time-travel** — Store agent state snapshots every 100 ticks in ETS ring buffer (last 10). Enable "rewind" inspection from dashboard.

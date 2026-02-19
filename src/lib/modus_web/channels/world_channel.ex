@@ -592,6 +592,25 @@ defmodule ModusWeb.WorldChannel do
     {:reply, {:ok, %{events: events}}, socket}
   end
 
+  # v7.6: Ticker health endpoint
+  def handle_in("get_ticker_health", _payload, socket) do
+    health =
+      try do
+        Ticker.health()
+      catch
+        _, _ -> %{tick: 0, state: :unknown, consecutive_lags: 0, total_lags: 0}
+      end
+
+    event_counts =
+      try do
+        EventLog.counts_by_type()
+      catch
+        _, _ -> %{}
+      end
+
+    {:reply, {:ok, %{ticker: health, event_counts: event_counts}}, socket}
+  end
+
   # ── Rules Engine ────────────────────────────────────────────
 
   def handle_in("get_rules", _payload, socket) do
