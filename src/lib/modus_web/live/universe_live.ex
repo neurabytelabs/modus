@@ -553,7 +553,8 @@ defmodule ModusWeb.UniverseLive do
   def handle_event("send_chat", %{"message" => msg}, socket) when msg != "" do
     require Logger
     agent_id = socket.assigns.selected_agent["id"]
-    Logger.info("MODUS send_chat: agent_id=#{inspect(agent_id)} msg=#{inspect(msg)}")
+    classification = Modus.Nexus.Router.classify(msg)
+    Logger.info("MODUS send_chat: agent_id=#{inspect(agent_id)} msg=#{inspect(msg)} intent=#{classification.intent}/#{classification.sub_intent}")
     messages = socket.assigns.chat_messages ++ [%{role: "user", text: msg}]
 
     {:noreply,
