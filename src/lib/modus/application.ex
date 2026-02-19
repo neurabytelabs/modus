@@ -40,6 +40,8 @@ defmodule Modus.Application do
       Modus.Simulation.WorldHistory,
       Modus.Simulation.WorldEvents,
       Modus.Simulation.DivineIntervention,
+      Modus.World.PrayerSystem,
+      Modus.World.AgentChatViewer,
       Modus.Simulation.Seasons,
       Modus.Simulation.Weather,
       Modus.Simulation.Wildlife,

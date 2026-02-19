@@ -56,6 +56,8 @@ defmodule ModusWeb.UniverseLive do
        chat_messages: [],
        chat_loading: false,
        chat_filter: "all",
+       chat_context: [],
+       pending_confirm: nil,
        # Settings
        settings_open: false,
        settings_provider:
@@ -553,24 +555,64 @@ defmodule ModusWeb.UniverseLive do
   def handle_event("send_chat", %{"message" => msg}, socket) when msg != "" do
     require Logger
     agent_id = socket.assigns.selected_agent["id"]
-    classification = Modus.Nexus.Router.classify(msg)
-    Logger.info("MODUS send_chat: agent_id=#{inspect(agent_id)} msg=#{inspect(msg)} intent=#{classification.intent}/#{classification.sub_intent}")
-    messages = socket.assigns.chat_messages ++ [%{role: "user", text: msg}]
 
-    case classification.intent do
-      :insight ->
-        response = Modus.Nexus.Router.dispatch(classification)
-        messages = messages ++ [%{role: "system", text: response, topic: "insight"}]
-        {:noreply, assign(socket, chat_messages: messages, chat_loading: false)}
+    # Multi-turn context: keep last 5 messages
+    context = Enum.take(socket.assigns.chat_context ++ [msg], -5)
 
-      _ ->
-        {:noreply,
-         socket
-         |> assign(chat_messages: messages, chat_loading: true)
-         |> push_event("chat_to_agent", %{
-           agent_id: agent_id,
-           message: msg
-         })}
+    # Handle confirmation responses
+    if socket.assigns.pending_confirm && String.downcase(msg) in ["evet", "yes", "onay", "confirm", "ok"] do
+      result = Modus.Nexus.ActionEngine.confirm()
+      messages = socket.assigns.chat_messages ++ [%{role: "user", text: msg}]
+      response_msg = case result do
+        {:ok, text} -> %{role: "system", text: "✅ " <> text, topic: "action"}
+        {:error, text} -> %{role: "system", text: "❌ " <> text, topic: "action"}
+      end
+      messages = messages ++ [response_msg]
+      {:noreply, assign(socket, chat_messages: messages, chat_loading: false, chat_context: context, pending_confirm: nil)}
+    else
+      if socket.assigns.pending_confirm && String.downcase(msg) in ["hayır", "no", "iptal", "cancel"] do
+        Modus.Nexus.ActionEngine.cancel()
+        messages = socket.assigns.chat_messages ++ [
+          %{role: "user", text: msg},
+          %{role: "system", text: "↩️ Komut iptal edildi.", topic: "action"}
+        ]
+        {:noreply, assign(socket, chat_messages: messages, chat_loading: false, chat_context: context, pending_confirm: nil)}
+      else
+        classification = Modus.Nexus.Router.classify(msg)
+        Logger.info("MODUS send_chat: agent_id=#{inspect(agent_id)} msg=#{inspect(msg)} intent=#{classification.intent}/#{classification.sub_intent}")
+        messages = socket.assigns.chat_messages ++ [%{role: "user", text: msg}]
+
+        case classification.intent do
+          :insight ->
+            response = Modus.Nexus.Router.dispatch(classification)
+            messages = messages ++ [%{role: "system", text: response, topic: "insight"}]
+            {:noreply, assign(socket, chat_messages: messages, chat_loading: false, chat_context: context)}
+
+          :action ->
+            response = Modus.Nexus.Router.dispatch(classification)
+            {topic, pending} = case response do
+              {:confirm, _} -> {"action", classification}
+              _ -> {"action", nil}
+            end
+            response_text = case response do
+              {:confirm, text} -> text
+              {:ok, text} -> "✅ " <> text
+              {:error, text} -> "❌ " <> text
+              text when is_binary(text) -> text
+            end
+            messages = messages ++ [%{role: "system", text: response_text, topic: topic}]
+            {:noreply, assign(socket, chat_messages: messages, chat_loading: false, chat_context: context, pending_confirm: pending)}
+
+          _ ->
+            {:noreply,
+             socket
+             |> assign(chat_messages: messages, chat_loading: true, chat_context: context)
+             |> push_event("chat_to_agent", %{
+               agent_id: agent_id,
+               message: msg
+             })}
+        end
+      end
     end
   end
 
@@ -3637,20 +3679,35 @@ defmodule ModusWeb.UniverseLive do
             <%= for {msg, idx} <- Enum.with_index(@chat_messages) do %>
               <div class={"flex #{if msg.role == "user", do: "justify-end", else: "justify-start"}"}>
                 <%!-- Agent avatar (left side) --%>
-                <%= if msg.role == "agent" do %>
-                  <div class="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20
-                    border border-white/10 flex items-center justify-center text-xs shrink-0 mr-2 mt-1">
-                    <%= chat_mood_emoji(@selected_agent) %>
+                <%= if msg.role in ["agent", "system"] do %>
+                  <div class={"w-7 h-7 rounded-full border flex items-center justify-center text-xs shrink-0 mr-2 mt-1 #{cond do
+                    msg[:topic] == "insight" -> "bg-gradient-to-br from-cyan-500/30 to-blue-500/30 border-cyan-500/20"
+                    msg[:topic] == "action" -> "bg-gradient-to-br from-amber-500/30 to-orange-500/30 border-amber-500/20"
+                    true -> "bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border-white/10"
+                  end}"}>
+                    <%= cond do %>
+                      <% msg[:topic] == "insight" -> %>🔍
+                      <% msg[:topic] == "action" -> %>⚡
+                      <% true -> %><%= chat_mood_emoji(@selected_agent) %>
+                    <% end %>
                   </div>
                 <% end %>
                 <div class={"max-w-[78%] group"}>
                   <%!-- Topic icon + name --%>
-                  <%= if msg.role == "agent" do %>
+                  <%= if msg.role in ["agent", "system"] do %>
                     <div class="flex items-center gap-1 mb-0.5 px-1">
                       <%= if msg[:topic] do %>
                         <span class="text-[10px]"><%= topic_icon(msg[:topic]) %></span>
                       <% end %>
-                      <span class="text-[10px] font-medium text-cyan-400/80"><%= msg[:name] || @selected_agent["name"] %></span>
+                      <span class={"text-[10px] font-medium #{cond do
+                        msg[:topic] == "insight" -> "text-cyan-400/80"
+                        msg[:topic] == "action" -> "text-amber-400/80"
+                        true -> "text-cyan-400/80"
+                      end}"}><%= cond do %>
+                        <% msg[:topic] == "insight" -> %>Nexus Insight
+                        <% msg[:topic] == "action" -> %>Nexus Action
+                        <% true -> %><%= msg[:name] || @selected_agent["name"] %>
+                      <% end %></span>
                       <span class="text-[9px] text-slate-700 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
                         <%= chat_timestamp(idx) %>
                       </span>
@@ -3658,9 +3715,12 @@ defmodule ModusWeb.UniverseLive do
                   <% end %>
                   <%!-- Message bubble --%>
                   <div class={"px-3 py-2 rounded-2xl text-[13px] leading-relaxed
-                    #{if msg.role == "user",
-                      do: "bg-gradient-to-br from-purple-500/20 to-purple-600/10 text-purple-100 border border-purple-500/10 rounded-br-md",
-                      else: "bg-white/[0.04] text-slate-300 border border-white/[0.06] rounded-bl-md backdrop-blur-sm"}"}>
+                    #{cond do
+                      msg.role == "user" -> "bg-gradient-to-br from-purple-500/20 to-purple-600/10 text-purple-100 border border-purple-500/10 rounded-br-md"
+                      msg[:topic] == "insight" -> "bg-gradient-to-br from-cyan-500/15 to-blue-500/10 text-cyan-100 border border-cyan-500/20 rounded-bl-md backdrop-blur-sm"
+                      msg[:topic] == "action" -> "bg-gradient-to-br from-amber-500/15 to-orange-500/10 text-amber-100 border border-amber-500/20 rounded-bl-md backdrop-blur-sm"
+                      true -> "bg-white/[0.04] text-slate-300 border border-white/[0.06] rounded-bl-md backdrop-blur-sm"
+                    end}"}>
                     <%= msg.text %>
                   </div>
                   <%= if msg.role == "user" do %>

@@ -357,6 +357,7 @@ defmodule Modus.Simulation.Agent do
       |> Modus.Simulation.Aging.process_tick(tick_number)
       |> check_age_death(tick_number)
       |> check_death(tick_number)
+      |> maybe_pray(tick_number)
       |> record_memory(tick_number, {action, params})
 
     # Update registry with current position+alive for fast lookups
@@ -733,6 +734,21 @@ defmodule Modus.Simulation.Agent do
       %{agent | age: agent.age + 1}
     else
       agent
+    end
+  end
+
+  defp maybe_pray(%{alive?: false} = agent, _tick), do: agent
+  defp maybe_pray(agent, tick) do
+    case Modus.World.PrayerSystem.maybe_pray(agent, tick) do
+      {:pray, type} ->
+        try do
+          Modus.World.PrayerSystem.pray(agent.id, agent.name, type, tick)
+        catch
+          _, _ -> :ok
+        end
+        agent
+      :no_prayer ->
+        agent
     end
   end
 

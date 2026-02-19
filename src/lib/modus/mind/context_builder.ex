@@ -3,6 +3,7 @@ defmodule Modus.Mind.ContextBuilder do
 
   alias Modus.Mind.{Perception, Cerebro.SocialInsight, Culture}
   alias Modus.Persistence.AgentMemory
+  alias Modus.Protocol.PersonalityPromptBuilder
   alias Modus.Simulation.{Seasons, WorldHistory}
   alias Modus.I18n
 
@@ -26,6 +27,8 @@ defmodule Modus.Mind.ContextBuilder do
     You are #{agent.name}, a #{agent.occupation} in a living world.
 
     Your personality: #{describe_personality_rich(agent.personality)}
+
+    SPEECH STYLE: #{PersonalityPromptBuilder.build(agent.personality, perception.affect_state, perception.conatus_energy)}
 
     Right now you're #{action_name(perception.current_action)} in the #{terrain_name(perception.terrain)}.
     Your energy is #{energy_pct}% and you're feeling #{affect_name(perception.affect_state)}.
@@ -84,9 +87,11 @@ defmodule Modus.Mind.ContextBuilder do
 
     #{agent_a.name}: #{agent_a.occupation}. #{describe_personality_rich(agent_a.personality)}
     Energy: #{round(ensure_float(agent_a.conatus_energy) * 100)}%, feeling #{affect_name(agent_a.affect_state)}.
+    Speech style: #{PersonalityPromptBuilder.build(agent_a.personality, agent_a.affect_state, agent_a.conatus_energy)}
 
     #{agent_b.name}: #{agent_b.occupation}. #{describe_personality_rich(agent_b.personality)}
     Energy: #{round(ensure_float(agent_b.conatus_energy) * 100)}%, feeling #{affect_name(agent_b.affect_state)}.
+    Speech style: #{PersonalityPromptBuilder.build(agent_b.personality, agent_b.affect_state, agent_b.conatus_energy)}
 
     Relationship: #{rel}
     #{rel_tone}

@@ -178,6 +178,23 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
           Persuasion.attempt(agent, partner, topic)
         end
 
+        # Record to AgentChatViewer for real-time streaming
+        try do
+          Modus.World.AgentChatViewer.record_chat(%{
+            agent_a_id: agent.id,
+            agent_b_id: partner.id,
+            agent_a_name: agent.name,
+            agent_b_name: partner.name,
+            messages: dialogue,
+            topic: topic,
+            tick: tick,
+            affect_a: agent.affect_state,
+            affect_b: partner.affect_state
+          })
+        catch
+          :exit, _ -> :ok
+        end
+
         # Apply effects
         apply_conversation_effects(agent, partner, relationship, tick)
 
@@ -212,10 +229,17 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
     memories1 = AffectMemory.memories_for_llm_context(agent1.id, 3) |> Enum.join("; ")
     _memories2 = AffectMemory.memories_for_llm_context(agent2.id, 3) |> Enum.join("; ")
 
+    speech_style = Modus.Protocol.PersonalityPromptBuilder.build(
+      agent1.personality, agent1.affect_state, agent1.conatus_energy
+    )
+
     """
     You are #{agent1.name} (#{agent1.occupation}). \
     Personality: extraversion #{Float.round(ensure_float(agent1.personality.extraversion), 1)}, agreeableness #{Float.round(ensure_float(agent1.personality.agreeableness), 1)}.
     You're feeling #{agent1.affect_state} (energy: #{Float.round(ensure_float(agent1.conatus_energy), 2)}).
+
+    SPEECH STYLE: #{speech_style}
+
     You run into #{agent2.name}. They're a #{agent2.occupation}.
     #{rel_desc}
     #{if memories1 != "", do: "Your memories: #{memories1}", else: ""}

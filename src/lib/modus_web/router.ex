@@ -15,6 +15,7 @@ defmodule ModusWeb.Router do
     pipe_through(:browser)
 
     live("/", UniverseLive, :index)
+    live("/demo", DemoLive, :index)
   end
 
   if Mix.env() in [:dev] do

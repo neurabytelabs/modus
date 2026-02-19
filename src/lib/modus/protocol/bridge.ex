@@ -22,7 +22,11 @@ defmodule Modus.Protocol.Bridge do
         system_prompt = ContextBuilder.build_chat_prompt(agent, text)
 
         {:ok, reply} = chat_with_context(agent, text, system_prompt)
-        Modus.Mind.ConversationMemory.record(agent_id, "user", [{agent.name, reply}], 0)
+        Modus.Mind.ConversationMemory.record(
+          agent_id, "user",
+          [{"user", text}, {agent.name, reply}],
+          0, category: :user_chat
+        )
         {:ok, reply}
 
       {:query, :location} ->
@@ -57,6 +61,9 @@ defmodule Modus.Protocol.Bridge do
 
       {:command, :stop} ->
         {:ok, "Stopped, taking a break."}
+
+      {:god_mode, action, params} ->
+        Modus.Protocol.GodModeExecutor.execute({:god_mode, action, params})
 
       {:multi, steps} ->
         Modus.Protocol.CommandExecutor.execute_chain(agent_id, steps)

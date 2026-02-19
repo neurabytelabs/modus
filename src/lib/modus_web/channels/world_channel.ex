@@ -21,6 +21,8 @@ defmodule ModusWeb.WorldChannel do
     Phoenix.PubSub.subscribe(Modus.PubSub, "world_events")
     Phoenix.PubSub.subscribe(Modus.PubSub, "modus:seasons")
     Phoenix.PubSub.subscribe(Modus.PubSub, "modus:rules")
+    Phoenix.PubSub.subscribe(Modus.PubSub, "prayers")
+    Phoenix.PubSub.subscribe(Modus.PubSub, "agent_chats")
     state = build_full_state()
     {:ok, state, assign(socket, :selected_agent_id, nil)}
   end
@@ -485,6 +487,50 @@ defmodule ModusWeb.WorldChannel do
     {:reply, {:error, %{reason: "invalid_animal_type"}}, socket}
   end
 
+  # ── Prayer System ────────────────────────────────────────────
+
+  def handle_in("get_prayers", payload, socket) do
+    opts = []
+    opts = if payload["status"], do: Keyword.put(opts, :status, String.to_existing_atom(payload["status"])), else: opts
+    opts = if payload["agent_id"], do: Keyword.put(opts, :agent_id, payload["agent_id"]), else: opts
+    opts = if payload["limit"], do: Keyword.put(opts, :limit, payload["limit"]), else: opts
+    prayers = Modus.World.PrayerSystem.list_prayers(opts)
+    {:reply, {:ok, %{prayers: prayers}}, socket}
+  end
+
+  def handle_in("respond_prayer", %{"prayer_id" => prayer_id, "response" => response}, socket)
+      when response in ["positive", "negative"] do
+    response_atom = String.to_existing_atom(response)
+    case Modus.World.PrayerSystem.respond(prayer_id, response_atom) do
+      :ok -> {:reply, :ok, socket}
+      {:error, reason} -> {:reply, {:error, %{reason: reason}}, socket}
+    end
+  end
+
+  def handle_in("respond_prayer", _payload, socket) do
+    {:reply, {:error, %{reason: "invalid_params"}}, socket}
+  end
+
+  # ── Agent Chat Viewer ──────────────────────────────────────
+
+  def handle_in("get_agent_chats", payload, socket) do
+    opts = []
+    opts = if payload["agent_id"], do: Keyword.put(opts, :agent_id, payload["agent_id"]), else: opts
+    opts = if payload["topic"], do: Keyword.put(opts, :topic, payload["topic"]), else: opts
+    opts = if payload["limit"], do: Keyword.put(opts, :limit, payload["limit"]), else: opts
+
+    chats =
+      Modus.World.AgentChatViewer.list_chats(opts)
+      |> Enum.map(&Modus.World.AgentChatViewer.serialize_chat/1)
+
+    {:reply, {:ok, %{chats: chats}}, socket}
+  end
+
+  def handle_in("subscribe_agent_chats", _payload, socket) do
+    # Already subscribed via join; this is a client acknowledgment
+    {:reply, :ok, socket}
+  end
+
   # ── Export & Share ──────────────────────────────────────────
 
   def handle_in("export_world", _payload, socket) do
@@ -787,6 +833,21 @@ defmodule ModusWeb.WorldChannel do
 
   def handle_info({:rules_changed, _rules}, socket) do
     push(socket, "rules_changed", %{rules: Modus.Simulation.RulesEngine.serialize()})
+    {:noreply, socket}
+  end
+
+  def handle_info({:new_prayer, prayer}, socket) do
+    push(socket, "new_prayer", %{prayer: prayer})
+    {:noreply, socket}
+  end
+
+  def handle_info({:prayer_answered, prayer}, socket) do
+    push(socket, "prayer_answered", %{prayer: prayer})
+    {:noreply, socket}
+  end
+
+  def handle_info({:new_agent_chat, chat_data}, socket) do
+    push(socket, "new_agent_chat", %{chat: chat_data})
     {:noreply, socket}
   end
 
