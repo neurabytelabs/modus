@@ -249,7 +249,14 @@ defmodule Modus.Simulation.Agent do
     dx = clamp(tx - ax, -1, 1)
     dy = clamp(ty - ay, -1, 1)
     new_pos = {ax + dx, ay + dy}
-    {:noreply, %{agent | position: new_pos, current_action: :moving}}
+    terrain = get_terrain_at(new_pos)
+
+    if terrain in [:water, :ocean] do
+      # Block movement into water
+      {:noreply, %{agent | current_action: :idle}}
+    else
+      {:noreply, %{agent | position: new_pos, current_action: :moving}}
+    end
   end
 
   def handle_cast(:kill, agent) do
@@ -381,19 +388,29 @@ defmodule Modus.Simulation.Agent do
   # --- Action Application ---
 
   defp apply_action(agent, :move_to, %{target: target}) do
-    {ax, ay} = agent.position
-    {tx, ty} = target
-    dx = clamp(tx - ax, -1, 1)
-    dy = clamp(ty - ay, -1, 1)
-    %{agent | position: {ax + dx, ay + dy}, current_action: :moving}
+    move_with_terrain_check(agent, target, :moving)
   end
 
   defp apply_action(agent, :explore, %{target: target}) do
+    move_with_terrain_check(agent, target, :exploring)
+  end
+
+  # Shared movement with terrain walkability check
+  defp move_with_terrain_check(agent, target, action_label) do
     {ax, ay} = agent.position
     {tx, ty} = target
     dx = clamp(tx - ax, -1, 1)
     dy = clamp(ty - ay, -1, 1)
-    %{agent | position: {ax + dx, ay + dy}, current_action: :exploring}
+    new_pos = {ax + dx, ay + dy}
+
+    terrain = get_terrain_at(new_pos)
+
+    if terrain in [:water, :ocean] do
+      # Can't walk on water — stay in place, pick new explore target
+      %{agent | current_action: :idle, explore_target: nil, explore_ticks: 0}
+    else
+      %{agent | position: new_pos, current_action: action_label}
+    end
   end
 
   defp apply_action(agent, :gather, params) do
