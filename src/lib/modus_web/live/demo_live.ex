@@ -27,12 +27,16 @@ defmodule ModusWeb.DemoLive do
       # Track this viewer via Presence
       Phoenix.PubSub.subscribe(Modus.PubSub, @presence_topic)
       viewer_id = "viewer_" <> Base.encode16(:crypto.strong_rand_bytes(4))
-      {:ok, _} = Presence.track(self(), @presence_topic, viewer_id, %{joined_at: System.system_time(:second)})
+      try do
+        Presence.track(self(), @presence_topic, viewer_id, %{joined_at: System.system_time(:second)})
+      catch
+        _, _ -> :ok
+      end
     end
 
     {tick, agent_count, avg_conatus} = if world_running?, do: fetch_metrics(), else: {0, 0, 0.0}
 
-    viewer_count = Presence.list(@presence_topic) |> map_size()
+    viewer_count = try do; Presence.list(@presence_topic) |> map_size(); catch; _, _ -> 0; end
 
     {:ok,
      assign(socket,
@@ -127,7 +131,7 @@ defmodule ModusWeb.DemoLive do
   end
 
   def handle_info(%Phoenix.Socket.Broadcast{event: "presence_diff"}, socket) do
-    viewer_count = Presence.list(@presence_topic) |> map_size()
+    viewer_count = try do; Presence.list(@presence_topic) |> map_size(); catch; _, _ -> 0; end
     {:noreply, assign(socket, viewer_count: viewer_count)}
   end
 
