@@ -111,6 +111,12 @@ defmodule Modus.Simulation.EventLog do
     end
   end
 
+  @doc "Clear all events from both ETS tables. Call on simulation reset."
+  @spec clear() :: :ok
+  def clear do
+    GenServer.call(__MODULE__, :clear)
+  end
+
   @doc "Subscribe to event broadcasts."
   def subscribe do
     Phoenix.PubSub.subscribe(@pubsub, @topic)
@@ -126,6 +132,26 @@ defmodule Modus.Simulation.EventLog do
     # v7.7: ordered_set for efficient time-range queries by tick
     :ets.new(:event_log_by_tick, [:named_table, :ordered_set, :public, read_concurrency: true])
     {:ok, state}
+  end
+
+  @impl true
+  def handle_call(:clear, _from, _state) do
+    # Truncate both ETS tables
+    try do
+      :ets.delete_all_objects(@ets_table)
+      :ets.insert(@ets_table, {:events, []})
+      :ets.insert(@ets_table, {:counts, %{}})
+    catch
+      _, _ -> :ok
+    end
+
+    try do
+      :ets.delete_all_objects(:event_log_by_tick)
+    catch
+      _, _ -> :ok
+    end
+
+    {:reply, :ok, %__MODULE__{}}
   end
 
   @impl true

@@ -327,7 +327,26 @@ defmodule Modus.Simulation.Agent do
   end
 
   def handle_cast(:kill, agent) do
-    {:noreply, %{agent | alive?: false}}
+    # v7.8: Log death cause for externally killed agents
+    tick =
+      try do
+        Modus.Simulation.Ticker.current_tick()
+      catch
+        _, _ -> 0
+      end
+
+    try do
+      Modus.Simulation.EventLog.log(:death, tick, [agent.id], %{
+        cause: "external_event",
+        name: agent.name
+      })
+
+      Modus.Simulation.Lifecycle.record_death()
+    catch
+      _, _ -> :ok
+    end
+
+    {:noreply, %{agent | alive?: false, current_action: :dead}}
   end
 
   def handle_cast({:boost_need, need, amount}, agent) do
@@ -453,6 +472,8 @@ defmodule Modus.Simulation.Agent do
     try do
       if :ets.whereis(:agent_states_cache) != :undefined do
         :ets.insert(:agent_states_cache, {agent.id, agent})
+        # v7.8: Mark Observatory cache dirty
+        :persistent_term.put(:observatory_dirty, true)
       end
     catch
       _, _ -> :ok

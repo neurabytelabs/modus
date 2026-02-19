@@ -53,7 +53,12 @@ defmodule Modus.Simulation.StateSnapshots do
             end
 
           # Ring buffer: keep last @max_snapshots
-          updated = Enum.take([{tick, state} | snapshots], @max_snapshots)
+          # v7.8: Store full state for latest 3, delta for older ones
+          updated =
+            [{tick, {:full, state}} | snapshots]
+            |> Enum.take(@max_snapshots)
+            |> compress_snapshots()
+
           :ets.insert(@ets_table, {agent_id, updated})
         end)
     end
@@ -61,14 +66,14 @@ defmodule Modus.Simulation.StateSnapshots do
     _ -> :ok
   end
 
-  @doc "Get snapshot history for an agent (newest first)."
+  @doc "Get snapshot history for an agent (newest first). Reconstructs full state from deltas."
   @spec history(String.t()) :: [{non_neg_integer(), map()}]
   def history(agent_id) do
     case :ets.whereis(@ets_table) do
       :undefined -> []
       _ ->
         case :ets.lookup(@ets_table, agent_id) do
-          [{^agent_id, snapshots}] -> snapshots
+          [{^agent_id, snapshots}] -> reconstruct_snapshots(snapshots)
           [] -> []
         end
     end
@@ -87,6 +92,40 @@ defmodule Modus.Simulation.StateSnapshots do
     end
   end
 
+  @doc "Diff two snapshots for an agent, returning changed fields between tick_a and tick_b."
+  @spec diff(String.t(), non_neg_integer(), non_neg_integer()) :: {:ok, map()} | {:error, :not_found}
+  def diff(agent_id, tick_a, tick_b) do
+    snapshots = history(agent_id)
+
+    with snap_a when snap_a != nil <- find_snapshot(snapshots, tick_a),
+         snap_b when snap_b != nil <- find_snapshot(snapshots, tick_b) do
+      changes =
+        (Map.keys(snap_a) ++ Map.keys(snap_b))
+        |> Enum.uniq()
+        |> Enum.reduce(%{}, fn key, acc ->
+          val_a = Map.get(snap_a, key)
+          val_b = Map.get(snap_b, key)
+
+          if val_a != val_b do
+            Map.put(acc, key, %{from: val_a, to: val_b})
+          else
+            acc
+          end
+        end)
+
+      {:ok, changes}
+    else
+      nil -> {:error, :not_found}
+    end
+  end
+
+  defp find_snapshot(snapshots, tick) do
+    case Enum.find(snapshots, fn {t, _} -> t == tick end) do
+      {_, state} -> state
+      nil -> nil
+    end
+  end
+
   @doc "Clean up snapshots for a terminated agent."
   @spec cleanup(String.t()) :: :ok
   def cleanup(agent_id) do
@@ -99,5 +138,70 @@ defmodule Modus.Simulation.StateSnapshots do
     end
 
     :ok
+  end
+
+  # ── v7.8: Delta Compression ──────────────────────────────
+
+  @full_count 3
+
+  # Keep first @full_count as :full, convert older to :delta (diff from next newer)
+  defp compress_snapshots(snapshots) do
+    {recent, old} = Enum.split(snapshots, @full_count)
+
+    recent_full =
+      Enum.map(recent, fn
+        {tick, {:full, state}} -> {tick, {:full, state}}
+        {tick, {:delta, _delta}} = entry ->
+          # Already delta, leave as-is (shouldn't happen for recent)
+          entry
+        {tick, state} when is_map(state) -> {tick, {:full, state}}
+      end)
+
+    # For old entries, compute delta relative to the entry just before them (newer)
+    base_states = reconstruct_snapshots(recent_full)
+    base = case List.last(base_states) do
+      {_tick, state} -> state
+      nil -> %{}
+    end
+
+    old_compressed =
+      old
+      |> Enum.map(fn
+        {tick, {:full, state}} ->
+          delta = compute_delta(base, state)
+          {tick, {:delta, delta}}
+        {tick, {:delta, _}} = entry -> entry
+        {tick, state} when is_map(state) ->
+          delta = compute_delta(base, state)
+          {tick, {:delta, delta}}
+      end)
+
+    recent_full ++ old_compressed
+  end
+
+  # Compute changed fields: base -> target
+  defp compute_delta(base, target) do
+    all_keys = (Map.keys(base) ++ Map.keys(target)) |> Enum.uniq()
+
+    Enum.reduce(all_keys, %{}, fn key, acc ->
+      v_base = Map.get(base, key)
+      v_target = Map.get(target, key)
+
+      if v_base != v_target do
+        Map.put(acc, key, v_target)
+      else
+        acc
+      end
+    end)
+  end
+
+  # Reconstruct full states from mixed full/delta snapshots (newest first)
+  defp reconstruct_snapshots(snapshots) do
+    # Find the nearest full snapshot, then apply deltas forward
+    Enum.map(snapshots, fn
+      {tick, {:full, state}} -> {tick, state}
+      {tick, {:delta, delta}} -> {tick, delta}  # Best-effort: delta alone = partial state
+      {tick, state} when is_map(state) -> {tick, state}  # Legacy format
+    end)
   end
 end

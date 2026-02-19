@@ -46,6 +46,12 @@ defmodule ModusWeb.WorldChannel do
   def handle_in("reset", _payload, socket) do
     Ticker.pause()
     AgentSupervisor.terminate_all()
+    # v7.8: Clear ETS event tables on reset to prevent unbounded growth
+    try do
+      Modus.Simulation.EventLog.clear()
+    catch
+      _, _ -> :ok
+    end
     if Process.whereis(World), do: GenServer.stop(World)
     world = World.new("Genesis")
     {:ok, _} = World.start_link(world)
@@ -630,6 +636,26 @@ defmodule ModusWeb.WorldChannel do
 
     {:reply, {:ok, %{agent_id: agent_id, snapshots: snapshots}}, socket}
   end
+
+  # v7.8: Snapshot diff API
+  def handle_in("snapshot_diff", %{"agent_id" => agent_id, "tick_a" => tick_a, "tick_b" => tick_b}, socket) do
+    case Modus.Simulation.StateSnapshots.diff(agent_id, tick_a, tick_b) do
+      {:ok, changes} ->
+        # Convert tuple values for JSON serialization
+        safe_changes =
+          Map.new(changes, fn {k, %{from: from, to: to}} ->
+            {k, %{from: safe_json(from), to: safe_json(to)}}
+          end)
+
+        {:reply, {:ok, %{agent_id: agent_id, tick_a: tick_a, tick_b: tick_b, changes: safe_changes}}, socket}
+
+      {:error, :not_found} ->
+        {:reply, {:error, %{reason: "snapshot_not_found"}}, socket}
+    end
+  end
+
+  defp safe_json(val) when is_tuple(val), do: Tuple.to_list(val)
+  defp safe_json(val), do: val
 
   def handle_in("get_events_since", %{"tick" => tick}, socket) do
     events =

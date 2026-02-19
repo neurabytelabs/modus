@@ -1,20 +1,20 @@
-# MODUS Sprint v7.8 — Next 5 Tasks
+# MODUS Sprint v7.9 — Next 5 Tasks
 
-## Completed (v7.7)
-- ✅ Agent ETS cleanup on termination — terminate/2 + trap_exit + StateSnapshots.cleanup
-- ✅ ETS write_concurrency on agent_states_cache — reduced contention
-- ✅ LiveDashboard telemetry metrics — tick duration + agent_count in ModusWeb.Telemetry
-- ✅ EventLog ordered_set — :event_log_by_tick + since_tick/2 API for time-range queries
-- ✅ StateSnapshots time-travel — ring buffer (10 snapshots/agent, every 100 ticks), WorldChannel endpoints
+## Completed (v7.8)
+- ✅ EventLog ETS table cleanup on reset — clear/0 + WorldChannel integration
+- ✅ Snapshot diff API — StateSnapshots.diff/3 + WorldChannel "snapshot_diff" endpoint
+- ✅ Ticker Observatory dirty flag — :persistent_term skip when no agent state changed
+- ✅ Agent death cause tracking — :kill cast now logs :death with cause: "external_event"
+- ✅ StateSnapshots delta compression — full state for latest 3, delta for older snapshots
 
-## v7.8 Tasks
+## v7.9 Tasks
 
-1. **[Bug] EventLog ETS table cleanup on reset** — When simulation resets, :event_log_by_tick ordered_set grows unbounded. Add clear/0 function to truncate both ETS tables, call from World reset.
+1. **[Bug] StateSnapshots reconstruct_snapshots delta reconstruction** — Currently deltas are returned as partial maps. Implement proper reconstruction by applying deltas against the nearest full snapshot base.
 
-2. **[Feature] Snapshot diff API** — Add StateSnapshots.diff(agent_id, tick_a, tick_b) that returns changed fields between two snapshots. Useful for dashboard "what changed" view.
+2. **[Feature] EventLog event expiry/TTL** — Add configurable max age for :event_log_by_tick entries. Prune events older than N ticks on each log insert (or every 100 inserts) to prevent unbounded growth even without reset.
 
-3. **[Optimization] Ticker — skip Observatory update if no agents changed** — Track a dirty flag (set on agent ETS write, cleared on Observatory update). Skip update_cache() when clean.
+3. **[Optimization] Ticker — batch PubSub broadcasts** — Instead of broadcasting every tick, batch non-critical updates (WorldHistory metrics, StoryEngine population) into a single message every 10 ticks to reduce PubSub overhead.
 
-4. **[Feature] Agent death cause tracking** — When agent dies, store cause (starvation, conflict, old_age) in EventLog :death event data. Currently data is empty.
+4. **[Feature] Agent death summary in WorldHistory** — Track death causes in WorldHistory era metrics (deaths_by_cause map). Enable "Why did the population decline?" analysis.
 
-5. **[Optimization] StateSnapshots — compress old snapshots** — Only store full state for latest 3 snapshots; older ones store delta from previous. Reduces ETS memory for long-running simulations.
+5. **[Optimization] SpatialIndex rebuild skip** — Track a spatial_dirty flag (set on agent position change). Skip SpatialIndex.rebuild() when no agents moved since last rebuild.

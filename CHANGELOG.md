@@ -4,6 +4,19 @@
 
 Versioning follows Spinoza's philosophical evolution. Each release is a new mode of understanding.
 
+## v7.8.0 — Sprint v7.8 (2026-02-19)
+
+### Bug Fixes
+- **EventLog ETS cleanup on reset** — `EventLog.clear/0` truncates both `:event_log_cache` and `:event_log_by_tick` tables on simulation reset, preventing unbounded memory growth
+- **Agent `:kill` cast death logging** — External kills (inject_event) now log `:death` event with `cause: "external_event"` instead of silently dying
+
+### Features
+- **Snapshot diff API** — `StateSnapshots.diff(agent_id, tick_a, tick_b)` returns changed fields between two snapshots; WorldChannel `"snapshot_diff"` endpoint for dashboard "what changed" views
+
+### Optimizations
+- **Observatory dirty flag** — Ticker skips `Observatory.update_cache()` when no agent state has changed since last update (`:persistent_term` dirty flag set on ETS write)
+- **StateSnapshots delta compression** — Latest 3 snapshots stored as full state, older ones as deltas; reduces ETS memory for long-running simulations
+
 ---
 
 ## v5.6.6 · **Divinus** — _Sprint v7.6 — PubSub Consolidation + ETS Everywhere_

@@ -199,11 +199,21 @@ defmodule Modus.Simulation.Ticker do
 
       Modus.Simulation.StoryEngine.record_population(new_tick, agent_count)
 
-      # Update Observatory ETS cache (v7.2 — O(1) reads)
-      try do
-        Modus.Simulation.Observatory.update_cache()
-      catch
-        _, _ -> :ok
+      # v7.8: Skip Observatory update if no agent state changed (dirty flag)
+      observatory_dirty =
+        try do
+          :persistent_term.get(:observatory_dirty, true)
+        catch
+          _, _ -> true
+        end
+
+      if observatory_dirty do
+        try do
+          Modus.Simulation.Observatory.update_cache()
+          :persistent_term.put(:observatory_dirty, false)
+        catch
+          _, _ -> :ok
+        end
       end
 
       # Feed WorldHistory metrics for era detection
