@@ -29,6 +29,13 @@ defmodule Modus.Simulation.Observatory do
   def update_cache do
     stats = compute_world_stats()
     :ets.insert(@stats_table, {:world_stats, stats})
+
+    # Cache leaderboards and building breakdown (v7.3 — avoid recomputation on every UI call)
+    leaders = compute_leaderboards()
+    :ets.insert(@stats_table, {:leaderboards, leaders})
+
+    breakdown = compute_building_breakdown()
+    :ets.insert(@stats_table, {:building_breakdown, breakdown})
     :ok
   end
 
@@ -107,9 +114,19 @@ defmodule Modus.Simulation.Observatory do
     }
   end
 
-  @doc "Get building counts grouped by type."
+  @doc "Get building counts grouped by type (cached, falls back to live computation)."
   @spec building_breakdown() :: [{atom(), non_neg_integer()}]
   def building_breakdown do
+    case :ets.lookup(@stats_table, :building_breakdown) do
+      [{:building_breakdown, breakdown}] -> breakdown
+      [] -> compute_building_breakdown()
+    end
+  rescue
+    ArgumentError -> compute_building_breakdown()
+  end
+
+  @doc false
+  def compute_building_breakdown do
     try do
       Building.all()
       |> Enum.map(fn {_id, b} -> b.type end)
@@ -173,10 +190,20 @@ defmodule Modus.Simulation.Observatory do
 
   @doc """
   Agent leaderboards: most social, wealthiest, most traveled, oldest.
-  Returns a map of category => top-5 list.
+  Returns a map of category => top-5 list (cached, falls back to live computation).
   """
   @spec leaderboards() :: %{atom() => [leaderboard_entry()]}
   def leaderboards do
+    case :ets.lookup(@stats_table, :leaderboards) do
+      [{:leaderboards, leaders}] -> leaders
+      [] -> compute_leaderboards()
+    end
+  rescue
+    ArgumentError -> compute_leaderboards()
+  end
+
+  @doc false
+  def compute_leaderboards do
     agents = get_all_agent_states()
 
     %{

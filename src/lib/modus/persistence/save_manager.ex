@@ -354,12 +354,26 @@ defmodule Modus.Persistence.SaveManager do
   end
 
   defp collect_agents do
+    # v7.3: Parallel agent state collection with Task.async_stream
     Modus.AgentRegistry
     |> Registry.select([{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}])
-    |> Enum.reduce([], fn {_id, pid}, acc ->
-      try do
-        state = GenServer.call(pid, :get_state, 2_000)
+    |> Task.async_stream(
+      fn {_id, pid} ->
+        try do
+          GenServer.call(pid, :get_state, 2_000)
+        catch
+          :exit, _ -> nil
+        end
+      end,
+      max_concurrency: 10,
+      timeout: 5_000,
+      on_timeout: :kill_task
+    )
+    |> Enum.reduce([], fn
+      {:ok, nil}, acc ->
+        acc
 
+      {:ok, state}, acc ->
         agent = %{
           id: state.id,
           name: state.name,
@@ -386,9 +400,12 @@ defmodule Modus.Persistence.SaveManager do
         }
 
         [agent | acc]
-      catch
-        :exit, _ -> acc
-      end
+
+      {:exit, _reason}, acc ->
+        acc
+
+      _, acc ->
+        acc
     end)
   end
 

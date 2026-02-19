@@ -25,6 +25,14 @@ defmodule Modus.Intelligence.LlmScheduler do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
+  @doc "Get current scheduler stats for dashboard (v7.3)."
+  @spec stats() :: map()
+  def stats do
+    GenServer.call(__MODULE__, :stats)
+  catch
+    :exit, _ -> %{busy: false, last_batch_tick: 0, total_batches: 0, total_cache_hits: 0}
+  end
+
   @impl true
   def init(_) do
     # Initialize metrics and budget tables
@@ -32,7 +40,18 @@ defmodule Modus.Intelligence.LlmScheduler do
     BudgetTracker.init()
     Modus.Protocol.RunePromptEngine.init()
     Modus.Simulation.Ticker.subscribe()
-    {:ok, %{last_conversation_tick: 0, busy: false}}
+    {:ok, %{last_conversation_tick: 0, busy: false, total_batches: 0, total_cache_hits: 0, last_batch_tick: 0}}
+  end
+
+  @impl true
+  def handle_call(:stats, _from, state) do
+    {:reply,
+     %{
+       busy: state.busy,
+       last_batch_tick: state.last_batch_tick,
+       total_batches: state.total_batches,
+       total_cache_hits: state.total_cache_hits
+     }, state}
   end
 
   @impl true
@@ -47,7 +66,7 @@ defmodule Modus.Intelligence.LlmScheduler do
 
     cond do
       rem(tick, @batch_interval) == 0 and tick > 0 ->
-        {:noreply, %{state | busy: true} |> spawn_batch(tick)}
+        {:noreply, %{state | busy: true, last_batch_tick: tick, total_batches: state.total_batches + 1} |> spawn_batch(tick)}
 
       true ->
         {:noreply, state}

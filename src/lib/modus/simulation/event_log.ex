@@ -41,10 +41,18 @@ defmodule Modus.Simulation.EventLog do
     GenServer.cast(__MODULE__, {:log, type, tick, agent_ids, data})
   end
 
-  @doc "Get recent events, optionally filtered by agent_id."
+  @doc "Get recent events, optionally filtered by agent_id and/or type."
   @spec recent(keyword()) :: [event()]
   def recent(opts \\ []) do
     GenServer.call(__MODULE__, {:recent, opts})
+  end
+
+  @doc "Get event counts by type (v7.3 — for dashboard stats)."
+  @spec counts_by_type() :: %{event_type() => non_neg_integer()}
+  def counts_by_type do
+    GenServer.call(__MODULE__, :counts_by_type)
+  catch
+    :exit, _ -> %{}
   end
 
   @doc "Subscribe to event broadcasts."
@@ -80,14 +88,21 @@ defmodule Modus.Simulation.EventLog do
   @impl true
   def handle_call({:recent, opts}, _from, state) do
     agent_id = Keyword.get(opts, :agent_id)
+    type = Keyword.get(opts, :type)
     limit = Keyword.get(opts, :limit, 20)
 
     result =
       state.events
       |> maybe_filter_agent(agent_id)
+      |> maybe_filter_type(type)
       |> Enum.take(limit)
 
     {:reply, result, state}
+  end
+
+  def handle_call(:counts_by_type, _from, state) do
+    counts = Enum.frequencies_by(state.events, & &1.type)
+    {:reply, counts, state}
   end
 
   defp maybe_filter_agent(events, nil), do: events
@@ -95,6 +110,9 @@ defmodule Modus.Simulation.EventLog do
   defp maybe_filter_agent(events, agent_id) do
     Enum.filter(events, fn e -> agent_id in e.agents end)
   end
+
+  defp maybe_filter_type(events, nil), do: events
+  defp maybe_filter_type(events, type), do: Enum.filter(events, fn e -> e.type == type end)
 
   # Catch-all for unexpected messages
   @impl true

@@ -16,6 +16,7 @@ defmodule Modus.Simulation.Ticker do
   Broadcasts `{:tick, tick_number}` on `"modus:tick"`.
   """
   use GenServer
+  require Logger
 
   @default_interval_ms 100
   @pubsub Modus.PubSub
@@ -227,6 +228,15 @@ defmodule Modus.Simulation.Ticker do
       %{duration: tick_duration, agent_count: agent_count},
       %{tick_number: new_tick}
     )
+
+    # v7.3: Tick lag detection — warn if tick processing exceeds interval
+    tick_ms = System.convert_time_unit(tick_duration, :native, :millisecond)
+
+    if tick_ms > s.interval_ms do
+      Logger.warning(
+        "Tick lag detected: tick ##{new_tick} took #{tick_ms}ms (interval: #{s.interval_ms}ms, agents: #{agent_count})"
+      )
+    end
 
     # Schedule next tick
     ref = schedule_tick(s.interval_ms)
