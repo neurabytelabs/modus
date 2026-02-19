@@ -284,22 +284,25 @@ export default class Renderer {
 
     for (const agent of agents) {
       seen.add(agent.id)
-      // Cache agent data for relationship lines
+      // Cache agent data for relationship lines (merge with existing)
+      const prevData = this.agentDataMap.get(agent.id) || {}
       this.agentDataMap.set(agent.id, {
-        friends: agent.friends || [],
-        conversing_with: agent.conversing_with,
-        group: agent.group || null,
+        friends: agent.friends !== undefined ? agent.friends : (prevData.friends || []),
+        conversing_with: agent.conversing_with !== undefined ? agent.conversing_with : prevData.conversing_with,
+        group: agent.group !== undefined ? agent.group : (prevData.group || null),
       })
-      const px = agent.x * TILE_SIZE + TILE_SIZE / 2
-      const py = agent.y * TILE_SIZE + TILE_SIZE / 2
 
       if (this.agentSprites.has(agent.id)) {
-        // Update target for lerp
+        // Update existing sprite — only update fields present in delta
         const sprite = this.agentSprites.get(agent.id)
-        sprite.targetX = px
-        sprite.targetY = py
-        sprite.action = agent.action || "idle"
-        sprite.reasoning = agent.reasoning || false
+        if (agent.x !== undefined && agent.y !== undefined) {
+          const px = agent.x * TILE_SIZE + TILE_SIZE / 2
+          const py = agent.y * TILE_SIZE + TILE_SIZE / 2
+          sprite.targetX = px
+          sprite.targetY = py
+        }
+        if (agent.action !== undefined) sprite.action = agent.action || "idle"
+        if (agent.reasoning !== undefined) sprite.reasoning = agent.reasoning || false
 
         // Update conversation bubble
         if (agent.conversing_with) {
@@ -313,9 +316,9 @@ export default class Renderer {
         } else if (sprite.convoBubble) {
           sprite.convoBubble.visible = false
         }
-        // Update affect color
-        const affect = agent.affect || "neutral"
-        const affectColor = AFFECT_COLORS[affect]
+        // Update affect color (only when affect field is present in delta)
+        const affect = agent.affect !== undefined ? agent.affect : null
+        const affectColor = affect ? AFFECT_COLORS[affect] : null
         if (affectColor && affectColor !== sprite.currentColor) {
           sprite.gfx.clear()
           sprite.gfx.circle(0, 0, AGENT_RADIUS)
@@ -344,12 +347,17 @@ export default class Renderer {
           sprite.conatusBar.rect(-barW / 2, 0, barW * e, 2)
           sprite.conatusBar.fill(barColor)
         }
-        // Update alive status
-        if (!agent.alive) {
+        // Update alive status (only when explicitly sent in delta)
+        if (agent.alive === false) {
           sprite.gfx.alpha = 0.3
+        } else if (agent.alive === true) {
+          sprite.gfx.alpha = 1.0
         }
       } else {
-        // Create new agent sprite
+        // Create new agent sprite — skip if no position data (incomplete delta)
+        if (agent.x === undefined || agent.y === undefined) continue
+        const px = agent.x * TILE_SIZE + TILE_SIZE / 2
+        const py = agent.y * TILE_SIZE + TILE_SIZE / 2
         const colorIdx = this._hashCode(agent.id) % AGENT_COLORS.length
         const color = AGENT_COLORS[colorIdx]
 

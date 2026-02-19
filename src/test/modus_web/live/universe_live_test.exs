@@ -38,9 +38,9 @@ defmodule ModusWeb.UniverseLiveTest do
   end
 
   # Test 4: Version check
-  test "version is 7.8.0 in mix.exs" do
+  test "version is 8.0.0 in mix.exs" do
     {:ok, content} = File.read("mix.exs")
-    assert content =~ ~s(version: "7.8.0")
+    assert content =~ ~s(version: "8.0.0")
   end
 
   # Test 5: Landing page has correct content in template
