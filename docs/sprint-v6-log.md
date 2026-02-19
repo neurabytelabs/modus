@@ -127,3 +127,34 @@ Test: 842/842 passed (10 new demo tests + 832 existing) — pre-existing flaky f
 🔄 Devam eden: Full integration into AntigravityClient/OllamaClient chat paths (wrap prompts through RunePromptEngine before sending)
 🚫 Blocker: None
 Test: 25/25 passed (new RunePromptEngine tests); 867 total tests (77 pre-existing failures unrelated)
+
+## IT-08 — Polish + Deploy Hazırlık — 2026-02-19 15:07 CET
+
+✅ Tamamlanan:
+- Test stabilization: 77 pre-existing race condition failures → 0 failures (867/867 pass)
+- Root cause: GenServer.stop() in test setup killed application supervision tree
+- Fix: Replace stop/restart with ETS clear + :sys.replace_state for counter resets
+- Version test updated: 5.4.0 → 5.6.0
+- CHANGELOG.md updated with full Sprint v6 "Divinus" documentation
+- Docker-compose prod-ready: restart policies, healthchecks, env var templating
+- test_helper.exs cleanup: exclude :flaky tag support
+
+🔄 Devam eden: None
+🚫 Blocker: None
+Test: 867/867 passed ✅
+
+## Sprint v6 "Divinus" — FINAL SUMMARY
+Total iterations: 8
+Total time: ~30 min
+New modules: 8 (GodModeExecutor, PersonalityPromptBuilder, ConversationMemory, PrayerSystem, AgentChatViewer, DemoMode, RunePromptEngine, test infrastructure)
+New tests: ~100+ across all iterations
+Final test suite: 867/867 passed ✅
+Key features:
+- God Mode Command Executor — structured divine intervention system
+- Chat Personality Enhancement — Big Five → LLM prompt enrichment
+- Conversation Memory — persistent SQLite agent memory
+- Prayer Response System — agents pray to the player based on emotional state
+- Agent-to-Agent Chat Viewer — browse/filter agent conversations
+- Demo Mode — /demo public showcase URL
+- RUNE Prompt Engine — native Elixir prompt template engine
+- Test stabilization — 77 race conditions fixed, 0 failures

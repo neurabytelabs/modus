@@ -6,6 +6,61 @@ Versioning follows Spinoza's philosophical evolution. Each release is a new mode
 
 ---
 
+## v5.6.0 · **Divinus** — _Sprint v6 Final — God Mode + Prayer + Demo + RUNE_
+_19 Şubat 2026_
+
+### 🎯 Sprint v6 "Divinus" — 8 Iterations, ~30 min
+- **867 test, 0 hata** — Full test suite stabilization (77 pre-existing failures fixed)
+- **8 yeni modül** — GodModeExecutor, PersonalityPromptBuilder, ConversationMemory, PrayerSystem, AgentChatViewer, DemoMode, RunePromptEngine, test fixes
+- **Docker prod-ready** — restart policies, healthchecks, env var templating
+
+### IT-01: God Mode Command Executor
+- ⚡ **GodModeExecutor** — Structured command execution system for divine interventions
+- Command history tracking, validation, and error handling
+- 7 new tests
+
+### IT-02: Chat Personality Enhancement
+- 🎭 **PersonalityPromptBuilder** — Big Five personality → LLM prompt enrichment
+- Dynamic system prompts based on agent traits (openness, conscientiousness, etc.)
+- Personality-aware conversation style generation
+
+### IT-03: Conversation Memory
+- 🧠 **ConversationMemory** — Persistent agent memory via Ecto/SQLite
+- Memory recording, recall by importance, decay over time
+- Agent-to-agent memory sharing, cross-agent queries
+- 12 new tests
+
+### IT-04: Prayer Response System
+- 🙏 **PrayerSystem** — Agents pray to the player (God) based on emotional state
+- Prayer types: help, gratitude, existential — generated from agent context
+- God responds positively/negatively, affecting agent mood
+- `maybe_pray/2` probability based on conatus, needs, personality
+- 19 new tests
+
+### IT-05: Agent-to-Agent Chat Viewer
+- 💬 **AgentChatViewer** — Record, browse, and filter agent conversations
+- Ring buffer (100 max), PubSub broadcast on new chats
+- Filter by agent_id, topic; serialize for client
+- 10 new tests
+
+### IT-06: Demo Mode
+- 🎪 **DemoMode** — `/demo` public URL for showcasing MODUS
+- Pre-configured world with interesting agents and scenarios
+- Read-only viewer mode for non-authenticated users
+
+### IT-07: RUNE Prompt Engine
+- 🔮 **RunePromptEngine** — Native Elixir prompt template engine
+- Variable interpolation, conditional blocks, personality-aware templates
+- Replaces string concatenation with structured prompt building
+
+### IT-08: Polish + Deploy Hazırlık
+- 🧹 **Test stabilization** — Fixed 77 race condition failures (GenServer stop/restart → ETS reset)
+- 📋 **CHANGELOG** — Full Sprint v6 documentation
+- 🐳 **Docker** — restart: unless-stopped, healthchecks, env var templating
+- 📝 **Version test** — Updated 5.4.0 → 5.6.0
+
+---
+
 ## v5.4.0 · **Harmonia** — _Sprint v4 Final Integration & Genesis_
 _18 Şubat 2026_
 

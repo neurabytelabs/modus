@@ -4,26 +4,34 @@ services:
       context: ./src
       dockerfile: Dockerfile.dev
     ports:
-      - "4000:4000"
+      - "${PHX_PORT:-4000}:4000"
     volumes:
       - ./src:/app
       - deps:/app/deps
       - build:/app/_build
       - ./data/db:/app/priv/data
     environment:
-      - MIX_ENV=dev
-      - PHX_HOST=localhost
+      - MIX_ENV=${MIX_ENV:-dev}
+      - PHX_HOST=${PHX_HOST:-localhost}
       - PHX_PORT=4000
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE:-}
       - DATABASE_PATH=/app/priv/data/modus.db
       - OLLAMA_URL=http://modus-llm:11434
-      - OLLAMA_MODEL=llama3.2:3b-instruct-q4_K_M
-      - ANTIGRAVITY_URL=http://host.docker.internal:8045
-      - ANTIGRAVITY_API_KEY=sk-f741397b2b564a1eaac8e714034eec2f
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2:3b-instruct-q4_K_M}
+      - ANTIGRAVITY_URL=${ANTIGRAVITY_URL:-http://host.docker.internal:8045}
+      - ANTIGRAVITY_API_KEY=${ANTIGRAVITY_API_KEY:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    restart: unless-stopped
     depends_on:
       modus-llm:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     command: >
       sh -c "mix deps.get && mix ecto.create && mix ecto.migrate && mix phx.server"
 
@@ -31,6 +39,7 @@ services:
     image: ollama/ollama:latest
     volumes:
       - ./data/ollama:/root/.ollama
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 10s
