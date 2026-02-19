@@ -209,12 +209,17 @@ defmodule Modus.Simulation.Agent do
     idle_ticks = if agent.current_action == :idle, do: agent.idle_ticks + 1, else: 0
     agent = %{agent | idle_ticks: idle_ticks}
 
+    # v7.5: Idle wake triggers — check if idle agent should wake up
+    wake_from_idle = idle_ticks >= 10 and should_wake_idle?(agent, tick_number)
+    idle_ticks = if wake_from_idle, do: 0, else: idle_ticks
+    agent = %{agent | idle_ticks: idle_ticks}
+
     cond do
       # Idle low-power mode: skip most processing, just decay needs slowly
-      not critical and idle_ticks >= 10 and rem(tick_number, 3) != 0 ->
+      not critical and not wake_from_idle and idle_ticks >= 10 and rem(tick_number, 3) != 0 ->
         {:noreply, agent}
 
-      not critical and idle_ticks >= 10 ->
+      not critical and not wake_from_idle and idle_ticks >= 10 ->
         # Every 3rd tick: simplified processing (no LLM, basic needs decay)
         agent = agent |> decay_needs() |> apply_building_bonuses()
         {:noreply, agent}
@@ -400,6 +405,38 @@ defmodule Modus.Simulation.Agent do
     agent = Modus.Performance.StateLimiter.trim(agent)
 
     {:noreply, agent}
+  end
+
+  # --- Idle Wake Triggers (v7.5) ---
+
+  # Wake idle agents when interesting things happen nearby
+  defp should_wake_idle?(agent, _tick_number) do
+    nearby = nearby_agents(agent.position, 3)
+
+    cond do
+      # New neighbor appeared nearby (wasn't there before)
+      length(nearby) > 0 -> true
+      # Needs becoming critical despite idle state
+      agent.needs.hunger > 70.0 or agent.needs.social < 20.0 -> true
+      # Conversation request pending
+      agent.conversing_with != nil -> true
+      # Resource node appeared at agent's position
+      resource_available_at?(agent.position) -> true
+      true -> false
+    end
+  end
+
+  defp resource_available_at?(position) do
+    try do
+      case Modus.Simulation.World.get_cell(position) do
+        {:ok, cell} ->
+          nodes = Map.get(cell, :resource_nodes, [])
+          nodes != []
+        _ -> false
+      end
+    catch
+      _, _ -> false
+    end
   end
 
   # --- Action Application ---

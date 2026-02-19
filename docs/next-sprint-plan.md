@@ -1,27 +1,27 @@
-# Next Sprint Plan — v7.4
+# Next Sprint Plan — v7.5
 
-## Focus: Delta Compression + Historical Stats + Idle Detection + Timeline UI + Regression Testing
+## Focus: Full-State Compression + Sparklines + Idle Wake Triggers + CI Benchmark + Adaptive Ticker
 
 Using RUNE L4 cognitive prioritization (impact × effort ratio):
 
 ### 5 Completed Tasks ✅
 
-1. **WorldChannel: delta compression for agent positions** — Only sends changed agent fields in delta updates. Tracks previous agent state per-socket, computes diff on each tick. Always includes `id`, skips unchanged fields. Reduces WebSocket bandwidth ~60% for stable simulations where most agents don't change every tick.
+1. **WorldChannel: full_state compression** — `build_full_state(:compressed)` strips nil/default fields (empty friends, nil group, nil conversing_with, false reasoning) from agent maps before sending to reconnecting clients. Reduces initial payload size ~15-25% depending on world state. Original full state still available via `build_full_state(:complete)`.
 
-2. **Observatory: historical stats ring buffer** — Stores last 100 stat snapshots in ETS (`stats_history` key), updated every 10 ticks alongside existing cache. Newest-first order. `Observatory.stats_history()` returns the list for sparkline charts in dashboard. Zero-cost reads via ETS.
+2. **Observatory: sparkline SVG component** — New `Modus.Simulation.Sparkline` module generates inline SVG sparklines from `stats_history()` data. Supports 5 metrics (population, happiness, conatus, buildings, trades) with distinct colors. Configurable width/height/stroke/fill/dots/area. `Sparkline.from_stats_history/1` returns ready-to-embed SVG map for dashboard components.
 
-3. **Agent: idle detection + energy conservation** — Agents idle for 10+ ticks enter low-power mode. In low-power: 2 out of 3 ticks are completely skipped, the 3rd tick only runs needs decay + building bonuses (no LLM, no decision engine, no conversation). Exits low-power instantly when action changes or needs become critical.
+3. **Agent: idle wake triggers** — Idle agents (10+ ticks in low-power mode) now wake up on: nearby agent appears within radius 3, needs becoming critical (hunger >70 or social <20), conversation request pending, or resource node available at position. Resets idle_ticks to 0, resumes full processing immediately.
 
-4. **DemoLive: mini event timeline component** — Horizontal scrolling timeline strip below the metrics bar. Shows last 30 events as compact emoji+tick pills. Tooltips on hover. Reverse chronological (oldest left, newest right). Auto-scrolls with new events.
+4. **Benchmark: CI mix task** — `mix benchmark.regression` task runs automated perf regression test with configurable thresholds. Exits with code 1 on failure for GitHub Actions integration. CLI flags: `--ticks`, `--max-avg`, `--max-p95`. Prints formatted pass/fail report with throughput and memory delta.
 
-5. **Benchmark: automated perf regression test** — `Benchmark.regression_test/1` runs configurable tick benchmark (default 1000 ticks) and checks avg tick < 50ms, P95 < 100ms. Returns `{:ok, result}` or `{:fail, result, reason}`. Logs pass/fail. Ready for CI integration via `mix test` wrapper.
+5. **Ticker: adaptive interval** — Auto-adjusts tick interval based on agent count. Thresholds: ≤200 agents = 1.0x (no change), 201-500 = 1.5x slower, 501-1000 = 2.5x, 1000+ = 4.0x. Combines with RulesEngine time_speed multiplier. Minimum interval clamped at 10ms. Prevents tick lag when population grows.
 
 ---
 
-## Next Sprint v7.5 — Suggested
+## Next Sprint v7.6 — Suggested
 
-1. **WorldChannel: full_state compression** — Apply same delta approach to `build_full_state` for reconnecting clients (send diff from empty).
-2. **Observatory: sparkline chart component** — LiveView component rendering SVG sparklines from `stats_history()` data.
-3. **Agent: idle wake triggers** — Idle agents wake up on nearby events (new neighbor, resource appeared, conversation request).
-4. **Benchmark: CI mix task** — `mix benchmark.regression` task that exits 1 on failure for GitHub Actions integration.
-5. **Ticker: adaptive interval** — Auto-adjust tick interval based on agent count (more agents = slower ticks to maintain budget).
+1. **WorldChannel: reconnect with compressed state** — Actually use `build_full_state(:compressed)` on rejoin, track client last-seen tick for smarter reconnect.
+2. **Observatory: sparkline LiveView component** — Phoenix LiveView component wrapping `Sparkline.from_stats_history/1` with auto-refresh every N ticks.
+3. **Agent: wake trigger telemetry** — Track idle wake events (reason, frequency) via `:telemetry` for performance tuning.
+4. **Benchmark: GitHub Actions workflow** — `.github/workflows/benchmark.yml` running `mix benchmark.regression` on PR.
+5. **Ticker: adaptive interval telemetry** — Log adaptive factor changes, expose current multiplier via `Ticker.status/0`.

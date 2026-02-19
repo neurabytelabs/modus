@@ -909,6 +909,31 @@ defmodule ModusWeb.WorldChannel do
   end
 
   defp build_full_state do
+    build_full_state(:complete)
+  end
+
+  # v7.5: Compressed full_state for reconnecting clients — sends agents as deltas from empty
+  defp build_full_state(:compressed) do
+    state = build_full_state(:complete)
+    # Agents are already full maps (delta from empty = full), but we strip nil/default fields
+    compressed_agents =
+      Enum.map(state.agents, fn agent ->
+        agent
+        |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+        |> Enum.reject(fn
+          {:friends, []} -> true
+          {:group, nil} -> true
+          {:conversing_with, nil} -> true
+          {:reasoning, false} -> true
+          _ -> false
+        end)
+        |> Enum.into(%{})
+      end)
+
+    %{state | agents: compressed_agents}
+  end
+
+  defp build_full_state(:complete) do
     world_state =
       if Process.whereis(World), do: World.get_state(), else: nil
 

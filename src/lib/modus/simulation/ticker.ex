@@ -248,6 +248,14 @@ defmodule Modus.Simulation.Ticker do
 
   # ── Internal ────────────────────────────────────────────────
 
+  # v7.5: Adaptive tick interval — slow down when many agents to maintain budget
+  @adaptive_thresholds [
+    {200, 1.0},   # <= 200 agents: no slowdown
+    {500, 1.5},   # 201-500 agents: 1.5x interval
+    {1000, 2.5},  # 501-1000 agents: 2.5x interval
+    {5000, 4.0}   # 1001+: 4x interval
+  ]
+
   defp schedule_tick(ms) do
     # Apply RulesEngine time_speed multiplier (higher = faster = shorter interval)
     time_speed =
@@ -257,8 +265,27 @@ defmodule Modus.Simulation.Ticker do
         _, _ -> 1.0
       end
 
-    adjusted_ms = max(10, round(ms / time_speed))
+    # Adaptive interval based on agent count
+    agent_count =
+      try do
+        Registry.count(Modus.AgentRegistry)
+      catch
+        _, _ -> 0
+      end
+
+    adaptive_multiplier = adaptive_factor(agent_count)
+
+    adjusted_ms = max(10, round(ms * adaptive_multiplier / time_speed))
     Process.send_after(self(), :tick, adjusted_ms)
+  end
+
+  defp adaptive_factor(agent_count) do
+    @adaptive_thresholds
+    |> Enum.find(fn {threshold, _factor} -> agent_count <= threshold end)
+    |> case do
+      {_threshold, factor} -> factor
+      nil -> 4.0  # Beyond all thresholds
+    end
   end
 
 end
