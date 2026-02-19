@@ -4,22 +4,15 @@ defmodule Modus.World.AgentChatViewerTest do
   alias Modus.World.AgentChatViewer
 
   setup do
-    # Ensure GenServer is running (application should start it)
     case Process.whereis(AgentChatViewer) do
       nil ->
-        {:ok, _pid} = AgentChatViewer.start_link([])
-        :ok
-
+        AgentChatViewer.start_link([])
       _pid ->
-        :ok
+        :ets.delete_all_objects(:modus_agent_chats)
+        :sys.replace_state(AgentChatViewer, fn _state ->
+          %{next_id: 1, oldest_id: 1}
+        end)
     end
-
-    # Reset state: stop and restart to reset id counters + ETS
-    if Process.whereis(AgentChatViewer) do
-      GenServer.stop(AgentChatViewer)
-    end
-
-    {:ok, _pid} = AgentChatViewer.start_link([])
     :ok
   end
 

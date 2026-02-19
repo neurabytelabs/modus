@@ -8,7 +8,7 @@ defmodule Modus.Simulation.EnvironmentTest do
     case Process.whereis(Environment) do
       nil ->
         if Process.whereis(Modus.PubSub) == nil do
-          start_supervised!({Phoenix.PubSub, name: Modus.PubSub})
+          Phoenix.PubSub.Supervisor.start_link(name: Modus.PubSub)
         end
 
         start_supervised!(Environment)

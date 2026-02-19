@@ -30,6 +30,7 @@ defmodule Modus.Intelligence.LlmScheduler do
     # Initialize metrics and budget tables
     LlmMetrics.init()
     BudgetTracker.init()
+    Modus.Protocol.RunePromptEngine.init()
     Modus.Simulation.Ticker.subscribe()
     {:ok, %{last_conversation_tick: 0, busy: false}}
   end

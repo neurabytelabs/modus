@@ -7,7 +7,7 @@ defmodule Modus.Simulation.ResourceSystemTest do
 
   setup do
     if Process.whereis(Modus.PubSub) == nil do
-      start_supervised!({Phoenix.PubSub, name: Modus.PubSub})
+      Phoenix.PubSub.Supervisor.start_link(name: Modus.PubSub)
     end
 
     if Process.whereis(Modus.Simulation.Environment) == nil do

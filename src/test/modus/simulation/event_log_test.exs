@@ -4,7 +4,14 @@ defmodule Modus.Simulation.EventLogTest do
   alias Modus.Simulation.EventLog
 
   setup do
-    # EventLog is started by application, but reset state
+    case Process.whereis(Modus.Simulation.EventLog) do
+      nil ->
+        Modus.Simulation.EventLog.start_link([])
+      _pid ->
+        :sys.replace_state(Modus.Simulation.EventLog, fn _state ->
+          %Modus.Simulation.EventLog{events: [], counter: 0}
+        end)
+    end
     :ok
   end
 

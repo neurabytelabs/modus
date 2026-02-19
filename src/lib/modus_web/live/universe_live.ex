@@ -1,7 +1,7 @@
 defmodule ModusWeb.UniverseLive do
   @moduledoc """
   Main LiveView — MODUS universe dashboard with 2D renderer.
-  v5.0.0 Forma — UI Design Overhaul with glassmorphism design system.
+  v5.6.0 Nexus — UI Design Overhaul with glassmorphism design system.
   """
   use ModusWeb, :live_view
   # JS alias available if needed
@@ -1942,7 +1942,7 @@ defmodule ModusWeb.UniverseLive do
           MODUS<span class="text-purple-400">_</span>
         </h1>
         <p class="text-2xl md:text-3xl font-light text-slate-300 mb-2">Create Worlds. Watch Them Live.</p>
-        <p class="text-sm text-slate-500 mb-12">v5.0.0 Forma · AI-Powered Universe Simulation</p>
+        <p class="text-sm text-slate-500 mb-12">v5.6.0 Nexus · AI-Powered Universe Simulation</p>
 
         <%!-- Feature Cards --%>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
@@ -1992,7 +1992,7 @@ defmodule ModusWeb.UniverseLive do
           <h1 class="text-5xl md:text-6xl font-bold tracking-tighter mb-2">
             MODUS<span class="text-purple-400">_</span>
           </h1>
-          <p class="text-sm text-slate-500">v5.0.0 Forma · You're not limited to one world — create many.</p>
+          <p class="text-sm text-slate-500">v5.6.0 Nexus · You're not limited to one world — create many.</p>
         </div>
 
         <%!-- Sort Controls --%>
@@ -2117,7 +2117,7 @@ defmodule ModusWeb.UniverseLive do
           <span class="px-2 py-1 bg-white/5 rounded border border-white/10">🌿 Nature Resources</span>
           <span class="px-2 py-1 bg-white/5 rounded border border-white/10">🎛️ Custom Rules Engine</span>
         </div>
-        <p class="text-xs text-slate-600 mb-6">v5.0.0 Forma · 92+ modules · Elixir/BEAM · Pixi.js</p>
+        <p class="text-xs text-slate-600 mb-6">v5.6.0 Nexus · 92+ modules · Elixir/BEAM · Pixi.js</p>
       </div>
 
       <%!-- Create World Section --%>
@@ -4150,7 +4150,7 @@ defmodule ModusWeb.UniverseLive do
             <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
               <div class="flex items-center gap-2">
                 <span class="font-bold text-slate-100">📤 Export & Share</span>
-                <span class="text-[9px] text-slate-600">v5.0.0 Forma</span>
+                <span class="text-[9px] text-slate-600">v5.6.0 Nexus</span>
               </div>
               <button phx-click="close_export" class="text-slate-600 hover:text-slate-400">✕</button>
             </div>
@@ -4237,7 +4237,7 @@ defmodule ModusWeb.UniverseLive do
             <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
               <div class="flex items-center gap-3">
                 <span class="font-bold text-slate-100">📊 Observatory</span>
-                <span class="text-[9px] text-slate-600">v5.0.0 Forma</span>
+                <span class="text-[9px] text-slate-600">v5.6.0 Nexus</span>
               </div>
               <div class="flex items-center gap-2">
                 <button phx-click="obs_refresh" class="text-[10px] px-2 py-1 rounded bg-white/5 border border-white/10 text-slate-500 hover:text-slate-300 hover:border-white/20 transition-all">↻ Refresh</button>
@@ -4486,7 +4486,7 @@ defmodule ModusWeb.UniverseLive do
         </div>
       <% end %>
 
-    <%!-- Styles now in app.css design system (v5.0.0 Forma) --%>
+    <%!-- Styles now in app.css design system (v5.6.0 Nexus) --%>
     """
   end
 

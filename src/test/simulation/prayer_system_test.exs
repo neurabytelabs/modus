@@ -4,12 +4,13 @@ defmodule Modus.World.PrayerSystemTest do
   alias Modus.World.PrayerSystem
 
   setup do
-    # Ensure PrayerSystem is running (it should be from application.ex)
-    # Clean ETS between tests
-    try do
-      :ets.delete_all_objects(:modus_prayers)
-    catch
-      :error, :badarg -> :ok
+    # Reset state without stopping the GenServer (avoids killing the supervision tree)
+    case Process.whereis(PrayerSystem) do
+      nil ->
+        PrayerSystem.start_link([])
+      _pid ->
+        :ets.delete_all_objects(:modus_prayers)
+        :sys.replace_state(PrayerSystem, fn _state -> %{table: :modus_prayers, counter: 0} end)
     end
     :ok
   end

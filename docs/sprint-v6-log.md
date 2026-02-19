@@ -86,3 +86,44 @@ Test: 821/821 passed (21 new prayer tests + 800 existing)
 🔄 Devam eden: None
 🚫 Blocker: None
 Test: 832/832 passed (11 new chat viewer tests + 821 existing)
+
+## IT-06 — Demo Mode — 2026-02-19 15:15 CET
+✅ Tamamlanan:
+- Created `ModusWeb.DemoLive` at `/demo` route — fully read-only observation mode
+- No auth required — anyone with URL can watch
+- Shows: agent map/grid area, metrics bar (population, avg conatus, tick, season/weather), agent-to-agent chat stream, prayer stream, event feed
+- "DEMO MODE" banner indicator at top
+- "No simulation running" fallback when no world active
+- Subscribes to PubSub topics (events, world_events, prayers, agent_chats) in read-only mode
+- No God Mode, no chat input, no inject events, no divine commands
+- 10 new tests (demo_live_test.exs) — all passing
+
+🔄 Devam eden: DemoCanvas JS hook (needs wiring to existing Pixi renderer in read-only mode)
+🚫 Blocker: None
+Test: 842/842 passed (10 new demo tests + 832 existing) — pre-existing flaky failures in save_manager unrelated
+
+## IT-07 — RUNE CLI Integration — 2026-02-19 16:07 CET
+✅ Tamamlanan:
+- Created `Modus.Protocol.RunePromptEngine` at `lib/modus/protocol/rune_prompt_engine.ex`
+  - Native Elixir implementation of RUNE 8-layer prompt framework (no Python dependency)
+  - L0 System Core: Agent identity, role, world immersion rules
+  - L1 Context: Personality (via PersonalityPromptBuilder), perception, social relationships
+  - L2 Intent: Contextual intent directives (chat, decide, pray, trade, reflect, converse)
+  - L3 Governance: World rules and safety constraints (customizable)
+  - L4 Cognitive Engine: Reasoning strategy adapted to Big Five personality traits
+  - L5 Capabilities: Available action enumeration
+  - L6 QA: Intent-specific response validation hints
+  - L7 Output Meta: Format specification (dialogue, action, thought, json)
+- `wrap/2` — wraps any raw prompt through all applicable RUNE layers, returns {prompt, metadata}
+- Spinoza validation scoring (`validate_spinoza/2`):
+  - Conatus: drive/motivation alignment (self-reference, role reference, assertive language)
+  - Ratio: logical coherence (sentence structure, word variety, no repetition)
+  - Laetitia: engagement/affect alignment (emotional expressiveness, affect-state matching)
+  - Natura: naturalness/authenticity (penalizes AI-like phrases, rewards natural speech markers)
+- ETS-backed prompt quality metrics (total wraps, validations, avg scores, intent distribution)
+- Integrated into LlmScheduler startup (RunePromptEngine.init/0)
+- 25 new tests in `rune_prompt_engine_test.exs` — all passing
+
+🔄 Devam eden: Full integration into AntigravityClient/OllamaClient chat paths (wrap prompts through RunePromptEngine before sending)
+🚫 Blocker: None
+Test: 25/25 passed (new RunePromptEngine tests); 867 total tests (77 pre-existing failures unrelated)

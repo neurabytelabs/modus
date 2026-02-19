@@ -163,12 +163,12 @@ defmodule Modus.Simulation.WildlifeTest do
   describe "GenServer" do
     setup do
       case Process.whereis(Modus.PubSub) do
-        nil -> start_supervised!({Phoenix.PubSub, name: Modus.PubSub})
+        nil -> Phoenix.PubSub.Supervisor.start_link(name: Modus.PubSub)
         _ -> :ok
       end
 
       case Process.whereis(Modus.Simulation.EventLog) do
-        nil -> start_supervised!({Modus.Simulation.EventLog, []})
+        nil -> Modus.Simulation.EventLog.start_link([])
         _ -> :ok
       end
 
