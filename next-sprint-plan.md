@@ -1,20 +1,20 @@
-# MODUS Sprint v7.7 — Next 5 Tasks
+# MODUS Sprint v7.8 — Next 5 Tasks
 
-## Completed (v7.6)
-- ✅ PubSub consolidation — single "modus:tick" topic (removed "simulation:ticks" duplication)
-- ✅ Agent state ETS mirror — O(1) reads via :agent_states_cache, no GenServer.call blocking
-- ✅ EventLog ETS read path — recent/1 and counts_by_type/0 read from ETS directly
-- ✅ Ticker health metrics — consecutive lag tracking, :tick_lag events, health/0 API
-- ✅ WorldChannel health endpoint — "get_ticker_health" returns ticker health + event counts
+## Completed (v7.7)
+- ✅ Agent ETS cleanup on termination — terminate/2 + trap_exit + StateSnapshots.cleanup
+- ✅ ETS write_concurrency on agent_states_cache — reduced contention
+- ✅ LiveDashboard telemetry metrics — tick duration + agent_count in ModusWeb.Telemetry
+- ✅ EventLog ordered_set — :event_log_by_tick + since_tick/2 API for time-range queries
+- ✅ StateSnapshots time-travel — ring buffer (10 snapshots/agent, every 100 ticks), WorldChannel endpoints
 
-## v7.7 Tasks
+## v7.8 Tasks
 
-1. **[Bug] Agent ETS cleanup on termination** — When agent dies/terminates, its entry remains in :agent_states_cache. Add terminate/2 callback to delete from ETS, or periodic sweep in Ticker.
+1. **[Bug] EventLog ETS table cleanup on reset** — When simulation resets, :event_log_by_tick ordered_set grows unbounded. Add clear/0 function to truncate both ETS tables, call from World reset.
 
-2. **[Optimization] Batch ETS writes for agent states** — Currently each agent writes to ETS individually every tick. Batch into a single :ets.insert/2 call from Ticker after all agents processed to reduce ETS contention.
+2. **[Feature] Snapshot diff API** — Add StateSnapshots.diff(agent_id, tick_a, tick_b) that returns changed fields between two snapshots. Useful for dashboard "what changed" view.
 
-3. **[Feature] LiveDashboard integration** — Register :telemetry_metrics_summary for [:modus, :ticker, :tick] with custom LiveDashboard page showing agent count, tick duration, lag streak.
+3. **[Optimization] Ticker — skip Observatory update if no agents changed** — Track a dirty flag (set on agent ETS write, cleared on Observatory update). Skip update_cache() when clean.
 
-4. **[Optimization] EventLog ETS — ordered_set for time-range queries** — Switch from :set to :ordered_set keyed by tick number for efficient "events since tick N" queries.
+4. **[Feature] Agent death cause tracking** — When agent dies, store cause (starvation, conflict, old_age) in EventLog :death event data. Currently data is empty.
 
-5. **[Feature] Agent state snapshots for time-travel** — Store agent state snapshots every 100 ticks in ETS ring buffer (last 10). Enable "rewind" inspection from dashboard.
+5. **[Optimization] StateSnapshots — compress old snapshots** — Only store full state for latest 3 snapshots; older ones store delta from previous. Reduces ETS memory for long-running simulations.
