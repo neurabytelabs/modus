@@ -43,6 +43,8 @@ defmodule Modus.Application do
       Modus.Simulation.Seasons,
       Modus.Simulation.Weather,
       Modus.Simulation.Wildlife,
+      {Task.Supervisor, name: Modus.Nexus.InsightEngine.TaskSupervisor},
+      Modus.Nexus.InsightEngine,
       ModusWeb.Endpoint
     ]
 

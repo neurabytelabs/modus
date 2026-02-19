@@ -66,6 +66,61 @@ defmodule Modus.Nexus.Router do
 
   def classify(_), do: result(:chat, :general, 0.3, "")
 
+  @doc "Dispatch an insight classification to InsightEngine and return formatted response."
+  @spec dispatch(classification()) :: String.t()
+  def dispatch(%{intent: :insight, sub_intent: sub_intent, raw: raw}) do
+    alias Modus.Nexus.InsightEngine
+
+    {sub, data} =
+      case sub_intent do
+        :agent_query ->
+          agent_id = extract_agent_id(raw)
+
+          case InsightEngine.agent_query(agent_id) do
+            {:error, _} = err -> {:agent_query, %{error: err, query: raw}}
+            data -> {:agent_query, data}
+          end
+
+        :event_query ->
+          {:event_query, InsightEngine.event_replay(limit: 10)}
+
+        :stats_query ->
+          {:stats_query, InsightEngine.stats_query()}
+
+        :why_query ->
+          {:why_query, %{query: raw, hint: "Why queries need deeper analysis"}}
+
+        other ->
+          {other, %{query: raw}}
+      end
+
+    InsightEngine.format_response(sub, data)
+  end
+
+  def dispatch(%{intent: intent}) do
+    "⚠️ dispatch only handles :insight intents, got :#{intent}"
+  end
+
+  defp extract_agent_id(raw) do
+    # Try to find an agent by matching name from the message
+    alias Modus.Simulation.{Agent, AgentSupervisor}
+
+    ids = AgentSupervisor.list_agents()
+
+    found =
+      Enum.find(ids, fn id ->
+        try do
+          agent = Agent.get_state(id)
+          name_lower = String.downcase(agent.name)
+          String.contains?(String.downcase(raw), name_lower)
+        catch
+          :exit, _ -> false
+        end
+      end)
+
+    found || List.first(ids) || "unknown"
+  end
+
   # --- Private ---
 
   defp tokenize(msg) do

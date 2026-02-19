@@ -557,13 +557,21 @@ defmodule ModusWeb.UniverseLive do
     Logger.info("MODUS send_chat: agent_id=#{inspect(agent_id)} msg=#{inspect(msg)} intent=#{classification.intent}/#{classification.sub_intent}")
     messages = socket.assigns.chat_messages ++ [%{role: "user", text: msg}]
 
-    {:noreply,
-     socket
-     |> assign(chat_messages: messages, chat_loading: true)
-     |> push_event("chat_to_agent", %{
-       agent_id: agent_id,
-       message: msg
-     })}
+    case classification.intent do
+      :insight ->
+        response = Modus.Nexus.Router.dispatch(classification)
+        messages = messages ++ [%{role: "system", text: response, topic: "insight"}]
+        {:noreply, assign(socket, chat_messages: messages, chat_loading: false)}
+
+      _ ->
+        {:noreply,
+         socket
+         |> assign(chat_messages: messages, chat_loading: true)
+         |> push_event("chat_to_agent", %{
+           agent_id: agent_id,
+           message: msg
+         })}
+    end
   end
 
   def handle_event("send_chat", _params, socket), do: {:noreply, socket}
