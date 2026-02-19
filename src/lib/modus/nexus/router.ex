@@ -88,7 +88,9 @@ defmodule Modus.Nexus.Router do
           {:stats_query, InsightEngine.stats_query()}
 
         :why_query ->
-          {:why_query, %{query: raw, hint: "Why queries need deeper analysis"}}
+          agent_id = extract_agent_id(raw)
+          answer = Modus.Nexus.TraceEngine.why_query(agent_id, raw)
+          {:why_query, %{answer: answer, query: raw}}
 
         other ->
           {other, %{query: raw}}

@@ -173,6 +173,10 @@ defmodule Modus.Nexus.InsightEngine do
     "📜 #{count} recent events found."
   end
 
+  defp template_fallback(:why_query, %{answer: answer}) when is_binary(answer) do
+    answer
+  end
+
   defp template_fallback(:why_query, data) do
     "🤔 Analysis: #{inspect(data)}"
   end
