@@ -239,6 +239,41 @@ defmodule Modus.Performance.Benchmark do
 
   defp percentile(_, _), do: 0
 
+  @doc """
+  v7.4: Automated perf regression test.
+  Runs a 1000-tick benchmark and fails if avg tick exceeds threshold.
+  Returns {:ok, result} or {:fail, result, reason}.
+  """
+  @spec regression_test(keyword()) :: {:ok, map()} | {:fail, map(), String.t()}
+  def regression_test(opts \\ []) do
+    tick_count = Keyword.get(opts, :ticks, 1000)
+    max_avg_ms = Keyword.get(opts, :max_avg_ms, 50)
+    max_p95_ms = Keyword.get(opts, :max_p95_ms, 100)
+
+    agent_count =
+      try do
+        Registry.count(Modus.AgentRegistry)
+      catch
+        _, _ -> 0
+      end
+
+    result = run(max(agent_count, 10), tick_count)
+
+    reasons = []
+    reasons = if result.avg_tick_ms > max_avg_ms, do: ["avg #{result.avg_tick_ms}ms > #{max_avg_ms}ms" | reasons], else: reasons
+    p95_ms = div(result.p95_tick_us, 1000)
+    reasons = if p95_ms > max_p95_ms, do: ["p95 #{p95_ms}ms > #{max_p95_ms}ms" | reasons], else: reasons
+
+    if reasons == [] do
+      Logger.info("PERF REGRESSION TEST PASSED: avg=#{result.avg_tick_ms}ms p95=#{p95_ms}ms")
+      {:ok, result}
+    else
+      reason = Enum.join(reasons, ", ")
+      Logger.warning("PERF REGRESSION TEST FAILED: #{reason}")
+      {:fail, result, reason}
+    end
+  end
+
   defp gc_count do
     case :erlang.statistics(:garbage_collection) do
       {count, _, _} -> count

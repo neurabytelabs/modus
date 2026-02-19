@@ -245,8 +245,23 @@ defmodule ModusWeb.DemoLive do
           </div>
         </div>
 
+        <%!-- v7.4: Mini Event Timeline — horizontal birth/death/conflict strip below metrics --%>
+        <div class="px-4 md:px-6 h-8 flex items-center gap-1 border-b border-white/5 overflow-x-auto scrollbar-none">
+          <span class="text-[9px] text-slate-600 uppercase tracking-wider shrink-0 mr-2">Timeline</span>
+          <%= if @event_feed == [] do %>
+            <span class="text-[9px] text-slate-700 italic">awaiting events...</span>
+          <% else %>
+            <%= for event <- Enum.reverse(Enum.take(@event_feed, 30)) do %>
+              <div class="shrink-0 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-800/60 border border-slate-700/30 text-[9px]" title={"#{event.label} (t:#{event.tick})"}>
+                <span><%= event.emoji %></span>
+                <span class="text-slate-500 tabular-nums">t:<%= event.tick %></span>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+
         <%!-- Main Content --%>
-        <div class="flex min-h-[calc(100vh-7rem)]">
+        <div class="flex min-h-[calc(100vh-9rem)]">
           <%!-- Canvas (reuse existing renderer in read-only) --%>
           <div id="demo-canvas" phx-hook="DemoCanvas" phx-update="ignore" class="flex-1 min-w-0 relative overflow-hidden">
             <div id="canvas-skeleton" class="absolute inset-0 flex items-center justify-center pointer-events-none">

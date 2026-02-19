@@ -24,7 +24,7 @@ defmodule ModusWeb.WorldChannel do
     Phoenix.PubSub.subscribe(Modus.PubSub, "prayers")
     Phoenix.PubSub.subscribe(Modus.PubSub, "agent_chats")
     state = build_full_state()
-    {:ok, state, assign(socket, :selected_agent_id, nil)}
+    {:ok, state, assign(socket, selected_agent_id: nil, prev_agents: %{})}
   end
 
   # ── handle_in ───────────────────────────────────────────────
@@ -763,10 +763,32 @@ defmodule ModusWeb.WorldChannel do
           }
       end
 
+    rules =
+      try do
+        Modus.Simulation.RulesEngine.serialize()
+      catch
+        _, _ -> %{}
+      end
+
+    # v7.4: Delta compression — only send changed agent fields
+    prev_agents = socket.assigns[:prev_agents] || %{}
+
+    {compressed_agents, new_prev} =
+      agents
+      |> Enum.map_reduce(prev_agents, fn agent, acc ->
+        prev = Map.get(acc, agent.id)
+        compressed = if prev, do: agent_delta(prev, agent), else: agent
+        {compressed, Map.put(acc, agent.id, agent)}
+      end)
+
+    # Remove dead agents no longer in list
+    current_ids = MapSet.new(agents, & &1.id)
+    new_prev = Map.filter(new_prev, fn {id, _} -> MapSet.member?(current_ids, id) end)
+
     delta = %{
       tick: tick_number,
       agent_count: length(Enum.filter(agents, & &1.alive)),
-      agents: agents,
+      agents: compressed_agents,
       buildings: buildings,
       neighborhoods: neighborhoods,
       world_events: world_events,
@@ -777,15 +799,11 @@ defmodule ModusWeb.WorldChannel do
       day_phase: to_string(Map.get(env, :day_phase, :day)),
       season: seasons,
       weather: weather,
-      rules:
-        try do
-          Modus.Simulation.RulesEngine.serialize()
-        catch
-          _, _ -> %{}
-        end
+      rules: rules
     }
 
     push(socket, "delta", delta)
+    socket = assign(socket, :prev_agents, new_prev)
 
     # Push selected agent detail every 10 ticks for live panel update
     selected_id = socket.assigns[:selected_agent_id]
@@ -859,6 +877,26 @@ defmodule ModusWeb.WorldChannel do
   end
 
   # ── Helpers ───────────────────────────────────────────────
+
+  # v7.4: Delta compression — only include changed fields (always include id)
+  defp agent_delta(prev, current) do
+    base = %{id: current.id}
+
+    [:name, :x, :y, :occupation, :action, :alive, :conatus, :conatus_energy,
+     :affect, :reasoning, :age, :age_stage, :age_emoji, :conversing_with, :group]
+    |> Enum.reduce(base, fn key, acc ->
+      old_val = Map.get(prev, key)
+      new_val = Map.get(current, key)
+      if old_val == new_val, do: acc, else: Map.put(acc, key, new_val)
+    end)
+    |> maybe_add_friends(prev, current)
+  end
+
+  defp maybe_add_friends(delta, prev, current) do
+    if Map.get(prev, :friends) == Map.get(current, :friends),
+      do: delta,
+      else: Map.put(delta, :friends, current.friends)
+  end
 
   defp find_walkable({max_x, max_y}, table) do
     x = :rand.uniform(max_x) - 1

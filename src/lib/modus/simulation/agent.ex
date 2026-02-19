@@ -39,7 +39,8 @@ defmodule Modus.Simulation.Agent do
     conversing_with: nil,
     group_id: nil,
     inventory: %{},
-    goals_initialized: false
+    goals_initialized: false,
+    idle_ticks: 0
   ]
 
   @type t :: %__MODULE__{
@@ -203,13 +204,29 @@ defmodule Modus.Simulation.Agent do
     # Lazy evaluation: distant agents get simplified processing (skip if critical needs)
     critical = agent.needs.hunger > 90.0 or agent.needs.rest < 5.0 or agent.conatus_energy < 0.1
 
-    if not critical and
-         Modus.Performance.LazyEval.distant?(agent.position, tick_number) and
-         Modus.Performance.LazyEval.lazy?(agent.id, agent.position, tick_number) do
-      agent = Modus.Performance.LazyEval.simplified_tick(agent)
-      {:noreply, agent}
-    else
-      do_full_tick(agent, tick_number, context)
+    # v7.4: Idle detection — agents idle for 10+ ticks enter low-power mode
+    # Low-power: skip LLM reasoning, simplified needs decay only every 3rd tick
+    idle_ticks = if agent.current_action == :idle, do: agent.idle_ticks + 1, else: 0
+    agent = %{agent | idle_ticks: idle_ticks}
+
+    cond do
+      # Idle low-power mode: skip most processing, just decay needs slowly
+      not critical and idle_ticks >= 10 and rem(tick_number, 3) != 0 ->
+        {:noreply, agent}
+
+      not critical and idle_ticks >= 10 ->
+        # Every 3rd tick: simplified processing (no LLM, basic needs decay)
+        agent = agent |> decay_needs() |> apply_building_bonuses()
+        {:noreply, agent}
+
+      not critical and
+        Modus.Performance.LazyEval.distant?(agent.position, tick_number) and
+          Modus.Performance.LazyEval.lazy?(agent.id, agent.position, tick_number) ->
+        agent = Modus.Performance.LazyEval.simplified_tick(agent)
+        {:noreply, agent}
+
+      true ->
+        do_full_tick(agent, tick_number, context)
     end
   end
 

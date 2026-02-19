@@ -24,11 +24,26 @@ defmodule Modus.Simulation.Observatory do
     :ok
   end
 
+  @ring_buffer_size 100
+
   @doc "Update the cached world stats. Called from Ticker every N ticks."
   @spec update_cache() :: :ok
   def update_cache do
     stats = compute_world_stats()
     :ets.insert(@stats_table, {:world_stats, stats})
+
+    # v7.4: Historical stats ring buffer — store last 100 snapshots for sparklines
+    tick =
+      try do
+        Modus.Simulation.Ticker.current_tick()
+      catch
+        _, _ -> 0
+      end
+
+    snapshot = Map.put(stats, :tick, tick)
+    history = stats_history()
+    new_history = Enum.take([snapshot | history], @ring_buffer_size)
+    :ets.insert(@stats_table, {:stats_history, new_history})
 
     # Cache leaderboards and building breakdown (v7.3 — avoid recomputation on every UI call)
     leaders = compute_leaderboards()
@@ -37,6 +52,17 @@ defmodule Modus.Simulation.Observatory do
     breakdown = compute_building_breakdown()
     :ets.insert(@stats_table, {:building_breakdown, breakdown})
     :ok
+  end
+
+  @doc "Get historical stats snapshots (last #{@ring_buffer_size}, newest first) for sparkline charts."
+  @spec stats_history() :: [map()]
+  def stats_history do
+    case :ets.lookup(@stats_table, :stats_history) do
+      [{:stats_history, history}] -> history
+      [] -> []
+    end
+  rescue
+    ArgumentError -> []
   end
 
   @type world_stats :: %{
