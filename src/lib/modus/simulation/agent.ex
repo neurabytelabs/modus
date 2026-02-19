@@ -133,7 +133,7 @@ defmodule Modus.Simulation.Agent do
   @spec init_state_cache() :: :ok
   def init_state_cache do
     if :ets.whereis(@agent_states_table) == :undefined do
-      :ets.new(@agent_states_table, [:named_table, :set, :public, read_concurrency: true])
+      :ets.new(@agent_states_table, [:named_table, :set, :public, read_concurrency: true, write_concurrency: true])
     end
     :ok
   end
@@ -204,7 +204,26 @@ defmodule Modus.Simulation.Agent do
     Modus.Mind.Learning.init_skills(agent.id)
     Modus.Simulation.Aging.init()
     Modus.Simulation.Aging.init_agent(agent.id)
+    # Monitor self for ETS cleanup
+    Process.flag(:trap_exit, true)
     {:ok, agent}
+  end
+
+  @impl true
+  def terminate(_reason, agent) do
+    # v7.7: Clean up ETS cache entry on agent termination
+    try do
+      if :ets.whereis(@agent_states_table) != :undefined do
+        :ets.delete(@agent_states_table, agent.id)
+      end
+    catch
+      _, _ -> :ok
+    end
+
+    # v7.7: Clean up state snapshots
+    Modus.Simulation.StateSnapshots.cleanup(agent.id)
+
+    :ok
   end
 
   @impl true

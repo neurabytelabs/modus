@@ -228,6 +228,13 @@ defmodule Modus.Simulation.Ticker do
       catch
         _, _ -> :ok
       end
+
+      # v7.7: Capture agent state snapshots for time-travel
+      try do
+        Modus.Simulation.StateSnapshots.capture(new_tick)
+      catch
+        _, _ -> :ok
+      end
     end
 
     # Emit telemetry (v7.2 — LiveDashboard compatible)

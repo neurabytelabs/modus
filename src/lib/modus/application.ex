@@ -20,6 +20,7 @@ defmodule Modus.Application do
     Modus.Performance.SpatialIndex.init()
     Modus.Simulation.Observatory.init()
     Modus.Simulation.Agent.init_state_cache()
+    Modus.Simulation.StateSnapshots.init()
     Modus.Performance.GcTuning.apply_defaults()
 
     children = [

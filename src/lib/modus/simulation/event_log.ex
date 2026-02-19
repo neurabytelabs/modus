@@ -86,6 +86,31 @@ defmodule Modus.Simulation.EventLog do
     _ -> %{}
   end
 
+  @doc "Get events since a given tick number (v7.7 — ordered_set O(log n) range query)."
+  @spec since_tick(non_neg_integer(), non_neg_integer()) :: [event()]
+  def since_tick(tick_number, limit \\ 50) do
+    case :ets.whereis(:event_log_by_tick) do
+      :undefined -> []
+      _ ->
+        key = {tick_number, 0}
+        collect_from_key(:ets.next(:event_log_by_tick, key), [], limit)
+    end
+  rescue
+    _ -> []
+  end
+
+  defp collect_from_key(:"$end_of_table", acc, _limit), do: Enum.reverse(acc)
+  defp collect_from_key(_key, acc, limit) when length(acc) >= limit, do: Enum.reverse(acc)
+
+  defp collect_from_key(key, acc, limit) do
+    case :ets.lookup(:event_log_by_tick, key) do
+      [{_k, event}] ->
+        collect_from_key(:ets.next(:event_log_by_tick, key), [event | acc], limit)
+      [] ->
+        collect_from_key(:ets.next(:event_log_by_tick, key), acc, limit)
+    end
+  end
+
   @doc "Subscribe to event broadcasts."
   def subscribe do
     Phoenix.PubSub.subscribe(@pubsub, @topic)
@@ -98,6 +123,8 @@ defmodule Modus.Simulation.EventLog do
     :ets.new(@ets_table, [:named_table, :set, :public, read_concurrency: true])
     :ets.insert(@ets_table, {:events, []})
     :ets.insert(@ets_table, {:counts, %{}})
+    # v7.7: ordered_set for efficient time-range queries by tick
+    :ets.new(:event_log_by_tick, [:named_table, :ordered_set, :public, read_concurrency: true])
     {:ok, state}
   end
 
@@ -119,6 +146,13 @@ defmodule Modus.Simulation.EventLog do
     # Update ETS cache
     :ets.insert(@ets_table, {:events, events})
     :ets.insert(@ets_table, {:counts, Enum.frequencies_by(events, & &1.type)})
+
+    # v7.7: Insert into ordered_set for time-range queries (key = {tick, id} for uniqueness)
+    try do
+      :ets.insert(:event_log_by_tick, {{tick, id}, event})
+    catch
+      _, _ -> :ok
+    end
 
     Phoenix.PubSub.broadcast(@pubsub, @topic, {:event, event})
 

@@ -14,7 +14,11 @@ defmodule ModusWeb.Telemetry do
   def metrics do
     [
       summary("phoenix.endpoint.stop.duration", unit: {:native, :millisecond}),
-      summary("phoenix.router_dispatch.stop.duration", unit: {:native, :millisecond})
+      summary("phoenix.router_dispatch.stop.duration", unit: {:native, :millisecond}),
+
+      # v7.7: MODUS Ticker metrics for LiveDashboard
+      summary("modus.ticker.tick.duration", unit: {:native, :millisecond}),
+      last_value("modus.ticker.tick.agent_count")
     ]
   end
 end

@@ -611,6 +611,36 @@ defmodule ModusWeb.WorldChannel do
     {:reply, {:ok, %{ticker: health, event_counts: event_counts}}, socket}
   end
 
+  # ── Time-Travel Snapshots (v7.7) ────────────────────────────
+
+  def handle_in("get_agent_snapshots", %{"agent_id" => agent_id}, socket) do
+    snapshots =
+      Modus.Simulation.StateSnapshots.history(agent_id)
+      |> Enum.map(fn {tick, state} ->
+        %{
+          tick: tick,
+          name: state.name,
+          position: Tuple.to_list(state.position),
+          conatus_energy: state.conatus_energy,
+          affect_state: state.affect_state,
+          needs: state.needs,
+          alive: state.alive?
+        }
+      end)
+
+    {:reply, {:ok, %{agent_id: agent_id, snapshots: snapshots}}, socket}
+  end
+
+  def handle_in("get_events_since", %{"tick" => tick}, socket) do
+    events =
+      EventLog.since_tick(tick)
+      |> Enum.map(fn e ->
+        %{id: e.id, type: e.type, tick: e.tick, agents: e.agents, data: e.data}
+      end)
+
+    {:reply, {:ok, %{events: events}}, socket}
+  end
+
   # ── Rules Engine ────────────────────────────────────────────
 
   def handle_in("get_rules", _payload, socket) do
