@@ -10,6 +10,9 @@ defmodule ModusWeb.WorldChannel do
 
   alias Modus.Simulation.{World, Ticker, Agent, AgentSupervisor, EventLog, Building, WorldEvents}
   alias Modus.Intelligence.LlmProvider
+  alias Modus.Mind.Trust
+  alias Modus.Interaction.GiftSystem
+  alias Modus.UI.NotificationCenter
 
   defp ensure_float(val) when is_float(val), do: val
   defp ensure_float(val) when is_integer(val), do: val / 1
@@ -175,8 +178,14 @@ defmodule ModusWeb.WorldChannel do
     require Logger
     Logger.info("MODUS chat_agent received: agent_id=#{agent_id} message=#{inspect(message)}")
 
+    # Trust boost for chat interaction
+    Modus.Mind.Trust.update_trust(agent_id, 1)
+
     # Store user message in chat history
     Modus.Llm.ChatHistory.add_message(agent_id, "user", message)
+
+    # Trust increases with each conversation
+    Trust.update_trust(agent_id, 1.0)
 
     # Push typing indicator
     push(socket, "typing", %{agent_id: agent_id})
@@ -554,6 +563,42 @@ defmodule ModusWeb.WorldChannel do
     {:reply, :ok, socket}
   end
 
+  # ── Trust & Gifts ────────────────────────────────────────────
+
+  def handle_in("get_agent_trust", %{"agent_id" => agent_id}, socket) do
+    trust = Trust.get_trust(agent_id)
+    level = Trust.trust_level(agent_id)
+    {:reply, {:ok, %{agent_id: agent_id, trust: trust, level: to_string(level)}}, socket}
+  end
+
+  def handle_in("give_gift", %{"agent_id" => agent_id, "resource" => resource}, socket) do
+    case GiftSystem.give_gift("player", agent_id, resource) do
+      {:ok, new_trust} ->
+        {:reply, {:ok, %{trust: new_trust, resource: resource}}, socket}
+      {:error, reason} ->
+        {:reply, {:error, %{reason: reason}}, socket}
+    end
+  end
+
+  def handle_in("aid_agent", %{"agent_id" => agent_id}, socket) do
+    {:ok, need, new_trust} = GiftSystem.aid_agent("player", agent_id)
+    {:reply, {:ok, %{trust: new_trust, need_helped: to_string(need)}}, socket}
+  end
+
+  # ── Notifications ──────────────────────────────────────────
+
+  def handle_in("get_notifications", payload, socket) do
+    filter = if payload["category"], do: String.to_existing_atom(payload["category"]), else: :all
+    notifications = NotificationCenter.list(filter)
+    unread = NotificationCenter.unread_count()
+    {:reply, {:ok, %{notifications: notifications, unread_count: unread}}, socket}
+  end
+
+  def handle_in("mark_notifications_read", _payload, socket) do
+    NotificationCenter.mark_all_read()
+    {:reply, {:ok, %{status: "ok"}}, socket}
+  end
+
   # ── Export & Share ──────────────────────────────────────────
 
   def handle_in("export_world", _payload, socket) do
@@ -781,6 +826,63 @@ defmodule ModusWeb.WorldChannel do
   def handle_in("remove_goal", %{"agent_id" => agent_id, "goal_id" => goal_id}, socket) do
     Modus.Mind.Goals.remove_goal(agent_id, goal_id)
     {:reply, {:ok, %{}}, socket}
+  end
+
+  # ── Trust System ──────────────────────────────────────────────
+
+  def handle_in("get_agent_trust", %{"agent_id" => id}, socket) do
+    trust = Modus.Mind.Trust.get_trust(id)
+    level = Modus.Mind.Trust.trust_level(id)
+    {:reply, {:ok, %{trust: trust, level: level}}, socket}
+  end
+
+  # ── Gift & Aid System ───────────────────────────────────────
+
+  def handle_in("give_gift", %{"agent_id" => id, "resource" => res}, socket) do
+    case Modus.Interaction.GiftSystem.give_gift("player", id, res) do
+      {:ok, new_trust} ->
+        {:reply, {:ok, %{trust: new_trust, resource: res}}, socket}
+
+      {:error, reason} ->
+        {:reply, {:error, %{reason: reason}}, socket}
+    end
+  end
+
+  def handle_in("aid_agent", %{"agent_id" => id}, socket) do
+    {:ok, _need, new_trust} = Modus.Interaction.GiftSystem.aid_agent("player", id)
+    {:reply, {:ok, %{trust: new_trust}}, socket}
+  end
+
+  # ── Notifications ────────────────────────────────────────────
+
+  def handle_in("get_notifications", _payload, socket) do
+    {:reply,
+     {:ok,
+      %{
+        notifications: Modus.UI.NotificationCenter.list(:all),
+        unread: Modus.UI.NotificationCenter.unread_count()
+      }}, socket}
+  end
+
+  def handle_in("mark_notifications_read", _payload, socket) do
+    Modus.UI.NotificationCenter.mark_all_read()
+    {:reply, {:ok, %{}}, socket}
+  end
+
+  # ── World Status ─────────────────────────────────────────────
+
+  def handle_in("get_world_status", _payload, socket) do
+    stats = Modus.Simulation.Observatory.world_stats()
+
+    status = %{
+      avg_happiness: stats[:avg_happiness] || 0,
+      avg_conatus: stats[:avg_conatus] || 0,
+      population: stats[:population] || 0,
+      population_trend: stats[:population_trend] || "→",
+      trade_volume: stats[:trade_volume] || 0
+    }
+
+    {:reply, {:ok, status}, socket}
   end
 
   # ── handle_info ─────────────────────────────────────────────

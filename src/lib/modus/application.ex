@@ -24,6 +24,11 @@ defmodule Modus.Application do
     Modus.Llm.TokenBudget.init()
     Modus.Llm.SmartCache.init()
     Modus.Llm.ChatHistory.init()
+    Modus.Mind.Trust.init()
+    Modus.Interaction.GiftSystem.init()
+    Modus.Interaction.AgentOutreach.init()
+    Modus.UI.NotificationCenter.init()
+    Modus.UI.SmartToast.init()
     Modus.Performance.GcTuning.apply_defaults()
 
     children = [

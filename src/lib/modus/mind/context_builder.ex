@@ -1,7 +1,7 @@
 defmodule Modus.Mind.ContextBuilder do
   @moduledoc "Builds dynamic LLM system prompts enriched with real agent state"
 
-  alias Modus.Mind.{Perception, Cerebro.SocialInsight, Culture}
+  alias Modus.Mind.{Perception, Cerebro.SocialInsight, Culture, Trust}
   alias Modus.Persistence.AgentMemory
   alias Modus.Protocol.PersonalityPromptBuilder
   alias Modus.Simulation.{Seasons, WorldHistory}
@@ -47,6 +47,8 @@ defmodule Modus.Mind.ContextBuilder do
     #{culture_context(agent.id)}
 
     #{world_history_context()}
+
+    #{trust_context(agent.id)}
 
     RULES:
     - Speak naturally as #{agent.name} would — use your personality
@@ -402,6 +404,14 @@ defmodule Modus.Mind.ContextBuilder do
     try do
       ctx = WorldHistory.history_context()
       if ctx != "" and ctx != nil, do: ctx, else: ""
+    catch
+      _, _ -> ""
+    end
+  end
+
+  defp trust_context(agent_id) do
+    try do
+      Trust.context_for_prompt(agent_id)
     catch
       _, _ -> ""
     end
