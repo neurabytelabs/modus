@@ -14,15 +14,23 @@ defmodule Modus.Intelligence.LlmProvider do
   alias Modus.Intelligence.{OllamaClient, GeminiClient}
 
   defp init_config do
-    # Default to Ollama (local, free, unlimited)
-    # Gemini is available as fallback but has rate limits on free tier
-    %{
-      provider: :ollama,
-      model: System.get_env("OLLAMA_MODEL") || "llama3.2:3b-instruct-q4_K_M",
-      base_url: System.get_env("OLLAMA_URL") || "http://modus-llm:11434",
-      api_key: nil,
-      gemini_api_key: System.get_env("GEMINI_API_KEY") || ""
-    }
+    gemini_key = System.get_env("GEMINI_API_KEY")
+
+    if gemini_key && gemini_key != "" do
+      %{
+        provider: :gemini,
+        model: System.get_env("GEMINI_MODEL") || "gemini-2.0-flash",
+        base_url: "https://generativelanguage.googleapis.com/v1beta",
+        api_key: gemini_key
+      }
+    else
+      %{
+        provider: :ollama,
+        model: System.get_env("OLLAMA_MODEL") || "llama3.2:3b-instruct-q4_K_M",
+        base_url: System.get_env("OLLAMA_URL") || "http://modus-llm:11434",
+        api_key: nil
+      }
+    end
   end
 
   @doc "Available models for each provider (shown in UI)."

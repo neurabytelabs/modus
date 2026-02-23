@@ -206,10 +206,7 @@ defmodule ModusWeb.UniverseLive do
        divine_panel_open: false,
        divine_tab: :events,
        divine_history: [],
-       divine_status: nil,
-       # Command Palette
-       command_palette_open: false,
-       palette_commands: ModusWeb.CommandPalette.all_commands()
+       divine_status: nil
      )}
   end
 
@@ -222,60 +219,6 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, phase: phase)}
   end
 
-  # ── Command Palette ─────────────────────────────────────
-
-  def handle_event("execute_command", %{"action" => action} = params, socket) do
-    # Close palette first
-    socket = assign(socket, command_palette_open: false)
-
-    # Route to existing handle_event handlers
-    case action do
-      "toggle_simulation" ->
-        if socket.assigns.status == :running,
-          do: handle_event("pause", %{}, socket),
-          else: handle_event("start", %{}, socket)
-
-      "set_speed_1" -> handle_event("set_speed", %{"speed" => "1"}, socket)
-      "set_speed_5" -> handle_event("set_speed", %{"speed" => "5"}, socket)
-      "set_speed_10" -> handle_event("set_speed", %{"speed" => "10"}, socket)
-
-      "palette_dashboard" ->
-        dash_assigns = refresh_dashboard_data()
-        {:noreply, socket |> assign(Map.merge(%{data_dashboard: true}, dash_assigns))}
-
-      "palette_weather_" <> weather ->
-        handle_event("divine_command", %{"cmd" => "weather_#{weather}"}, socket)
-
-      "palette_event_" <> event ->
-        handle_event("divine_command", %{"cmd" => event}, socket)
-
-      "palette_season_" <> season ->
-        handle_event("divine_command", %{"cmd" => "season_#{season}"}, socket)
-
-      "palette_find_agent" ->
-        {:noreply, socket}
-
-      "palette_spawn" ->
-        handle_event("divine_command", %{"cmd" => "spawn_agent"}, socket)
-
-      "palette_list_agents" ->
-        {:noreply, assign(socket, stats_open: true)}
-
-      _ ->
-        # Try to call it as a direct handle_event
-        try do
-          handle_event(action, %{}, socket)
-        rescue
-          _ -> {:noreply, socket}
-        end
-    end
-  end
-
-  def handle_event("palette_search", %{"query" => _query}, socket) do
-    # Server-side search (for agent names etc) - future enhancement
-    {:noreply, socket}
-  end
-
   # ── Text Mode & Zen Mode ─────────────────────────────────
 
   def handle_event("toggle_text_mode", _params, socket) do
@@ -284,11 +227,6 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("toggle_zen_mode", _params, socket) do
     {:noreply, assign(socket, zen_mode: !socket.assigns.zen_mode)}
-  end
-
-  # Ignore keyboard shortcuts when chat is open (user is typing)
-  def handle_event("keypress", _params, %{assigns: %{chat_open: true}} = socket) do
-    {:noreply, socket}
   end
 
   def handle_event("keypress", %{"key" => key}, socket) when key in ["d", "D"] do
@@ -301,7 +239,12 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, data_dashboard: false)}
   end
 
-  def handle_event("keypress", %{"key" => key}, socket) when key in ["p", "P"] do
+  def handle_event("keypress", %{"key" => "p"}, socket) do
+    send(self(), :toggle_perf_monitor)
+    {:noreply, socket}
+  end
+
+  def handle_event("keypress", %{"key" => "P"}, socket) do
     send(self(), :toggle_perf_monitor)
     {:noreply, socket}
   end
@@ -2525,51 +2468,6 @@ defmodule ModusWeb.UniverseLive do
       <%= if @text_mode do %>
         <div class="fixed top-3 left-3 z-50 text-[10px] text-cyan-400 bg-black/50 px-2 py-1 rounded backdrop-blur-sm">📝 TEXT MODE</div>
       <% end %>
-
-      <%!-- Command Palette (Cmd+K) --%>
-      <div id="command-palette"
-           phx-hook="CommandPalette"
-           phx-update="ignore"
-           data-commands={Jason.encode!(Enum.map(@palette_commands, fn c -> Map.take(c, [:id, :label, :category, :icon, :shortcut, :action]) end))}
-           class="hidden fixed inset-0 z-[100] items-start justify-center pt-[15vh]"
-           role="dialog"
-           aria-label="Command Palette">
-        <%!-- Backdrop --%>
-        <div data-palette-backdrop class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-        <%!-- Modal --%>
-        <div data-palette-modal class="relative w-full max-w-xl mx-4 bg-slate-900/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden transform scale-95 opacity-0 transition-all duration-150 palette-target">
-          <%!-- Search Input --%>
-          <div class="flex items-center gap-3 px-4 py-3 border-b border-white/10">
-            <span class="text-slate-500 text-lg">🔍</span>
-            <input data-palette-input
-                   type="text"
-                   placeholder="Type a command..."
-                   class="flex-1 bg-transparent text-sm text-slate-200 placeholder-slate-500 outline-none"
-                   role="combobox"
-                   aria-expanded="true"
-                   aria-controls="palette-results"
-                   autocomplete="off"
-                   spellcheck="false" />
-            <kbd class="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-slate-500 font-mono">ESC</kbd>
-          </div>
-          <%!-- Results --%>
-          <div data-palette-list
-               id="palette-results"
-               role="listbox"
-               class="max-h-[50vh] overflow-y-auto p-2 space-y-0.5">
-          </div>
-          <%!-- Footer --%>
-          <div class="flex items-center justify-between px-4 py-2 border-t border-white/5 text-[10px] text-slate-600">
-            <span>↑↓ navigate · ↵ select · esc close</span>
-            <span>⌘K to toggle</span>
-          </div>
-        </div>
-      </div>
-
-      <style>
-        .palette-visible { transform: scale(1) !important; opacity: 1 !important; }
-      </style>
-
       <%!-- Top Bar --%>
       <nav class={"modus-topbar px-4 md:px-6 h-14 flex items-center justify-between shrink-0 z-20" <> if(@zen_mode, do: " hidden", else: "")}>
         <div class="flex items-center gap-3">
@@ -2645,25 +2543,93 @@ defmodule ModusWeb.UniverseLive do
             <button phx-click="reset" class="ctrl-btn">↻</button>
           </div>
 
-          <%!-- God Mode (frequently toggled) --%>
-          <button phx-click="toggle_god_mode" class={"ctrl-btn #{if @god_mode, do: "ctrl-btn-active"}"} title="God Mode (G)">
+          <%!-- Agent Designer --%>
+          <button phx-click="toggle_agent_designer" class={"ctrl-btn #{if @agent_designer_open, do: "ctrl-btn-active"}"} title="Agent Designer — Create Characters & Animals">
+            ➕🧑
+          </button>
+
+          <%!-- Build Mode --%>
+          <button phx-click="toggle_build_mode" class={"ctrl-btn #{if @build_mode, do: "ctrl-btn-active"}"} title="Build Mode — World Builder">
+            🔨
+          </button>
+
+          <%!-- God Mode --%>
+          <button phx-click="toggle_god_mode" class={"ctrl-btn #{if @god_mode, do: "ctrl-btn-active"}"} title="God Mode — See All Agent Internals">
             👁️
           </button>
 
-          <%!-- Event Timeline (notifications) --%>
-          <button phx-click="toggle_event_timeline" class={"ctrl-btn #{if @event_timeline_open, do: "ctrl-btn-active"}"} title="Events">
+          <%!-- Divine Intervention (Imperium) --%>
+          <button phx-click="toggle_divine_panel" class={"ctrl-btn #{if @divine_panel_open, do: "ctrl-btn-active"}"} title="Divine Intervention — God Commands">
+            ⚡👑
+          </button>
+
+          <%!-- Cinematic Camera --%>
+          <button phx-click="toggle_cinematic" class={"ctrl-btn #{if @cinematic_mode, do: "ctrl-btn-active"}"} title="Cinematic Camera — Auto-follow Events">
+            🎬
+          </button>
+
+          <%!-- Screenshot with World Name Overlay --%>
+          <button phx-click="screenshot_with_overlay" class="ctrl-btn" title="Screenshot with World Name Overlay">
+            📸
+          </button>
+
+          <%!-- Mind View Toggle --%>
+          <button id="mind-view-btn" phx-click="toggle_mind_view" class={"ctrl-btn #{if @mind_view_active, do: "ctrl-btn-primary"}"} title="Mind View">
+            🧠
+          </button>
+
+          <%!-- Timeline --%>
+          <button phx-click="toggle_timeline" class={"ctrl-btn #{if @timeline_open, do: "ctrl-btn-primary"}"} title="Story Timeline">
+            📜
+          </button>
+
+          <%!-- Event Timeline (Eventus) --%>
+          <button phx-click="toggle_event_timeline" class={"ctrl-btn #{if @event_timeline_open, do: "ctrl-btn-active"}"} title="Event Timeline">
             🔔<%= if length(@event_timeline) > 0 do %><span class="text-[8px] text-red-400"><%= length(@event_timeline) %></span><% end %>
           </button>
 
-          <%!-- Save --%>
-          <button phx-click="open_save_load" class="ctrl-btn" title="Save / Load">
+          <%!-- LLM Metrics (M key) --%>
+          <button phx-click="toggle_llm_metrics" class={"ctrl-btn #{if @llm_metrics_open, do: "ctrl-btn-primary"}"} title="LLM Metrics (M)">
+            ⚡
+          </button>
+
+          <%!-- Observatory --%>
+          <button phx-click="open_stats" class={"ctrl-btn #{if @stats_open, do: "ctrl-btn-primary"}"} title="Observatory Dashboard">
+            📊
+          </button>
+
+          <%!-- World History --%>
+          <button phx-click="open_history" class={"ctrl-btn #{if @history_open, do: "ctrl-btn-primary"}"} title="World History">
+            📖
+          </button>
+
+          <%!-- Universe Gallery --%>
+          <button phx-click="dashboard_back" class="ctrl-btn" title="Universe Gallery">
+            🌍
+          </button>
+
+          <%!-- Save/Load --%>
+          <button phx-click="open_save_load" class="ctrl-btn" title="Save / Load World">
             💾
           </button>
 
-          <%!-- Command Palette Hint --%>
-          <button onclick="document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',metaKey:true,bubbles:true}))"
-                  class="ctrl-btn flex items-center gap-1.5" title="Command Palette">
-            <kbd class="text-[10px] px-1 py-0.5 rounded bg-white/10 text-slate-400 font-mono">⌘K</kbd>
+          <%!-- Export & Share --%>
+          <button phx-click="open_export" class={"ctrl-btn #{if @export_open, do: "ctrl-btn-active"}"} title="Export / Import / Share World">
+            📤
+          </button>
+
+          <%!-- Rules Engine --%>
+          <button phx-click="open_rules" class={"ctrl-btn #{if @rules_open, do: "ctrl-btn-active"}"} title="World Rules">
+            🎛️
+          </button>
+
+          <%!-- LLM indicator + Settings --%>
+          <button phx-click="open_settings" class="ctrl-btn flex items-center gap-1.5" title="LLM Settings">
+            <span class="text-[9px] text-slate-500 hidden sm:inline">
+              <%= if @settings_provider == "gemini", do: "✨", else: "🦙" %>
+              <%= String.slice(@settings_model, 0..12) %>
+            </span>
+            ⚙️
           </button>
         </div>
       </nav>

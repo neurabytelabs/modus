@@ -34,9 +34,7 @@ defmodule Modus.Simulation.Sparkline do
   - `:show_area` — Fill area under curve (default true)
   """
   @spec render([number()], sparkline_opts()) :: String.t()
-  def render(values, opts \\ [])
-
-  def render([], _opts), do: ""
+  def render([], _opts \\ []), do: ""
 
   def render([_single], opts) do
     w = Keyword.get(opts, :width, @default_width)

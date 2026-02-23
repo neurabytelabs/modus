@@ -654,6 +654,9 @@ defmodule ModusWeb.WorldChannel do
     end
   end
 
+  defp safe_json(val) when is_tuple(val), do: Tuple.to_list(val)
+  defp safe_json(val), do: val
+
   def handle_in("get_events_since", %{"tick" => tick}, socket) do
     events =
       EventLog.since_tick(tick)

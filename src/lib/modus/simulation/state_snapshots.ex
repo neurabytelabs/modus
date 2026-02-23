@@ -151,7 +151,7 @@ defmodule Modus.Simulation.StateSnapshots do
     recent_full =
       Enum.map(recent, fn
         {tick, {:full, state}} -> {tick, {:full, state}}
-        {_tick, {:delta, _delta}} = entry ->
+        {tick, {:delta, _delta}} = entry ->
           # Already delta, leave as-is (shouldn't happen for recent)
           entry
         {tick, state} when is_map(state) -> {tick, {:full, state}}
@@ -170,7 +170,7 @@ defmodule Modus.Simulation.StateSnapshots do
         {tick, {:full, state}} ->
           delta = compute_delta(base, state)
           {tick, {:delta, delta}}
-        {_tick, {:delta, _}} = entry -> entry
+        {tick, {:delta, _}} = entry -> entry
         {tick, state} when is_map(state) ->
           delta = compute_delta(base, state)
           {tick, {:delta, delta}}
