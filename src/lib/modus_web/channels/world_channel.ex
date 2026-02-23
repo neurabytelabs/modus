@@ -1373,6 +1373,37 @@ defmodule ModusWeb.WorldChannel do
     end
   end
 
+  # ── Tutorial handlers ──────────────────────────────────────
+
+  def handle_in("get_tutorial_state", _payload, socket) do
+    state = Modus.UI.Tutorial.state()
+    {:reply, {:ok, state}, socket}
+  end
+
+  def handle_in("tutorial_advance", _payload, socket) do
+    result = Modus.UI.Tutorial.advance()
+    state = Modus.UI.Tutorial.state()
+    {:reply, {:ok, Map.put(state, :result, to_string(result))}, socket}
+  end
+
+  def handle_in("tutorial_skip", _payload, socket) do
+    Modus.UI.Tutorial.skip()
+    state = Modus.UI.Tutorial.state()
+    {:reply, {:ok, state}, socket}
+  end
+
+  # ── Settings handlers ────────────────────────────────────
+
+  def handle_in("get_settings", _payload, socket) do
+    settings = Modus.UI.Settings.all()
+    {:reply, {:ok, settings}, socket}
+  end
+
+  def handle_in("update_setting", %{"key" => key, "value" => value}, socket) do
+    Modus.UI.Settings.set(String.to_existing_atom(key), value)
+    {:reply, {:ok, %{key: key, value: value}}, socket}
+  end
+
   defp safe_json(val) when is_tuple(val), do: Tuple.to_list(val)
   defp safe_json(val), do: val
 end

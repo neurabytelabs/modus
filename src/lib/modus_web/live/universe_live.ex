@@ -1675,6 +1675,36 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, assign(socket, toasts: toasts, season_name: name, season_emoji: emoji)}
   end
 
+  def handle_event("tutorial_advance", _params, socket) do
+    Modus.UI.Tutorial.advance()
+    state = Modus.UI.Tutorial.state()
+
+    if state.completed do
+      toast = %{
+        id: System.unique_integer([:positive]) |> to_string(),
+        emoji: "🎉",
+        text: "Tutorial Complete!",
+        tick: socket.assigns.tick
+      }
+
+      toasts = Enum.take([toast | socket.assigns.toasts], 5)
+      Process.send_after(self(), {:dismiss_toast, toast.id}, 10_000)
+      {:noreply, assign(socket, tutorial_active: false, tutorial_state: state, toasts: toasts)}
+    else
+      {:noreply, assign(socket, tutorial_state: state)}
+    end
+  end
+
+  def handle_event("tutorial_skip", _params, socket) do
+    Modus.UI.Tutorial.skip()
+    state = Modus.UI.Tutorial.state()
+    {:noreply, assign(socket, tutorial_active: false, tutorial_state: state)}
+  end
+
+  def handle_event("retry_llm", _params, socket) do
+    {:noreply, assign(socket, llm_error: false)}
+  end
+
   # ── Private Helpers (handle_event) ───────────────────────────
 
   defp sort_worlds(worlds, "oldest"), do: Enum.sort_by(worlds, & &1.saved_at, :asc)
@@ -1927,6 +1957,35 @@ defmodule ModusWeb.UniverseLive do
   @impl true
   def render(assigns) do
     ~H"""
+    <%!-- WebSocket disconnect banner --%>
+    <div id="ws-disconnect" phx-disconnected class="hidden fixed top-0 inset-x-0 z-[9999] bg-amber-600 text-white text-center py-2 text-sm font-medium animate-pulse">
+      🔌 Bağlantı koptu. Yeniden bağlanılıyor...
+    </div>
+
+    <%!-- Tutorial overlay --%>
+    <%= if assigns[:tutorial_active] && assigns[:tutorial_state] && !assigns[:tutorial_state].completed do %>
+      <div id="tutorial-overlay" class="fixed inset-0 z-[9990]">
+        <div class="absolute inset-0 bg-black/60"></div>
+        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 bg-slate-800 border border-purple-500/40 rounded-2xl p-6 max-w-md text-center shadow-2xl z-10">
+          <div class="text-xs text-purple-400 mb-2"><%= @tutorial_state.step %>/<%= @tutorial_state.total %></div>
+          <h3 class="text-lg font-bold text-white mb-1"><%= @tutorial_state.title %></h3>
+          <p class="text-sm text-slate-300 mb-4"><%= @tutorial_state.description %></p>
+          <div class="flex gap-3 justify-center">
+            <button phx-click="tutorial_advance" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-white text-sm font-medium transition">İleri</button>
+            <button phx-click="tutorial_skip" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 text-sm transition">Atla</button>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <%!-- LLM error recovery --%>
+    <%= if assigns[:llm_error] do %>
+      <div class="fixed bottom-4 right-4 z-[9980] bg-red-900/90 border border-red-500/40 rounded-xl p-4 max-w-xs shadow-xl">
+        <p class="text-sm text-red-200 mb-2">⏱️ Yanıt alınamadı.</p>
+        <button phx-click="retry_llm" class="px-3 py-1 bg-red-600 hover:bg-red-500 rounded-lg text-white text-xs font-medium transition">Tekrar dene</button>
+      </div>
+    <% end %>
+
     <%= case @phase do %>
       <% :landing -> %>
         <%= render_landing(assigns) %>
@@ -1935,6 +1994,15 @@ defmodule ModusWeb.UniverseLive do
       <% :onboarding -> %>
         <%= render_onboarding(assigns) %>
       <% _ -> %>
+        <%= if assigns[:agent_count] == 0 && assigns[:status] == :running do %>
+          <div class="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+            <div class="text-center text-slate-500">
+              <div class="text-6xl mb-4">🌍</div>
+              <p class="text-lg">Henüz agent yok</p>
+              <p class="text-sm text-slate-600">Simülasyon başlatıldığında agentlar oluşturulacak.</p>
+            </div>
+          </div>
+        <% end %>
         <%= render_simulation(assigns) %>
     <% end %>
     """
