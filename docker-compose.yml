@@ -18,7 +18,7 @@ services:
       - DATABASE_PATH=/app/priv/data/modus.db
       - OLLAMA_URL=http://modus-llm:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2:3b-instruct-q4_K_M}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-***REMOVED***}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-${GEMINI_API_KEY}}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped

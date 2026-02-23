@@ -162,9 +162,25 @@ defmodule ModusWeb.WorldChannel do
     {:noreply, socket}
   end
 
+  def handle_in("get_budget_stats", _payload, socket) do
+    {:reply, {:ok, Modus.Llm.TokenBudget.stats()}, socket}
+  end
+
+  def handle_in("get_chat_history", %{"agent_id" => id}, socket) do
+    messages = Modus.Llm.ChatHistory.get_messages(id)
+    {:reply, {:ok, %{messages: messages}}, socket}
+  end
+
   def handle_in("chat_agent", %{"agent_id" => agent_id, "message" => message}, socket) do
     require Logger
     Logger.info("MODUS chat_agent received: agent_id=#{agent_id} message=#{inspect(message)}")
+
+    # Store user message in chat history
+    Modus.Llm.ChatHistory.add_message(agent_id, "user", message)
+
+    # Push typing indicator
+    push(socket, "typing", %{agent_id: agent_id})
+
     channel_pid = self()
 
     Task.start(fn ->
@@ -178,6 +194,7 @@ defmodule ModusWeb.WorldChannel do
             })
 
             Logger.info("MODUS chat_reply ready for #{agent_id}: #{String.slice(reply, 0..80)}")
+            Modus.Llm.ChatHistory.add_message(agent_id, "agent", reply)
             send(channel_pid, {:chat_reply, agent_id, reply})
 
           _ ->

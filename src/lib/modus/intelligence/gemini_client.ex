@@ -175,7 +175,7 @@ defmodule Modus.Intelligence.GeminiClient do
   def chat(messages) do
     config = %{
       model: "gemini-2.0-flash",
-      api_key: System.get_env("GEMINI_API_KEY") || "***REMOVED***"
+      api_key: System.get_env("GEMINI_API_KEY") || raise("GEMINI_API_KEY env var is required!")
     }
 
     do_gemini_request(messages, config)

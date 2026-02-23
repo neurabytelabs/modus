@@ -58,8 +58,10 @@ defmodule ModusWeb.UniverseLive do
        chat_open: false,
        chat_messages: [],
        chat_loading: false,
+       chat_typing: false,
        chat_filter: "all",
        chat_context: [],
+       quick_replies: [],
        pending_confirm: nil,
        # Settings
        settings_open: false,
@@ -547,7 +549,10 @@ defmodule ModusWeb.UniverseLive do
     {:noreply, socket}
   end
 
-  def handle_event("open_chat", _params, socket), do: {:noreply, assign(socket, chat_open: true)}
+  def handle_event("open_chat", _params, socket) do
+    quick_replies = build_quick_replies(socket.assigns.selected_agent)
+    {:noreply, assign(socket, chat_open: true, quick_replies: quick_replies)}
+  end
 
   def handle_event("close_chat", _params, socket),
     do: {:noreply, assign(socket, chat_open: false, chat_filter: "all")}
@@ -631,7 +636,15 @@ defmodule ModusWeb.UniverseLive do
       socket.assigns.chat_messages ++
         [%{role: "agent", text: reply, name: agent_name, topic: topic}]
 
-    {:noreply, assign(socket, chat_messages: messages, chat_loading: false)}
+    # Generate quick replies based on agent state
+    quick_replies = build_quick_replies(socket.assigns.selected_agent)
+
+    {:noreply, assign(socket, chat_messages: messages, chat_loading: false, chat_typing: false, quick_replies: quick_replies)}
+  end
+
+  def handle_event("quick_reply", %{"text" => text}, socket) do
+    # Re-use send_chat logic
+    handle_event("send_chat", %{"message" => text}, socket)
   end
 
   def handle_event("agent_detail_update", %{"detail" => detail}, socket) do
@@ -3749,6 +3762,22 @@ defmodule ModusWeb.UniverseLive do
             <% end %>
           </div>
 
+          <%!-- Quick Replies --%>
+          <%= if @quick_replies != [] && !@chat_loading do %>
+            <div class="px-3 py-2 border-t border-white/[0.04] flex flex-wrap gap-1.5 shrink-0">
+              <%= for qr <- @quick_replies do %>
+                <button phx-click="quick_reply" phx-value-text={qr}
+                  class="px-3 py-1.5 rounded-full text-[11px] font-medium
+                    bg-gradient-to-r from-purple-500/10 to-cyan-500/10
+                    border border-purple-500/20 text-purple-300
+                    hover:from-purple-500/20 hover:to-cyan-500/20 hover:border-purple-500/30
+                    transition-all active:scale-95">
+                  <%= qr %>
+                </button>
+              <% end %>
+            </div>
+          <% end %>
+
           <%!-- Input Area --%>
           <form phx-submit="send_chat" id="chat-form"
             class="px-3 py-3 border-t border-white/[0.06] shrink-0
@@ -4491,6 +4520,43 @@ defmodule ModusWeb.UniverseLive do
   end
 
   # ── Helpers ─────────────────────────────────────────────────
+
+  # ── Quick Reply Builder ────────────────────────────────────
+
+  defp build_quick_replies(nil), do: []
+
+  defp build_quick_replies(agent) when is_map(agent) do
+    replies = []
+
+    # Check hunger
+    hunger = get_in(agent, ["needs", "hunger"]) || get_in(agent, [:needs, :hunger]) || 50
+    replies = if hunger > 70, do: ["Yemek vereyim mi?" | replies], else: replies
+
+    # Check affect
+    affect = agent["affect_state"] || agent[:affect_state] || "neutral"
+
+    replies =
+      case to_string(affect) do
+        "sadness" -> ["Neden üzgünsün?" | replies]
+        "joy" -> ["Ne güzel!" | replies]
+        "fear" -> ["Korkma, yanındayım!" | replies]
+        _ -> replies
+      end
+
+    # Always have a generic option if we have fewer than 3
+    replies =
+      if length(replies) < 3 do
+        generic = ["Nasılsın?", "Ne yapıyorsun?", "Etrafta ne var?"]
+        needed = 3 - length(replies)
+        replies ++ Enum.take(generic -- replies, needed)
+      else
+        Enum.take(replies, 3)
+      end
+
+    replies
+  end
+
+  defp build_quick_replies(_), do: []
 
   # ── Chat Panel Helpers (v3.4.0 Nexus) ────────────────────
 

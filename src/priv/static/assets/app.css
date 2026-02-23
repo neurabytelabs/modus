@@ -2206,6 +2206,12 @@ body {
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
 }
 
+.from-purple-500\/10 {
+  --tw-gradient-from: rgb(168 85 247 / 0.1) var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(168 85 247 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
 .to-blue-500\/10 {
   --tw-gradient-to: rgb(59 130 246 / 0.1) var(--tw-gradient-to-position);
 }
@@ -2280,6 +2286,10 @@ body {
 
 .to-yellow-800\/80 {
   --tw-gradient-to: rgb(133 77 14 / 0.8) var(--tw-gradient-to-position);
+}
+
+.to-cyan-500\/10 {
+  --tw-gradient-to: rgb(6 182 212 / 0.1) var(--tw-gradient-to-position);
 }
 
 .bg-clip-text {
@@ -3296,12 +3306,22 @@ body {
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
 }
 
+.hover\:from-purple-500\/20:hover {
+  --tw-gradient-from: rgb(168 85 247 / 0.2) var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(168 85 247 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
 .hover\:to-cyan-400:hover {
   --tw-gradient-to: #22d3ee var(--tw-gradient-to-position);
 }
 
 .hover\:to-cyan-500:hover {
   --tw-gradient-to: #06b6d4 var(--tw-gradient-to-position);
+}
+
+.hover\:to-cyan-500\/20:hover {
+  --tw-gradient-to: rgb(6 182 212 / 0.2) var(--tw-gradient-to-position);
 }
 
 .hover\:text-cyan-300:hover {

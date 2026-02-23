@@ -21,6 +21,9 @@ defmodule Modus.Application do
     Modus.Simulation.Observatory.init()
     Modus.Simulation.Agent.init_state_cache()
     Modus.Simulation.StateSnapshots.init()
+    Modus.Llm.TokenBudget.init()
+    Modus.Llm.SmartCache.init()
+    Modus.Llm.ChatHistory.init()
     Modus.Performance.GcTuning.apply_defaults()
 
     children = [

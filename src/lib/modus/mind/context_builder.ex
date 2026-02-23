@@ -14,7 +14,8 @@ defmodule Modus.Mind.ContextBuilder do
   @doc "Build a full system prompt for chat with real context."
   def build_chat_prompt(agent, _user_message \\ nil) do
     perception = Perception.snapshot(agent)
-    social = SocialInsight.describe_relationships(agent.id)
+    # Top 3 relationships only (prompt compression)
+    social = SocialInsight.describe_relationships(agent.id) |> compress_text()
     energy_pct = round(ensure_float(perception.conatus_energy) * 100)
     lang = I18n.current_language()
     lang_instruction = I18n.language_instruction(lang)
@@ -258,18 +259,54 @@ defmodule Modus.Mind.ContextBuilder do
 
     parts = []
 
+    # Summarize conversations: take last 5 and compress
     parts =
-      if convos != "" and convos != nil,
-        do: ["Recent conversations:\n#{convos}" | parts],
-        else: parts
+      if convos != "" and convos != nil do
+        summarized = summarize_memories(convos)
+        ["Recent conversations:\n#{summarized}" | parts]
+      else
+        parts
+      end
 
+    # Summarize memories: compress to essential info
     parts =
-      if memories != "" and memories != nil,
-        do: ["Things you remember:\n#{memories}" | parts],
-        else: parts
+      if memories != "" and memories != nil do
+        summarized = summarize_memories(memories)
+        ["Things you remember:\n#{summarized}" | parts]
+      else
+        parts
+      end
 
     Enum.join(parts, "\n\n")
   end
+
+  @doc false
+  def summarize_memories(text) when is_binary(text) do
+    text
+    |> String.split("\n")
+    |> Enum.take(5)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.map(fn line ->
+      # Compress each memory line: remove redundant whitespace, limit length
+      line
+      |> String.replace(~r/\s+/, " ")
+      |> String.slice(0..120)
+    end)
+    |> Enum.join(". ")
+  end
+
+  def summarize_memories(_), do: ""
+
+  @doc false
+  def compress_text(text) when is_binary(text) do
+    text
+    |> String.replace(~r/\n{2,}/, "\n")
+    |> String.replace(~r/[ \t]+/, " ")
+    |> String.trim()
+  end
+
+  def compress_text(other), do: other
 
   defp relationship_tone(rel) do
     cond do
