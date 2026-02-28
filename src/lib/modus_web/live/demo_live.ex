@@ -111,7 +111,7 @@ defmodule ModusWeb.DemoLive do
     entry = %{
       emoji: "🙏",
       agent: prayer[:agent_name] || prayer["agent_name"] || "Agent",
-      text: prayer[:text] || prayer["text"] || "...",
+      text: prayer[:text] || prayer["text"] || prayer[:message] || prayer["message"] || "...",
       tick: prayer[:tick] || prayer["tick"] || socket.assigns.tick
     }
 
