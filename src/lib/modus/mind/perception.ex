@@ -77,8 +77,10 @@ defmodule Modus.Mind.Perception do
     |> Enum.map(fn {id, distance} ->
       {name, affect} =
         try do
-          state = Agent.get_state(id)
-          {state.name, state.affect_state}
+          case Agent.get_state(id) do
+            nil -> {"Unknown", :neutral}
+            state -> {state.name, state.affect_state}
+          end
         catch
           :exit, _ -> {"Unknown", :neutral}
         end

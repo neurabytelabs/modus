@@ -130,7 +130,23 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
 
     Task.start(fn ->
       try do
+        # Guard: skip if partner agent process is dead (prevents :noproc loop)
+        case Registry.lookup(Modus.AgentRegistry, partner_id) do
+          [] ->
+            Logger.debug("Skipping conversation: partner #{partner_id} not registered")
+            throw(:partner_not_registered)
+
+          _ ->
+            :ok
+        end
+
         partner = Agent.get_state(partner_id)
+
+        if is_nil(partner) do
+          Logger.debug("Skipping conversation: partner #{partner_id} state is nil")
+          throw(:partner_state_nil)
+        end
+
         relationship = SocialNetwork.get_relationship(agent.id, partner_id)
         prompt = build_conversation_prompt(agent, partner, relationship)
 

@@ -171,7 +171,7 @@ defmodule Modus.Intelligence.LlmScheduler do
     |> Enum.reduce([], fn agent_id, acc ->
       try do
         state = Agent.get_state(agent_id)
-        if state.alive?, do: [state | acc], else: acc
+        if state && state.alive?, do: [state | acc], else: acc
       catch
         :exit, _ -> acc
       end

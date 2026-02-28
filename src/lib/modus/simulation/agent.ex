@@ -15,6 +15,7 @@ defmodule Modus.Simulation.Agent do
   - `relationships` — Map of agent_id => {type, strength}
   """
   use GenServer
+  require Logger
 
   defstruct [
     :id,
@@ -154,9 +155,11 @@ defmodule Modus.Simulation.Agent do
   end
 
   @doc "Get agent state directly from GenServer (live, may block)."
-  @spec get_state_live(String.t()) :: t()
+  @spec get_state_live(String.t()) :: t() | nil
   def get_state_live(agent_id) do
     GenServer.call(via(agent_id), :get_state)
+  catch
+    :exit, _ -> nil
   end
 
   @doc "Send a tick to an agent process by id."
@@ -246,37 +249,47 @@ defmodule Modus.Simulation.Agent do
   end
 
   def handle_cast({:tick, tick_number, context}, agent) do
-    # Lazy evaluation: distant agents get simplified processing (skip if critical needs)
-    critical = agent.needs.hunger > 90.0 or agent.needs.rest < 5.0 or agent.conatus_energy < 0.1
+    try do
+      # Lazy evaluation: distant agents get simplified processing (skip if critical needs)
+      critical = agent.needs.hunger > 90.0 or agent.needs.rest < 5.0 or agent.conatus_energy < 0.1
 
-    # v7.4: Idle detection — agents idle for 10+ ticks enter low-power mode
-    # Low-power: skip LLM reasoning, simplified needs decay only every 3rd tick
-    idle_ticks = if agent.current_action == :idle, do: agent.idle_ticks + 1, else: 0
-    agent = %{agent | idle_ticks: idle_ticks}
+      # v7.4: Idle detection — agents idle for 10+ ticks enter low-power mode
+      # Low-power: skip LLM reasoning, simplified needs decay only every 3rd tick
+      idle_ticks = if agent.current_action == :idle, do: agent.idle_ticks + 1, else: 0
+      agent = %{agent | idle_ticks: idle_ticks}
 
-    # v7.5: Idle wake triggers — check if idle agent should wake up
-    wake_from_idle = idle_ticks >= 10 and should_wake_idle?(agent, tick_number)
-    idle_ticks = if wake_from_idle, do: 0, else: idle_ticks
-    agent = %{agent | idle_ticks: idle_ticks}
+      # v7.5: Idle wake triggers — check if idle agent should wake up
+      wake_from_idle = idle_ticks >= 10 and should_wake_idle?(agent, tick_number)
+      idle_ticks = if wake_from_idle, do: 0, else: idle_ticks
+      agent = %{agent | idle_ticks: idle_ticks}
 
-    cond do
-      # Idle low-power mode: skip most processing, just decay needs slowly
-      not critical and not wake_from_idle and idle_ticks >= 10 and rem(tick_number, 3) != 0 ->
+      cond do
+        # Idle low-power mode: skip most processing, just decay needs slowly
+        not critical and not wake_from_idle and idle_ticks >= 10 and rem(tick_number, 3) != 0 ->
+          {:noreply, agent}
+
+        not critical and not wake_from_idle and idle_ticks >= 10 ->
+          # Every 3rd tick: simplified processing (no LLM, basic needs decay)
+          agent = agent |> decay_needs() |> apply_building_bonuses()
+          {:noreply, agent}
+
+        not critical and
+          Modus.Performance.LazyEval.distant?(agent.position, tick_number) and
+            Modus.Performance.LazyEval.lazy?(agent.id, agent.position, tick_number) ->
+          agent = Modus.Performance.LazyEval.simplified_tick(agent)
+          {:noreply, agent}
+
+        true ->
+          do_full_tick(agent, tick_number, context)
+      end
+    rescue
+      e ->
+        Logger.warning("Agent #{agent.id} tick crashed: #{Exception.message(e)}")
         {:noreply, agent}
-
-      not critical and not wake_from_idle and idle_ticks >= 10 ->
-        # Every 3rd tick: simplified processing (no LLM, basic needs decay)
-        agent = agent |> decay_needs() |> apply_building_bonuses()
+    catch
+      kind, reason ->
+        Logger.warning("Agent #{agent.id} tick error: #{inspect({kind, reason})}")
         {:noreply, agent}
-
-      not critical and
-        Modus.Performance.LazyEval.distant?(agent.position, tick_number) and
-          Modus.Performance.LazyEval.lazy?(agent.id, agent.position, tick_number) ->
-        agent = Modus.Performance.LazyEval.simplified_tick(agent)
-        {:noreply, agent}
-
-      true ->
-        do_full_tick(agent, tick_number, context)
     end
   end
 

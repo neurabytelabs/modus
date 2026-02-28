@@ -802,9 +802,14 @@ defmodule ModusWeb.WorldChannel do
   def handle_in("get_agent_detail", %{"agent_id" => agent_id}, socket) do
     try do
       state = Agent.get_state(agent_id)
-      events = EventLog.recent(agent_id: agent_id, limit: 5)
-      detail = build_agent_detail(state, events)
-      {:reply, {:ok, detail}, assign(socket, :selected_agent_id, agent_id)}
+
+      if is_nil(state) do
+        {:reply, {:error, %{reason: "agent_not_found"}}, socket}
+      else
+        events = EventLog.recent(agent_id: agent_id, limit: 5)
+        detail = build_agent_detail(state, events)
+        {:reply, {:ok, detail}, assign(socket, :selected_agent_id, agent_id)}
+      end
     catch
       :exit, _ ->
         {:reply, {:error, %{reason: "agent_not_found"}}, socket}
@@ -1005,9 +1010,12 @@ defmodule ModusWeb.WorldChannel do
     if selected_id && rem(tick_number, 10) == 0 do
       try do
         state = Agent.get_state(selected_id)
-        events = EventLog.recent(agent_id: selected_id, limit: 5)
-        detail = build_agent_detail(state, events)
-        push(socket, "agent_detail_update", %{detail: detail})
+
+        if state do
+          events = EventLog.recent(agent_id: selected_id, limit: 5)
+          detail = build_agent_detail(state, events)
+          push(socket, "agent_detail_update", %{detail: detail})
+        end
       catch
         :exit, _ -> :ok
       end

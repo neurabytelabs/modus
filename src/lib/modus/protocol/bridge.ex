@@ -15,6 +15,15 @@ defmodule Modus.Protocol.Bridge do
   @doc "Main entry point: process a user message to an agent."
   def process(agent_id, user_message) do
     agent = Agent.get_state(agent_id)
+
+    if is_nil(agent) do
+      {:error, "Agent not found"}
+    else
+      process_intent(agent, agent_id, user_message)
+    end
+  end
+
+  defp process_intent(agent, agent_id, user_message) do
     intent = IntentParser.parse(user_message)
 
     case intent do
