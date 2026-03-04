@@ -296,7 +296,7 @@ Toggle with `D` key. Auto-refresh every 50 ticks.
 ## 🏗️ Architecture
 
 ```
-113+ Elixir modules · 867 tests · 33K+ LOC · 200+ commits
+238 Elixir modules · 867 tests · 44K+ LOC · 264 commits
 
 Mind                          Simulation
 ├── Conatus (energy/drive)    ├── World (terrain, biomes)
