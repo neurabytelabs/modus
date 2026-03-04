@@ -244,7 +244,7 @@ defmodule ModusWeb.DemoLive do
             </div>
             <div class="flex items-center gap-1.5">
               <span class="text-slate-600">CONATUS</span>
-              <span class="text-emerald-400 font-bold tabular-nums"><%= Float.round((@avg_conatus || 0) * 100, 0) %>%</span>
+              <span class="text-emerald-400 font-bold tabular-nums"><%= Float.round(@avg_conatus * 100, 0) %>%</span>
             </div>
           </div>
         </div>

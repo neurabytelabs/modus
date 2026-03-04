@@ -955,6 +955,10 @@ body {
   top: 0.75rem;
 }
 
+.top-28 {
+  top: 7rem;
+}
+
 .z-10 {
   z-index: 10;
 }

@@ -4101,10 +4101,7 @@ defmodule ModusWeb.UniverseLive do
 
       <%!-- Toast Notifications (color-coded by category) --%>
       <%= if @toasts != [] do %>
-        <div class={[
-          "fixed left-1/2 -translate-x-1/2 z-50 space-y-2 pointer-events-none flex flex-col items-center",
-          if(@breaking_event, do: "top-28", else: "top-16")
-        ]}>
+        <div class={"fixed top-#{if @breaking_event, do: "28", else: "16"} left-1/2 -translate-x-1/2 z-50 space-y-2 pointer-events-none flex flex-col items-center"}>
           <%= for toast <- @toasts do %>
             <% toast_category = Enum.find(@event_timeline, fn e -> e.id == toast.id end) %>
             <% toast_border = case toast_category && toast_category.category do
