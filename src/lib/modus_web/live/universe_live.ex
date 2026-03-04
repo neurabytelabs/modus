@@ -2556,7 +2556,7 @@ defmodule ModusWeb.UniverseLive do
             MODUS<span class="text-purple-400">_</span>
           </span>
           <span class="text-xs text-slate-600 hidden sm:inline">v<%= @app_version %> · Nexus</span>
-          <%= if @rules["preset"] && @rules["preset"] != "Custom" do %>
+          <%= if @rules && @rules["preset"] && @rules["preset"] != "Custom" do %>
             <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 hidden sm:inline">
               🎛️ <%= @rules["preset"] %>
             </span>
@@ -3901,7 +3901,7 @@ defmodule ModusWeb.UniverseLive do
               <div class="text-[8px] uppercase text-slate-600">cache hits</div>
             </div>
             <div class="text-center">
-              <% latency = if is_number(@llm_metrics.avg_latency_ms), do: round(@llm_metrics.avg_latency_ms), else: 0 %>
+              <% latency = if @llm_metrics.avg_latency_ms && is_number(@llm_metrics.avg_latency_ms), do: round(@llm_metrics.avg_latency_ms), else: 0 %>
               <div class={"text-lg font-bold tabular-nums #{if latency < 500, do: "text-emerald-400", else: if(latency < 2000, do: "text-amber-400", else: "text-red-400")}"}><%= latency %>ms</div>
               <div class="text-[8px] uppercase text-slate-600">latency</div>
             </div>
@@ -4365,7 +4365,7 @@ defmodule ModusWeb.UniverseLive do
                   <%!-- World Stats Summary --%>
                   <div class="grid grid-cols-4 gap-2 mb-4">
                     <div class="bg-white/3 rounded-lg p-2.5 border border-white/5 text-center">
-                      <div class="text-xl font-bold text-purple-400"><%= @obs_world.population %></div>
+                      <div class="text-xl font-bold text-purple-400"><%= @obs_world.population || 0 %></div>
                       <div class="text-[9px] text-slate-600 uppercase">Population</div>
                     </div>
                     <div class="bg-white/3 rounded-lg p-2.5 border border-white/5 text-center">

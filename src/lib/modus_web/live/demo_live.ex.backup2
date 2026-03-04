@@ -383,11 +383,6 @@ defmodule ModusWeb.DemoLive do
     {tick, agent_count, avg_conatus}
   end
 
-  # Terminate callback: Timer cleanup is automatic when process terminates.
-  # send_after refs are not stored, so explicit cancellation not needed.
-  def terminate(_reason, _socket), do: :ok
-
-
   defp event_emoji(:death), do: "💀"
   defp event_emoji(:birth), do: "👶"
   defp event_emoji(:conversation), do: "💬"

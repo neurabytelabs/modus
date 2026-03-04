@@ -244,7 +244,7 @@ defmodule ModusWeb.DemoLive do
             </div>
             <div class="flex items-center gap-1.5">
               <span class="text-slate-600">CONATUS</span>
-              <span class="text-emerald-400 font-bold tabular-nums"><%= Float.round(@avg_conatus * 100, 0) %>%</span>
+              <span class="text-emerald-400 font-bold tabular-nums"><%= Float.round((@avg_conatus || 0) * 100, 0) %>%</span>
             </div>
           </div>
         </div>
@@ -383,15 +383,15 @@ defmodule ModusWeb.DemoLive do
     {tick, agent_count, avg_conatus}
   end
 
+  defp event_emoji(:death), do: "💀"
   # Terminate callback: Timer cleanup is automatic when process terminates.
   # send_after refs are not stored, so explicit cancellation not needed.
   def terminate(_reason, _socket), do: :ok
 
-
-  defp event_emoji(:death), do: "💀"
   defp event_emoji(:birth), do: "👶"
   defp event_emoji(:conversation), do: "💬"
   defp event_emoji(:conflict), do: "⚔️"
   defp event_emoji(:resource_gathered), do: "🌾"
+
   defp event_emoji(_), do: "⚡"
 end
