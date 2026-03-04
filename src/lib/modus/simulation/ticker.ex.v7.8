@@ -21,9 +21,6 @@ defmodule Modus.Simulation.Ticker do
   @default_interval_ms 100
   @pubsub Modus.PubSub
   @topic "modus:tick"
-  # v7.9: Batch PubSub broadcasts every N ticks to reduce message traffic
-  @broadcast_every 10
-
 
   defstruct tick: 0,
             state: :paused,
@@ -154,10 +151,7 @@ defmodule Modus.Simulation.Ticker do
     new_tick = s.tick + 1
 
     # Broadcast tick event to all subscribers (v7.6: consolidated single broadcast)
-    # v7.9: Batch broadcast every @broadcast_every ticks to reduce PubSub load
-    if rem(new_tick, @broadcast_every) == 0 do
-      Phoenix.PubSub.broadcast(@pubsub, @topic, {:tick, new_tick})
-    end
+    Phoenix.PubSub.broadcast(@pubsub, @topic, {:tick, new_tick})
 
     # Rebuild spatial index every 10 ticks for O(1) neighbor lookups
     if rem(new_tick, 10) == 0 do
