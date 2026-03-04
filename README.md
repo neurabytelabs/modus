@@ -1,84 +1,205 @@
-<p align="center">
-  <h1 align="center">MODUS_</h1>
-  <p align="center"><strong>Create Worlds. Watch Them Live.</strong></p>
-  <p align="center">
-    AI agents with emotions, memory, and free will — building civilizations in worlds you design.
-  </p>
-  <p align="center">
-    <img src="https://img.shields.io/badge/version-v5.4.0_Harmonia-purple" alt="Version" />
-    <img src="https://img.shields.io/badge/Elixir-1.17+-4B275F?logo=elixir" alt="Elixir" />
-    <img src="https://img.shields.io/badge/modules-100+-green" alt="Modules" />
-    <img src="https://img.shields.io/badge/tests-686-brightgreen" alt="Tests" />
-    <img src="https://img.shields.io/badge/LOC-31K+-blue" alt="Lines of Code" />
-    <img src="https://img.shields.io/badge/license-MIT-blue" alt="License" />
-  </p>
-</p>
+<div align="center">
 
-<p align="center"><em>"Each thing, as far as it lies in itself, strives to persevere in its being."</em> — Spinoza, Ethics III</p>
+```
+███╗   ███╗ ██████╗ ██████╗ ██╗   ██╗███████╗
+████╗ ████║██╔═══██╗██╔══██╗██║   ██║██╔════╝
+██╔████╔██║██║   ██║██║  ██║██║   ██║███████╗
+██║╚██╔╝██║██║   ██║██║  ██║██║   ██║╚════██║
+██║ ╚═╝ ██║╚██████╔╝██████╔╝╚██████╔╝███████║
+╚═╝     ╚═╝ ╚═════╝ ╚═════╝  ╚═════╝ ╚══════╝
+```
+
+# Create Worlds. Watch Them Live.
+
+**AI agents with emotions, memory, and free will — building civilizations in worlds you design.**
+
+[![Version](https://img.shields.io/badge/version-v9.0.0_Anima-blueviolet)](CHANGELOG.md)
+[![Elixir](https://img.shields.io/badge/Elixir-1.17+-4B275F?logo=elixir)](https://elixir-lang.org/)
+[![Phoenix](https://img.shields.io/badge/Phoenix-1.7+-orange?logo=phoenix-framework)](https://phoenixframework.org/)
+[![Tests](https://img.shields.io/badge/tests-867-brightgreen)](test/)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+*"Each thing, as far as it lies in itself, strives to persevere in its being."*  
+— Baruch Spinoza, *Ethics* III
+
+[Demo](#-quick-start) · [Features](#-what-makes-modus-different) · [Architecture](#-architecture) · [Docs](docs/) · [Changelog](CHANGELOG.md)
+
+</div>
 
 ---
 
-MODUS is a universe simulation platform where every AI agent is a concurrent BEAM process with its own emotions, memories, goals, and will to survive. You design the world — terrain, rules, wildlife, language — and the agents write their own history. They form clans, craft tools, trade resources, tell stories, and build civilizations you never planned.
+## 🌍 What is MODUS?
 
-Not a game. Not a chatbot demo. A living system built on philosophy.
+**MODUS** is a universe simulation platform where every AI agent is a concurrent BEAM process with its own mind — emotions, episodic memories, relationships, goals, and the drive to survive. You design the world's physics and watch emergent civilizations unfold.
+
+Not a game. Not a chatbot playground. **A living system built on Spinoza's philosophy.**
+
+- 🧠 **Mind Engine** — Agents feel joy, sadness, fear, desire. They plan multi-step goals, form clans, tell stories, and pray when desperate.
+- 🌐 **World Builder** — Paint terrain, set physics (time speed, danger, birth rate), spawn ruins, trigger disasters.
+- 🎭 **Culture Engine** — Catchphrases emerge from lived experience and mutate across generations. Traditions form organically.
+- 📊 **Observatory** — SVG dashboards track population, happiness, trade volume, ecosystem balance, and relationship networks.
+- 🌍 **Multi-Language** — Worlds are born in one of 6 languages (EN, TR, DE, FR, ES, JA). Agents think and speak natively.
+- 💾 **Persistence** — Auto-save, 5 save slots, world seeds, crash recovery, JSON export/import with share codes.
+
+### Why MODUS?
+
+**Simile AI** ($100M, enterprise) builds workforce simulations for corporations. **MODUS** is the B2C creator platform — indie devs, educators, storytellers, and philosophers building living worlds for exploration, narrative, and research.
+
+**Spinoza's *modus*** means "mode of being." Every simulation is a *modus* — an individual expression of existence within the infinite.
 
 ---
 
 ## ⚡ Quick Start
 
+### Docker (Recommended)
+
 ```bash
+git clone https://github.com/neurabytelabs/modus.git
+cd modus
 docker compose up -d
 open http://localhost:4000
 ```
 
-Choose a template (or paint your own), set population, pick a language, and watch.
+Choose a world template (Village, Island, Medieval, Space...), set population, pick a language, and watch agents build their civilization.
+
+### Local Development
+
+**Requirements:** Elixir 1.17+, PostgreSQL 16+, Node.js 18+
+
+```bash
+mix deps.get
+mix ecto.setup
+cd assets && npm install && cd ..
+mix phx.server
+```
+
+Visit [`localhost:4000`](http://localhost:4000)
+
+### Environment Variables
+
+```bash
+# LLM Providers (at least one required)
+export ANTIGRAVITY_GATEWAY_URL=http://localhost:8080  # 60+ models
+export GEMINI_API_KEY=your_key_here                   # Gemini Direct API
+export OPENAI_API_KEY=your_key_here                   # OpenAI models
+
+# Database
+export DATABASE_URL=ecto://postgres:postgres@localhost/modus_dev
+
+# Optional
+export PHX_HOST=localhost
+export PORT=4000
+export SECRET_KEY_BASE=$(mix phx.gen.secret)
+```
 
 ---
 
 ## 🧠 The Spinoza Mind Engine
 
-Every agent has a mind. Not a behavior tree — a mind.
+Every agent has a **mind** — not a behavior tree, a *mind*.
 
-| Layer | Concept | What It Does |
-|-------|---------|-------------|
-| **Conatus** | Drive to persist | Energy that rises with success, falls with hardship. Zero = death. |
-| **Affects** | Emotional states | Joy, sadness, desire, fear, curiosity — shapes every decision |
-| **Episodic Memory** | Lived experience | Memories decay over time. Emotional ones persist. Agents recall and reference the past. |
-| **Planner** | Strategic thinking | Goal decomposition: "build house" → gather wood → gather stone → build. Re-plans when blocked. |
-| **Creativity** | Story & invention | Agents name places, tell stories, invent recipes, create oral traditions that mutate over generations |
-| **Personality** | Big Five traits | Openness, conscientiousness, extraversion, agreeableness, neuroticism — unique per agent |
+| Layer | Spinoza Concept | Implementation |
+|-------|----------------|----------------|
+| **Conatus** | Drive to persist | Energy (0.0–1.0) that rises with success, falls with hardship. Zero = death. |
+| **Affects** | Emotional states | Joy, sadness, desire, fear, curiosity — shapes every decision and memory. |
+| **Episodic Memory** | Lived experience | SQLite-backed memories with decay. Emotional events persist longer. |
+| **Planner** | Goal decomposition | "Build house" → gather wood → gather stone → construct. Re-plans when blocked. |
+| **Creativity** | Invention & story | Agents name places, invent recipes, tell stories that mutate over generations. |
+| **Social Network** | Relationships | Friendship, rivalry, trust. Strangers → acquaintances → friends → close friends. |
+| **Personality** | Big Five traits | Openness, conscientiousness, extraversion, agreeableness, neuroticism. |
+| **Prayer System** | Divine communication | Desperate agents pray to the player (God) based on emotional state. |
 
-The mind engine runs on LLM reasoning: a sad agent asks itself *"Why am I sad?"* and changes behavior based on the answer.
+### How It Works
+
+1. **Perception** — Agent sees nearby terrain, resources, agents, relationships, and buildings.
+2. **Reasoning** — LLM generates context-aware decisions based on needs, personality, and memory.
+3. **Action** — Move, gather, build, trade, converse, pray, sleep, craft.
+4. **Memory** — Emotional events (births, deaths, friendships, conflicts) stored with salience scores.
+5. **Affect Update** — Success/failure modulates conatus and emotional state.
+
+The mind runs on **multi-LLM architecture** with automatic fallback:
+
+```
+Antigravity Gateway (60+ models)
+    ↓ timeout/error
+Gemini Direct API
+    ↓ timeout/error
+Ollama (local models)
+    ↓ timeout/error
+Hardcoded personality-based responses
+```
+
+**LLM optimizations:**
+- Call batching (multiple agents per prompt)
+- ETS-backed response cache (TTL = 100 ticks)
+- Behavior trees for simple decisions (no LLM needed)
+- Budget tracking (max N calls per tick with priority queue)
 
 ---
 
 ## 🌍 World Systems
 
 ### Terrain & Biomes
-- **Perlin noise generation** — 7 procedural biomes (deep water, shallow water, sand, grass, forest, mountain, snow)
-- **Terrain painter** — Draw terrain tile by tile, place resources manually
-- **World seeds** — Same seed = same world, always
+- **7 biomes** — Deep water, shallow water, sand, grass, forest, mountain, snow
+- **Perlin noise generation** — Procedural terrain from world seeds
+- **Terrain painter** — Draw tile-by-tile, place resources manually
+- **11 world templates** — Village, Island, Desert, Space, Underwater, Medieval, Cyberpunk, Jungle, Arctic, Volcanic, Cloud City
 
 ### Wildlife & Ecology
 - 🦌 Deer · 🐇 Rabbits · 🐺 Wolves · 🐦 Birds · 🐟 Fish
-- **Breeding** with population caps — food chains emerge naturally
-- **Seasonal migration** — animals move with the weather
-- **Ecosystem balance** — overhunting causes famine
-
-### Weather & Seasons
-- 🌸 Spring (+50% growth) → ☀️ Summer (heat drain) → 🍂 Autumn (harvest) → ❄️ Winter (survival mode)
-- ☁️ Clear · 🌧️ Rain · ⛈️ Storm · 🌫️ Fog · ❄️ Snow — affects agent behavior and terrain
+- **Breeding** with population caps and seasonal variation
+- **Food chains** — Wolves hunt deer, agents hunt rabbits, overhunting causes famine
+- **Seasonal migration** — Animals move with weather patterns
 
 ### Buildings & Neighborhoods
-- Agents gather resources and build: **Hut → House → Mansion**
-- Farms 🌾 · Markets 🏪 · Wells 🪣 · Watchtowers 🗼
-- **Neighborhoods** form organically when 3+ buildings cluster — named automatically, social bonuses
-- Abandoned buildings decay into **ruins** — discoverable archaeological sites
+- **6 building types** — Hut 🛋, House 🏠, Farm 🌾, Market 🏪, Well 🪣, Watchtower 🗼
+- **Upgrades** — Hut (L1) → House (L2) → Mansion (L3)
+- **Neighborhoods** — 3+ buildings within 5 tiles form named clusters ("Green Hill", "Oak Meadow")
+- **Area bonuses** — Buildings provide rest, shelter, hunger, and social boosts
+- **Building decay** — Abandoned buildings lose health over time, become ruins
 
 ### Ruins & Archaeology
 - 🏛️ Temples · 🏰 Castles · 🏚️ Villages · 🗿 Monuments
 - Agents excavate ruins, discover **artifacts** (tools, scrolls, treasures, relics)
 - **Museums** display artifacts for culture bonuses
+- Dead civilizations leave traces
+
+### Seasons & Weather
+- **4 seasons** — 🌸 Spring (+50% growth) → ☀️ Summer (heat drain) → 🍂 Autumn (harvest) → ❄️ Winter (survival)
+- **Weather effects** — ☁️ Clear · 🌧️ Rain · ⛈️ Storm · 🌫️ Fog · ❄️ Snow
+- **Day/night cycle** — Dawn, day, dusk, night, pre-dawn with ambient color shifts
+- **Seasonal tint overlays** — Flat 2D color layers (green → gold → frosty white)
+
+### Dynamic Events
+- **Natural disasters** — 🌩️ Storm · 🌍 Earthquake · ☄️ Meteor · 🌊 Flood · 🔥 Fire
+- **Complex event chains** — Drought → famine → migration → conflict
+- **Social events** — 🎉 Festivals · 🏛️ Discoveries · 🚶 Migration waves
+- **God Mode triggers** — Player-triggered events (plague, treasure, golden age)
+
+---
+
+## 🎛️ World Rules Engine
+
+Tune world physics in real-time:
+
+| Rule | Range | Effect |
+|------|-------|--------|
+| ⏱️ **Time Speed** | 0.5x–3.0x | Simulation tick interval |
+| 🌾 **Resource Abundance** | Scarce/Normal/Abundant | Resource availability |
+| ⚠️ **Danger Level** | Peaceful/Moderate/Harsh/Extreme | World hostility |
+| 💬 **Social Tendency** | 0.0–1.0 | Agent sociability |
+| 👶 **Birth Rate** | 0.0–2.0x | Population growth |
+| 🏗️ **Building Speed** | 0.5–3.0x | Construction rate |
+| 🧬 **Mutation Rate** | 0.0–1.0 | Personality variance on birth |
+
+### 5 Presets
+- 🕊️ **Peaceful Paradise** — Abundant resources, high birth rate, fast building
+- 💀 **Harsh Survival** — Scarce resources, extreme danger, low birth rate
+- 🌪️ **Chaotic** — Fast time, high mutation, harsh environment
+- ✨ **Utopia** — Abundant, peaceful, highly social, zero mutation
+- 🧪 **Evolution Lab** — Max speed, high birth & mutation rates
+
+All changes take effect **instantly** — no restart needed.
 
 ---
 
@@ -86,39 +207,39 @@ The mind engine runs on LLM reasoning: a sad agent asks itself *"Why am I sad?"*
 
 ### Clans & Leadership
 - Nearby agents with positive relationships form **tribes**
-- Highest social influence = **leader** (decides resource allocation, movement)
+- Highest social influence becomes **leader** (decides resource allocation, movement)
 - **Alliances and rivalries** between groups
-- Group names generated via LLM
+- LLM-generated group names
 
 ### Communication
-- **Structured dialogue** — trade proposals, alliance offers, gossip, warnings
-- **Persuasion** — skill-based influence
-- **Rumors** — information spreads through social networks but degrades (telephone game)
-- **Secrets** — only shared with trusted agents
+- **Structured dialogue** — Trade proposals, alliance offers, gossip, warnings
+- **Persuasion system** — Skill-based influence with success/resist outcomes
+- **Rumor spreading** — Information degrades as it passes through social networks
+- **Secrets** — Only shared with trusted agents
 
 ### Trade & Economy
-- Agent-to-agent **barter** — personality-driven value assessment
-- **Supply and demand** — abundant resources lose value
-- Markets provide trade bonuses
+- **Agent-to-agent barter** — Personality-driven value assessment
+- **Supply and demand** — Abundant resources lose value
+- **Markets** provide trade bonuses
 - Full trade history tracking
 
 ### Crafting & Skills
-- **Recipe-based** — sword = iron + wood, bread = wheat + water, medicine = herb + water
-- **Skill levels** — novice → apprentice → expert → master
-- XP from repetition, mastery unlocks better quality
-- **Teaching** — masters train apprentices
+- **Recipe-based** — Sword = iron + wood, bread = wheat + water, medicine = herb + water
+- **Skill levels** — Novice → Apprentice → Expert → Master
+- **XP from repetition** — Practice improves quality
+- **Teaching** — Masters train apprentices
 
 ### Cultural Evolution
-- Catchphrases emerge from experience and spread through conversation
-- **Traditions** form: Harvest Festival, Mourning Circle, Dawn Greeting, Winter Vigil
-- Phrases mutate over generations — cultural drift in action
-- **Stories** — agents create oral histories that transform as they're retold
+- **Catchphrases** emerge from lived experience and spread through conversation
+- **Traditions** — Harvest Festival, Mourning Circle, Dawn Greeting, Winter Vigil, Spring Awakening, Stargazing Rite
+- **Cultural drift** — Phrases mutate over generations (telephone game effect)
+- **Stories** — Agents create oral histories that transform as they're retold
 
 ---
 
-## 🌐 World Language System
+## 🌐 Multi-Language Worlds
 
-Worlds are **born in a language**. When you create a world, you choose:
+Worlds are **born in a language**:
 
 🇬🇧 English · 🇹🇷 Türkçe · 🇩🇪 Deutsch · 🇫🇷 Français · 🇪🇸 Español · 🇯🇵 日本語
 
@@ -126,54 +247,22 @@ Agents think, speak, name themselves, and create culture **entirely in that lang
 
 ---
 
-## 🎛️ World Builder
-
-### 11 Templates
-Village 🏘️ · Island 🏝️ · Desert 🏜️ · Space 🚀 · Underwater 🌊 · Medieval 🏰 · Cyberpunk 🌃 · Jungle 🌴 · Arctic ❄️ · Volcanic 🌋 · Cloud City ☁️ · or 🎲 Random
-
-### Rules Engine
-Tune world physics in real-time:
-- ⏱️ Time speed · 🌾 Resource abundance · ⚠️ Danger level · 💬 Social tendency · 👶 Birth rate · 🏗️ Build speed · 🧬 Mutation rate
-- **Presets:** Peaceful Paradise · Harsh Survival · Chaotic · Utopia · Evolution Lab
-
-### Dynamic Events
-| Trigger | Events |
-|---------|--------|
-| **Natural** | 🌩️ Storm · 🌍 Earthquake · ☄️ Meteor · 🌊 Flood · 🔥 Fire |
-| **Complex Chains** | Drought → Famine → Migration → Conflict |
-| **Social** | 🎉 Festival · 🏛️ Discovery · 🚶 Migration Wave |
-| **God Mode** | Trigger any event manually |
-
-Events chain together: a drought causes famine, famine causes migration, migration causes conflict with existing settlements.
-
----
-
 ## 📊 Observatory Dashboard
 
-Pure SVG charts, no JavaScript libraries:
-- 📈 Population graph (last 100 ticks)
-- 📊 Resource distribution over time
-- 🕸️ Relationship network visualization
-- 😊 Mood distribution
-- 💰 Trade volume
-- 🦌 Ecosystem balance (predator/prey ratio)
+Pure SVG analytics, no JavaScript libraries:
 
-Toggle with `D` key.
+- 📈 **Population graph** — Last 100 ticks, birth/death trends
+- 📊 **Resource distribution** — Wood, stone, food, water over time
+- 🕸️ **Relationship network** — Circle-layout graph (color-coded by strength)
+- 😊 **Mood distribution** — Happiness index across the population
+- 💰 **Trade volume** — Cumulative transaction activity
+- 🦌 **Ecosystem balance** — Predator/prey ratios
 
----
-
-## 💾 Persistence
-
-- **Auto-save** every N ticks (configurable)
-- **5 named save slots** per world
-- **World seeds** for reproducible worlds
-- **Crash recovery** — loads last auto-save on restart
-- **JSON export/import** — portable world format
-- **Gzip compression** for save files
+Toggle with `D` key. Auto-refresh every 50 ticks.
 
 ---
 
-## 🎮 Controls
+## 🎮 Controls & UI Modes
 
 | Key | Mode | Description |
 |-----|------|-------------|
@@ -184,33 +273,30 @@ Toggle with `D` key.
 | `D` | **Dashboard** | SVG analytics overlay |
 | `M` | **Metrics** | LLM performance monitor |
 | `P` | **Performance** | System health panel |
+| `B` | **Mind View** | Relationship lines & conversation bubbles |
+| `Space` | **Pause/Play** | Toggle simulation |
+| `1/5/0` | **Speed** | 1x / 5x / 10x time |
+| `Cmd+K` | **Command Palette** | Unified control interface |
+| `Esc` | **Deselect** | Close all panels |
 
 ---
 
-## 🤖 Multi-LLM Architecture
+## 💾 Persistence & Sharing
 
-Three providers, automatic fallback:
-
-```
-Antigravity Gateway (60+ models)
-    ↓ timeout/error
-Gemini Direct API
-    ↓ timeout/error
-Hardcoded personality-based responses
-```
-
-- **LLM call batching** — multiple agents per API call
-- **Response caching** — ETS-backed, TTL=100 ticks
-- **Behavior trees** for simple decisions (no LLM needed)
-- **Budget tracking** — max N calls per tick with priority queue
-- Switch providers at runtime from settings panel
+- **Auto-save** — Configurable interval (default: every 200 ticks)
+- **5 save slots** — Named saves with timestamps
+- **World seeds** — Same seed = same world, always reproducible
+- **Crash recovery** — Loads last auto-save on restart
+- **JSON export/import** — Portable world format with gzip compression
+- **Share codes** — Base64+zlib compressed string for instant world sharing (no file needed)
+- **Chronicle export** — Full world history as markdown
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-100+ Elixir modules · 686 tests · 31K+ LOC · 120+ commits
+113+ Elixir modules · 867 tests · 33K+ LOC · 200+ commits
 
 Mind                          Simulation
 ├── Conatus (energy/drive)    ├── World (terrain, biomes)
@@ -220,130 +306,158 @@ Mind                          Simulation
 ├── Creativity (stories)      ├── TradeSystem (barter, supply/demand)
 ├── SocialEngine (clans)      ├── CraftingSystem (recipes, skills)
 ├── Culture (traditions)      ├── Seasons (4-season cycle)
-├── Perception (awareness)    ├── Weather (rain, snow, fog)
+├── Perception (awareness)    ├── Weather (rain, snow, fog, storms)
 ├── Reasoning (LLM thinking)  ├── WorldEvents (disasters, chains)
-└── Learning (skill XP)       ├── Archaeology (ruins, artifacts)
-                              ├── RulesEngine (custom physics)
-Intelligence                  ├── Observatory (analytics)
-├── AntigravityClient         ├── TerrainGenerator (Perlin noise)
-├── GeminiClient              └── WorldTemplates (11 presets)
-├── OllamaClient
-├── LlmScheduler              Persistence
-├── ResponseCache              ├── WorldPersistence (SQLite)
-└── BehaviorTree               ├── WorldExport (JSON, gzip)
-                               └── AutoSave (crash recovery)
-Protocol
-├── IntentParser               Performance
-├── ContextBuilder             ├── SpatialIndex (O(n) queries)
-└── Bridge (orchestration)     ├── MemoryAudit (per-agent limits)
-                               └── Benchmark (50-500 agents)
+├── Learning (skill XP)       ├── Archaeology (ruins, artifacts)
+└── PrayerSystem              ├── RulesEngine (custom physics)
+                              ├── Observatory (analytics)
+Intelligence                  ├── TerrainGenerator (Perlin noise)
+├── AntigravityClient         └── WorldTemplates (11 presets)
+├── GeminiClient
+├── OllamaClient              Persistence
+├── OpenAIClient              ├── WorldPersistence (SQLite)
+├── LlmScheduler              ├── WorldExport (JSON, gzip)
+├── ResponseCache             ├── SaveManager (5 slots)
+└── BehaviorTree              └── AutoSave (crash recovery)
+
+Protocol                      Performance
+├── IntentParser              ├── SpatialIndex (O(1) queries)
+├── ContextBuilder            ├── StateSnapshots (delta compression)
+├── Perception                ├── EventLog (ETS, TTL pruning)
+└── Bridge (orchestration)    ├── MemoryAudit (per-agent limits)
+                              └── Benchmark (50-500 agents)
 Web
 ├── UniverseLive (Phoenix LiveView)
 ├── WorldChannel (WebSocket sync)
+├── DemoLive (public `/demo` mode)
 └── Pixi.js Renderer (2D top-down)
 ```
 
-Every agent is a **concurrent BEAM process**. The ticker broadcasts via PubSub. State lives in ETS for O(1) reads. No GenServer bottlenecks for reads.
+### Why Elixir + BEAM?
+
+- **Concurrency** — Every agent is a lightweight process. 1 million agents = 1 million processes.
+- **Fault tolerance** — Agent crashes don't crash the simulation. Supervisors auto-restart.
+- **Actor model** — Natural fit for autonomous agents with independent state.
+- **No GenServer bottlenecks** — ETS for O(1) reads, PubSub for event broadcast, Registry for position lookups.
 
 ---
 
 ## ⚡ Performance
 
-Benchmarked on Mac Mini M4 (16GB):
+Benchmarked on **Mac Mini M4 (16GB)**:
 
-| Agents | Avg Tick | P95 | P99 |
-|--------|----------|-----|-----|
-| 50 | 0.65ms | 0.69ms | 0.72ms |
-| 100 | 1.44ms | 1.49ms | 1.55ms |
-| 200 | 3.62ms | 3.71ms | 3.85ms |
-| 500 | 14.04ms | 15.40ms | 16.2ms |
+| Agents | Avg Tick | P95 | P99 | Target |
+|--------|----------|-----|-----|--------|
+| 50 | 0.65ms | 0.69ms | 0.72ms | < 100ms |
+| 100 | 1.44ms | 1.49ms | 1.55ms | < 100ms |
+| 200 | 3.62ms | 3.71ms | 3.85ms | < 100ms |
+| 500 | 14.04ms | 15.40ms | 16.2ms | < 100ms |
 
-Target: 200 agents under 100ms/tick → **achieved at 3.62ms** (27x headroom).
+**Target:** 200 agents under 100ms/tick → **achieved at 3.62ms** (27x headroom)
 
----
-
-## 📜 Version History
-
-Every release is named after a concept in Spinoza's philosophy.
-
-<details>
-<summary>Full version history (v0.1.0 → v5.4.0)</summary>
-
-| Version | Codename | Theme |
-|---------|----------|-------|
-| **v5.4.0** | **Harmonia** | Integration, polish, Sprint Genesis |
-| v5.3.0 | Velocitas | Performance benchmarks (50-500 agents) |
-| v5.2.0 | Probatio | Quality pass — 0 warnings, formatted code |
-| v5.1.0 | Sensus | Agent aging & appearance |
-| v5.0.0 | Forma | UI design overhaul |
-| v4.9.0 | Imperium | Divine intervention UI |
-| v4.8.0 | Conspectus | Map zoom levels |
-| v4.7.0 | Ruina | Ruins & archaeology system |
-| v4.6.0 | Somnus | Sleep cycles & daily routines |
-| v4.5.0 | Renascentia | Resource respawn & balance |
-| v4.4.0 | Caelum | Weather system |
-| v4.3.0 | Via | Road & path system |
-| v4.2.0 | Aqua | Water flow simulation |
-| v4.1.0 | Territorium | Perlin noise terrain (7 biomes) |
-| v4.0.1 | Emendatio | Compile warning fixes |
-| v3.8.5 | Lingua Mundi | World language system (6 languages) |
-| v3.8.0 | Harmonia | Sprint v3 integration & polish |
-| v3.7.0 | Persistentia | Auto-save, slots, seeds, crash recovery |
-| v3.6.0 | Speculum | SVG data dashboard (6 charts) |
-| v3.5.0 | Eventus | Dynamic events v2 (chains, festivals) |
-| v3.4.0 | Nexus | Communication v2 (persuasion, rumors) |
-| v3.3.0 | Optimum | Performance optimization, spatial indexing |
-| v3.2.0 | Ratio | LLM optimization (batching, caching) |
-| v3.1.0 | Fabrica | Crafting system, skill trees |
-| v3.0.0 | Societas | Clans, leadership, alliances |
-| v2.9.0 | Natura | Ecology (breeding, food chains) |
-| v2.8.0 | Ars | Agent creativity (stories, inventions) |
-| v2.7.0 | Mercatura | Trade & barter economy |
-| v2.6.0 | Consilium | Agent planning & goal decomposition |
-| v2.5.0 | Memoria | Episodic memory with decay |
-| v2.4.0 | Veritas | Test stabilization (0 failures) |
-| v2.3.0 | Amor | Landing page, Text/Zen modes |
-| v2.2.0 | Speculum | Observatory & export |
-| v2.1.0 | Lingua | Cultural evolution |
-| v2.0.0 | Infinitum | Custom rules engine |
-| v1.9.0 | Tempus | Seasons, world events |
-| v1.8.0 | Architectus | Building system |
-| v1.7.0 | Nexus | Multi-universe dashboard |
-| v1.6.0 | Creator | World builder & agent designer |
-| v1.5.0 | Deus | God Mode & cinematic camera |
-| v1.4.0 | Potentia | Story engine & timeline |
-| v1.0.0 | Substantia | Economy & lifecycle |
-| v0.5.0 | Libertas | Protocol bridge |
-| v0.4.0 | Cerebro | Social network |
-| v0.3.0 | Affectus | Conatus & affects |
-| v0.1.0 | Genesis | The world was born |
-
-</details>
+**Optimizations:**
+- ETS spatial indexing (dirty flag skip when no movement)
+- Delta compression for state snapshots
+- Batched PubSub broadcasts (every 10 ticks for non-critical updates)
+- LLM call batching + response caching
 
 ---
 
-## Design Philosophy
+## 📜 Versioning Philosophy
 
-> *If a 5-year-old can't understand what they're looking at in 3 seconds, it's too complex.*
+Every release is named after a concept in **Baruch Spinoza's *Ethics*** (1677).
 
-MODUS is **always 2D**. Top-down. Flat. The complexity lives in the minds, not the pixels. A colored circle with a name carries more meaning than a 3D character — because behind that dot is a concurrent process with emotions, memories, relationships, and the drive to persist.
+| Version | Codename | Theme | Highlights |
+|---------|----------|-------|------------|
+| **v9.0.0** | **Anima** | Soul & Spirit | Tutorial system, settings panel, revenue model, tech radar |
+| v8.1.0 | Imperium | Command | Command palette (Cmd+K), unified control interface |
+| v7.9.0 | Divinus | Divine | Delta snapshots, event TTL, PubSub batching, death tracking |
+| v5.6.6 | Divinus | Divine | PubSub consolidation, ETS everywhere, ticker health |
+| v5.4.0 | Harmonia | Harmony | Sprint v4 final integration |
+| v4.9.0 | Imperium | Command | Divine intervention UI |
+| v4.7.0 | Ruina | Ruins | Archaeology system |
+| v3.8.5 | Lingua Mundi | World Language | 6-language support |
+| v3.7.0 | Persistentia | Persistence | Auto-save, crash recovery |
+| v3.6.0 | Speculum | Mirror | SVG dashboard |
+| v3.0.0 | Societas | Society | Clans, leadership |
+| v2.0.0 | Infinitum | Infinite | Custom rules engine |
+| v1.0.0 | Substantia | Substance | Economy & lifecycle |
+| v0.5.0 | Libertas | Freedom | Protocol bridge |
+| v0.3.0 | Affectus | Affects | Emotions & memory |
+| v0.1.0 | Genesis | The Beginning | The world was born |
+
+[Full changelog](CHANGELOG.md)
 
 ---
 
-## The Spinoza Connection
+## 🗺️ Roadmap
 
-MODUS is built on Baruch Spinoza's *Ethics* (1677):
+### Completed (v9.0 Anima)
+- ✅ Spinoza Mind Engine (conatus, affects, episodic memory)
+- ✅ Multi-LLM architecture (Antigravity, Gemini, Ollama, OpenAI)
+- ✅ World builder with 11 templates
+- ✅ Seasons, weather, day/night cycles
+- ✅ Buildings, neighborhoods, ruins, archaeology
+- ✅ Clans, leadership, alliances
+- ✅ Trade, crafting, skills
+- ✅ Cultural evolution, traditions
+- ✅ Multi-language support (6 languages)
+- ✅ Observatory dashboard
+- ✅ Auto-save, world seeds, share codes
+- ✅ Command palette, tutorial system
 
-**Conatus** — *"Each thing strives to persevere in its being."* Every agent has this drive. Zero = death.
+### Next (v9.1)
+- [ ] Mobile-responsive UI (touch controls)
+- [ ] WebGL renderer (performance boost for 500+ agents)
+- [ ] Advanced AI orchestration (multi-agent LLM planning)
+- [ ] Community world gallery (public share codes)
 
-**Affects** — *"The modifications of the body by which the body's power of acting is increased or diminished."* Joy and sadness aren't labels — they're the engine.
-
-**Modus** — In Spinoza's metaphysics, a *modus* is an individual mode of existence within the one substance. Every agent, every world, every simulation is a modus.
-
-**Deus sive Natura** — *God, or Nature.* The simulation doesn't represent reality. For its inhabitants, it *is* reality.
+### Future (v10.0+)
+- [ ] Multiplayer (collaborative world building)
+- [ ] Modding API (custom agent behaviors, terrain types, events)
+- [ ] Time-travel debugging (rewind simulation to any tick)
+- [ ] AI-generated world art (DALL·E/Stable Diffusion integration)
 
 ---
 
-<p align="center">
-  <strong>NeuraByte Labs</strong> · <em>"Where Spinoza Meets Silicon"</em> · 2026
-</p>
+## 🤝 Contributing
+
+MODUS is currently in **private beta**. We're not yet accepting external contributions, but we'd love to hear your thoughts:
+
+- 🐛 **Bug reports** — [Open an issue](https://github.com/neurabytelabs/modus/issues)
+- 💡 **Feature requests** — [Start a discussion](https://github.com/neurabytelabs/modus/discussions)
+- 📖 **Questions** — Join our [Discord](https://discord.gg/neurabyte) (coming soon)
+
+We plan to open-source the **core engine** (Mind, World, Protocol layers) while keeping premium features (hosted simulations, advanced LLM orchestration) in a commercial tier.
+
+---
+
+## 📄 License
+
+MIT License — see [LICENSE](LICENSE) for details.
+
+**Exception:** The Spinoza Mind Engine module (`lib/modus/mind/`) may be relicensed under a commercial license in future versions. Current open-source usage is grandfathered.
+
+---
+
+## 🙏 Credits
+
+**Built by [NeuraByte Labs](https://neurabytelabs.com)** · *Where Spinoza Meets Silicon*
+
+- **Philosophy** — Baruch Spinoza (1632–1677), *Ethics*
+- **Inspiration** — Simile AI, Conway's Game of Life, Dwarf Fortress, The Sims
+- **Tech Stack** — Elixir/BEAM, Phoenix LiveView, Pixi.js, SQLite, Docker
+- **LLM Providers** — Antigravity Gateway, Gemini, Ollama, OpenAI
+
+Special thanks to the Elixir community for building the most elegant concurrency platform in existence.
+
+---
+
+<div align="center">
+
+**"By reality and perfection I mean the same thing."**  
+— Spinoza, *Ethics* II, Definition VI
+
+[⬆ Back to top](#)
+
+</div>
