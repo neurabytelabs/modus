@@ -9,6 +9,9 @@ defmodule ModusWeb.UniverseLive do
   alias Modus.Simulation.WorldTemplates
   alias Modus.Simulation.Observatory
   import ModusWeb.DashboardCharts
+  @toast_timeout_ms 6_000
+  @toast_timeout_short_ms 5_000
+
 
   @impl true
   def mount(_params, _session, socket) do
@@ -1817,7 +1820,7 @@ defmodule ModusWeb.UniverseLive do
 
     toasts = Enum.take([toast | socket.assigns.toasts], 5)
     # Auto-dismiss after 6 seconds
-    Process.send_after(self(), {:dismiss_toast, toast.id}, 6_000)
+    Process.send_after(self(), {:dismiss_toast, toast.id}, @toast_timeout_ms)
 
     # Update timeline if open
     socket =
@@ -1924,7 +1927,7 @@ defmodule ModusWeb.UniverseLive do
     }
 
     toasts = Enum.take([toast | socket.assigns.toasts], 5)
-    Process.send_after(self(), {:dismiss_toast, toast.id}, 5_000)
+    Process.send_after(self(), {:dismiss_toast, toast.id}, @toast_timeout_short_ms)
 
     # Breaking banner for severe events
     socket =
@@ -3395,7 +3398,7 @@ defmodule ModusWeb.UniverseLive do
         <% end %>
 
         <%!-- Mobile Bottom Bar --%>
-        <div class={"fixed bottom-0 inset-x-0 md:hidden bg-[#0A0A0F]/95 backdrop-blur-md border-t border-white/5 z-30 px-2 py-2 flex items-center justify-around" <> if(@zen_mode, do: " hidden", else: "")}>
+        <div class={"fixed bottom-0 inset-x-0 md:hidden bg-[#0A0A0F]/95 backdrop-blur-md border-t border-white/5 z-40 px-2 py-2 flex items-center justify-around" <> if(@zen_mode, do: " hidden", else: "")}>
           <button phx-click="inject_event" phx-value-type="natural_disaster" class="mobile-action-btn">🌋</button>
           <button phx-click="inject_event" phx-value-type="migrant" class="mobile-action-btn">🚶</button>
           <button phx-click="inject_event" phx-value-type="resource_bonus" class="mobile-action-btn">🌾</button>

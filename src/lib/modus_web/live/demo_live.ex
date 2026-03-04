@@ -9,6 +9,8 @@ defmodule ModusWeb.DemoLive do
   alias Modus.Simulation.{World, Ticker, Observatory}
   alias ModusWeb.Presence
 
+  @toast_timeout_ms 6_000
+
   @presence_topic "demo:viewers"
 
   @impl true
