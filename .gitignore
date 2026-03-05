@@ -15,3 +15,8 @@ erl_crash.dump
 
 # Docker
 .docker/
+
+# Environment
+.env
+.env.local
+.env.*.local
