@@ -1,12 +1,12 @@
 defmodule Modus.Simulation.Archaeology do
   @moduledoc """
-  Archaeology — Harabe ve artefakt sistemi.
+  Archaeology — Ruins and artifact system.
 
-  Ölü yerleşimler zamanla harabeye dönüşür, ajan'lar kazı yaparak
-  eski bilgi ve hazineleri keşfedebilir. Yeni dünyalarda önceden
+  Dead settlements become ruins over time; agents can excavate
+  ancient knowledge and treasures. New worlds may contain
   yerleştirilmiş antik kalıntılar da bulunur.
 
-  Spinoza: *Ruina* — her medeniyet izini bırakır, bilgi asla yok olmaz.
+  Spinoza: *Ruina* — every civilization leaves traces, knowledge never perishes.
 
   ## Harabe Türleri
   - temple: Tapınak — kültür bonusu, nadiren antik yazıt
@@ -170,7 +170,7 @@ defmodule Modus.Simulation.Archaeology do
 
   # ── Ruin Creation ─────────────────────────────────────
 
-  @doc "Yeni bir harabe oluştur (antik/pre-generated)."
+  @doc "Create a new ruin (ancient/pre-generated)."
   @spec create_ancient_ruin(ruin_type(), {integer(), integer()}, integer()) :: ruin()
   def create_ancient_ruin(type, position, current_tick) when type in @ruin_types do
     init_table()
@@ -195,7 +195,7 @@ defmodule Modus.Simulation.Archaeology do
       :ets.insert(@artifacts_table, {art.id, art})
     end)
 
-    Logger.info("Antik harabe oluşturuldu: #{type} @ #{inspect(position)}")
+    Logger.info("Ancient ruin created: #{type} @ #{inspect(position)}")
     ruin
   end
 
@@ -230,7 +230,7 @@ defmodule Modus.Simulation.Archaeology do
     ruin
   end
 
-  @doc "Dünya oluşturulurken antik harabeleri yerleştir."
+  @doc "Place ancient ruins during world creation."
   @spec generate_ancient_ruins(integer(), integer(), integer()) :: [ruin()]
   def generate_ancient_ruins(world_width, world_height, current_tick) do
     count = max(3, div(world_width * world_height, 400))
@@ -244,7 +244,7 @@ defmodule Modus.Simulation.Archaeology do
 
   # ── Excavation ────────────────────────────────────────
 
-  @doc "Ajan bir harabede kazı yapar. Başarılı olursa artefakt döner."
+  @doc "Agent excavates a ruin. Returns an artifact on success."
   @spec excavate(String.t(), String.t(), integer()) ::
           {:ok, artifact()} | {:empty, String.t()} | {:fail, String.t()}
   def excavate(ruin_id, agent_id, current_tick) do
@@ -338,7 +338,7 @@ defmodule Modus.Simulation.Archaeology do
 
   # ── Render Data ───────────────────────────────────────
 
-  @doc "Harabeyi frontend'e gönderilecek map'e dönüştür."
+  @doc "Convert a ruin to a render-ready map for the frontend."
   @spec to_render_data(ruin()) :: map()
   def to_render_data(ruin) do
     %{
@@ -445,9 +445,9 @@ defmodule Modus.Simulation.Archaeology do
   defp artifact_description(:writing, _), do: "Kayıp bir dilin izlerini taşıyan yazıt."
 
   defp artifact_description(:treasure, _),
-    do: "Parlak ve değerli — geçmişin zenginliğinin kanıtı."
+    do: "Bright and valuable — proof of past riches."
 
-  defp artifact_description(:relic, _), do: "Gizemli bir enerji yayan antik eser."
+  defp artifact_description(:relic, _), do: "An ancient relic emanating mysterious energy."
 
   defp artifact_value(:tool), do: ensure_float(10.0 + :rand.uniform() * 20.0)
   defp artifact_value(:writing), do: ensure_float(15.0 + :rand.uniform() * 25.0)

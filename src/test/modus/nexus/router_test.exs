@@ -20,35 +20,35 @@ defmodule Modus.Nexus.RouterTest do
 
     # 3. Agent query (Turkish)
     test "classifies agent query in Turkish" do
-      result = Router.classify("Ajanların enerjisi ne durumda?")
+      result = Router.classify("What is the agents energy status?")
       assert result.intent == :insight
       assert result.sub_intent == :agent_query
     end
 
     # 4. Stats query
     test "classifies stats query" do
-      result = Router.classify("Toplam kaç ajan var?")
+      result = Router.classify("How many agents are there?")
       assert result.intent == :insight
       assert result.sub_intent == :stats_query
     end
 
     # 5. Why query
     test "classifies why query" do
-      result = Router.classify("Neden bu ajan öldü?")
+      result = Router.classify("Why did this agent die?")
       assert result.intent == :insight
       assert result.sub_intent == :why_query
     end
 
     # 6. Event query
     test "classifies event query" do
-      result = Router.classify("Son olaylar neler?")
+      result = Router.classify("What are the recent events?")
       assert result.intent == :insight
       assert result.sub_intent == :event_query
     end
 
     # 7. Spawn action
     test "classifies spawn entity action" do
-      result = Router.classify("Yeni bir ajan oluştur")
+      result = Router.classify("Spawn a new agent")
       assert result.intent == :action
       assert result.sub_intent == :spawn_entity
     end
@@ -62,14 +62,14 @@ defmodule Modus.Nexus.RouterTest do
 
     # 9. Config change action
     test "classifies config change action" do
-      result = Router.classify("Hızı ayarla, decay rate değiştir")
+      result = Router.classify("Adjust speed, change decay rate")
       assert result.intent == :action
       assert result.sub_intent == :config_change
     end
 
     # 10. General chat
     test "classifies general chat" do
-      result = Router.classify("Bu simülasyon çok güzel")
+      result = Router.classify("This simulation is beautiful")
       assert result.intent == :chat
       assert result.sub_intent == :general
     end

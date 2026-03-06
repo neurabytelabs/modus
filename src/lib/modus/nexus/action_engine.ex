@@ -1,18 +1,18 @@
 defmodule Modus.Nexus.ActionEngine do
   @moduledoc """
-  ActionEngine — Chat ile dünyayı değiştirme motoru.
+  ActionEngine — World modification engine via chat.
 
-  Nexus Router'dan gelen action intent'lerini işler:
-  - terrain_modify: belirli alandaki biome'u değiştir
-  - spawn_entity: yeni ajan ekle
-  - config_update: decay rate, speed, danger level değiştir
-  - rule_inject: yeni kural ekle (key-value)
+  Processes action intents from Nexus Router:
+  - terrain_modify: change biome in a specific area
+  - spawn_entity: add new agent
+  - config_update: change decay rate, speed, danger level
+  - rule_inject: add new rule (key-value)
 
   ## Safety
 
-  Her komut önce validate edilir, sonra execute.
-  Tehlikeli komutlar (terminate_all, world_reset) için onay mekanizması.
-  Undo desteği: son komutu geri al (state snapshot).
+  Every command is validated then executed.
+  Dangerous commands (terminate_all, world_reset) require confirmation.
+  Undo support: revert last command (state snapshot).
   """
   use GenServer
 
@@ -98,7 +98,7 @@ defmodule Modus.Nexus.ActionEngine do
 
   @impl true
   def handle_call(:confirm, _from, %{pending_confirmation: nil} = state) do
-    {:reply, {:error, "⚠️ Onay bekleyen komut yok."}, state}
+    {:reply, {:error, "⚠️ No pending command to confirm."}, state}
   end
 
   @impl true
@@ -115,7 +115,7 @@ defmodule Modus.Nexus.ActionEngine do
 
   @impl true
   def handle_call(:undo, _from, %{undo_stack: []} = state) do
-    {:reply, {:error, "⚠️ Geri alınacak komut yok."}, state}
+    {:reply, {:error, "⚠️ No command to undo."}, state}
   end
 
   @impl true
@@ -137,7 +137,7 @@ defmodule Modus.Nexus.ActionEngine do
     name = Map.get(params, :name, Map.get(params, "name"))
     if name && is_binary(name) && String.length(name) > 0,
       do: :ok,
-      else: {:error, "❌ Ajan adı gerekli."}
+      else: {:error, "❌ Agent name required."}
   end
 
   defp validate(:config_change, params) do
@@ -145,9 +145,9 @@ defmodule Modus.Nexus.ActionEngine do
     value = Map.get(params, :value, Map.get(params, "value"))
 
     cond do
-      is_nil(key) -> {:error, "❌ Config anahtarı gerekli."}
-      is_nil(value) -> {:error, "❌ Config değeri gerekli."}
-      not is_binary(key) and not is_atom(key) -> {:error, "❌ Geçersiz anahtar tipi."}
+      is_nil(key) -> {:error, "❌ Config key required."}
+      is_nil(value) -> {:error, "❌ Config value required."}
+      not is_binary(key) and not is_atom(key) -> {:error, "❌ Invalid key type."}
       true -> :ok
     end
   end
@@ -157,13 +157,13 @@ defmodule Modus.Nexus.ActionEngine do
     value = Map.get(params, :value, Map.get(params, "value"))
 
     cond do
-      is_nil(key) -> {:error, "❌ Kural adı gerekli."}
-      is_nil(value) -> {:error, "❌ Kural değeri gerekli."}
+      is_nil(key) -> {:error, "❌ Rule name required."}
+      is_nil(value) -> {:error, "❌ Rule value required."}
       true -> :ok
     end
   end
 
-  defp validate(_, _), do: {:error, "❌ Bilinmeyen action tipi."}
+  defp validate(_, _), do: {:error, "❌ Unknown action type."}
 
   defp validate_biome(params) do
     biome_raw = Map.get(params, :biome, Map.get(params, "biome"))
@@ -182,7 +182,7 @@ defmodule Modus.Nexus.ActionEngine do
     if biome && biome in @valid_biomes do
       {:ok, biome}
     else
-      {:error, "❌ Geçersiz biome: #{inspect(biome_raw)}. Geçerli: #{inspect(@valid_biomes)}"}
+      {:error, "❌ Invalid biome: #{inspect(biome_raw)}. Valid: #{inspect(@valid_biomes)}"}
     end
   end
 
@@ -192,8 +192,8 @@ defmodule Modus.Nexus.ActionEngine do
     radius = Map.get(params, :radius, Map.get(params, "radius", 1))
 
     cond do
-      not is_integer(x) or not is_integer(y) -> {:error, "❌ Koordinatlar integer olmalı."}
-      not is_integer(radius) or radius < 0 or radius > 10 -> {:error, "❌ Radius 0-10 arasında olmalı."}
+      not is_integer(x) or not is_integer(y) -> {:error, "❌ Coordinates must be integers."}
+      not is_integer(radius) or radius < 0 or radius > 10 -> {:error, "❌ Radius must be between 0-10."}
       true -> {:ok, {x, y, radius}}
     end
   end
@@ -229,11 +229,11 @@ defmodule Modus.Nexus.ActionEngine do
       end)
 
     undo = {:terrain_restore, old_data}
-    {{:ok, "🗺️ #{count} tile #{biome} olarak değiştirildi (#{x},#{y} r=#{radius})."}, undo}
+    {{:ok, "🗺️ #{count} tiles changed to #{biome} (#{x},#{y} r=#{radius})."}, undo}
   end
 
   defp do_execute(:spawn_entity, params) do
-    name = Map.get(params, :name, Map.get(params, "name", "Yeni Ajan"))
+    name = Map.get(params, :name, Map.get(params, "name", "New Agent"))
     x = Map.get(params, :x, Map.get(params, "x", Enum.random(5..45)))
     y = Map.get(params, :y, Map.get(params, "y", Enum.random(5..45)))
     occupation = Map.get(params, :occupation, Map.get(params, "occupation", :explorer))
@@ -244,10 +244,10 @@ defmodule Modus.Nexus.ActionEngine do
     case AgentSupervisor.spawn_agent(agent) do
       {:ok, _pid} ->
         undo = {:kill_agent, agent.id}
-        {{:ok, "🧬 '#{name}' oluşturuldu! Konum: (#{x},#{y}), Meslek: #{occupation}"}, undo}
+        {{:ok, "🧬 '#{name}' created! Position: (#{x},#{y}), Occupation: #{occupation}"}, undo}
 
       {:error, reason} ->
-        {{:error, "❌ Ajan oluşturulamadı: #{inspect(reason)}"}, nil}
+        {{:error, "❌ Agent creation failed: #{inspect(reason)}"}, nil}
     end
   end
 
@@ -264,7 +264,7 @@ defmodule Modus.Nexus.ActionEngine do
 
     :ets.insert(@ets_config, {key, value})
     undo = {:config_restore, key, old_value}
-    {{:ok, "⚙️ Config '#{key}' = #{inspect(value)} olarak ayarlandı."}, undo}
+    {{:ok, "⚙️ Config '#{key}' = #{inspect(value)} set."}, undo}
   end
 
   defp do_execute(:rule_inject, params) do
@@ -279,7 +279,7 @@ defmodule Modus.Nexus.ActionEngine do
 
     :ets.insert(@ets_rules, {key, value})
     undo = {:rule_restore, key, old_value}
-    {{:ok, "📜 Kural '#{key}' = #{inspect(value)} eklendi."}, undo}
+    {{:ok, "📜 Rule '#{key}' = #{inspect(value)} added."}, undo}
   end
 
   defp do_execute(_, _) do
@@ -298,8 +298,8 @@ defmodule Modus.Nexus.ActionEngine do
 
   defp do_undo({:kill_agent, agent_id}) do
     case AgentSupervisor.kill_agent(agent_id) do
-      :ok -> {:ok, "↩️ Ajan silindi."}
-      {:error, :not_found} -> {:error, "⚠️ Ajan bulunamadı (zaten ölmüş olabilir)."}
+      :ok -> {:ok, "↩️ Agent removed."}
+      {:error, :not_found} -> {:error, "⚠️ Agent not found (may already be dead)."}
     end
   end
 
@@ -337,10 +337,10 @@ defmodule Modus.Nexus.ActionEngine do
 
   defp danger_message(:terrain_modify, params) do
     radius = Map.get(params, :radius, Map.get(params, "radius"))
-    "⚠️ Büyük alan değişikliği (radius=#{radius}). #{(2 * radius + 1) * (2 * radius + 1)} tile etkilenecek. Onaylıyor musunuz?"
+    "⚠️ Large area modification (radius=#{radius}). #{(2 * radius + 1) * (2 * radius + 1)} tiles will be affected. Confirm?"
   end
 
-  defp danger_message(action, _), do: "⚠️ Tehlikeli komut: #{action}. Onaylıyor musunuz?"
+  defp danger_message(action, _), do: "⚠️ Dangerous command: #{action}. Confirm?"
 
   # ── Helpers ─────────────────────────────────────────────
 
@@ -417,7 +417,7 @@ defmodule Modus.Nexus.ActionEngine do
       _ ->
         case Regex.run(~r/(?:adlı|named?|called?|isimli)\s+(\w+)/iu, raw) do
           [_, name] -> name
-          _ -> "Ajan-#{:rand.uniform(999)}"
+          _ -> "Agent-#{:rand.uniform(999)}"
         end
     end
   end

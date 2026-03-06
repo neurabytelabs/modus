@@ -18,7 +18,7 @@ defmodule Modus.UI.TutorialTest do
     Tutorial.start()
     step = Tutorial.current_step()
     assert step.id == :select_world
-    assert step.title == "Dünya Seç"
+    assert step.title == "Choose World"
   end
 
   test "advance progresses through steps" do
@@ -46,7 +46,7 @@ defmodule Modus.UI.TutorialTest do
     state = Tutorial.state()
     assert state.step == 1
     assert state.total == 5
-    assert state.title == "Dünya Seç"
+    assert state.title == "Choose World"
     refute state.completed
   end
 

@@ -11,36 +11,36 @@ defmodule Modus.UI.Tutorial do
   @steps [
     %{
       id: :select_world,
-      title: "Dünya Seç",
-      description: "Bir dünya şablonu seçerek simülasyonunu başlat.",
+      title: "Choose World",
+      description: "Choose a world template to start the simulation.",
       target_element: "[data-tutorial='world-select']",
       completion_event: :world_created
     },
     %{
       id: :inspect_agent,
-      title: "Agent İncele",
-      description: "Bir agent'a tıklayarak detaylarını gör.",
+      title: "Inspect Agent",
+      description: "Click on an agent to see details.",
       target_element: "[data-tutorial='agent-card']",
       completion_event: :agent_selected
     },
     %{
       id: :open_chat,
-      title: "Sohbet Aç",
-      description: "Agent ile sohbet penceresini aç ve konuş.",
+      title: "Open Chat",
+      description: "Open the chat window and talk to an agent.",
       target_element: "[data-tutorial='chat-btn']",
       completion_event: :chat_opened
     },
     %{
       id: :try_god_mode,
       title: "God Mode",
-      description: "God Mode ile dünyaya olay enjekte et.",
+      description: "Inject events into the world with God Mode.",
       target_element: "[data-tutorial='god-mode']",
       completion_event: :god_mode_used
     },
     %{
       id: :visit_observatory,
-      title: "Gözlemevi",
-      description: "Observatory'de istatistikleri ve grafikleri incele.",
+      title: "Observatory",
+      description: "Explore statistics and charts in the Observatory.",
       target_element: "[data-tutorial='observatory']",
       completion_event: :observatory_visited
     }

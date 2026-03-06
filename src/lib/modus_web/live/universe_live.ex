@@ -1632,7 +1632,7 @@ defmodule ModusWeb.UniverseLive do
 
   def handle_event("divine_clear_history", _params, socket) do
     Modus.Simulation.DivineIntervention.clear_history()
-    {:noreply, assign(socket, divine_history: [], divine_status: "🗑️ Geçmiş temizlendi")}
+    {:noreply, assign(socket, divine_history: [], divine_status: "🗑️ History cleared")}
   end
 
   def handle_event(
@@ -2001,8 +2001,8 @@ defmodule ModusWeb.UniverseLive do
           <div class="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
             <div class="text-center text-slate-500">
               <div class="text-6xl mb-4">🌍</div>
-              <p class="text-lg">Henüz agent yok</p>
-              <p class="text-sm text-slate-600">Simülasyon başlatıldığında agentlar oluşturulacak.</p>
+              <p class="text-lg">No agents yet</p>
+              <p class="text-sm text-slate-600">Agents will be spawned when the simulation starts.</p>
             </div>
           </div>
         <% end %>
@@ -2441,7 +2441,7 @@ defmodule ModusWeb.UniverseLive do
 
             <%!-- Tab Navigation --%>
             <div class="flex gap-2 mb-6">
-              <%= for {tab, label, emoji} <- [{:events, "Olaylar", "🌍"}, {:agents, "Ajanlar", "👤"}, {:world, "Dünya", "🌤️"}, {:chains, "Zincirler", "⛓️"}, {:history, "Geçmiş", "📜"}] do %>
+              <%= for {tab, label, emoji} <- [{:events, "Events", "🌍"}, {:agents, "Agents", "👤"}, {:world, "World", "🌤️"}, {:chains, "Chains", "⛓️"}, {:history, "History", "📜"}] do %>
                 <button phx-click="divine_tab" phx-value-tab={tab}
                   class={"px-4 py-2 text-xs rounded-lg border transition-all #{if @divine_tab == tab, do: "border-amber-500/50 bg-amber-500/10 text-amber-300", else: "border-white/10 bg-white/5 text-slate-500 hover:border-white/20"}"}>
                   <%= emoji %> <%= label %>
@@ -2474,11 +2474,11 @@ defmodule ModusWeb.UniverseLive do
                 <div class="space-y-4">
                   <%= if @selected_agent do %>
                     <div class="px-4 py-3 rounded-xl border border-purple-500/30 bg-purple-500/5 mb-4">
-                      <span class="text-xs text-purple-300">Seçili Ajan: <strong><%= @selected_agent["name"] %></strong></span>
+                      <span class="text-xs text-purple-300">Selected Agent: <strong><%= @selected_agent["name"] %></strong></span>
                     </div>
                   <% else %>
                     <div class="px-4 py-3 rounded-xl border border-amber-500/30 bg-amber-500/5 mb-4">
-                      <span class="text-xs text-amber-300">⚠️ Ajan komutları için önce haritadan bir ajan seçin</span>
+                      <span class="text-xs text-amber-300">⚠️ Select an agent from the map first to use agent commands</span>
                     </div>
                   <% end %>
                   <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -2521,10 +2521,10 @@ defmodule ModusWeb.UniverseLive do
                 <div class="space-y-2">
                   <div class="flex justify-between items-center mb-3">
                     <span class="text-xs text-slate-500">
-                      Toplam komut: <span class="text-amber-400"><%= try do Modus.Simulation.DivineIntervention.total_commands() catch _, _ -> 0 end %></span>
+                      Total commands: <span class="text-amber-400"><%= try do Modus.Simulation.DivineIntervention.total_commands() catch _, _ -> 0 end %></span>
                     </span>
                     <button phx-click="divine_clear_history" class="text-[10px] text-red-400 hover:text-red-300 px-2 py-1 rounded border border-red-500/20 hover:border-red-500/40">
-                      🗑️ Temizle
+                      🗑️ Clear
                     </button>
                   </div>
                   <%= if @divine_history == [] do %>

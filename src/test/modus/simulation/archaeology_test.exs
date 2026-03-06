@@ -4,7 +4,7 @@ defmodule Modus.Simulation.ArchaeologyTest do
   alias Modus.Simulation.Archaeology
 
   setup do
-    # Temiz ETS tabloları
+    # Clean ETS tables
     for table <- [:archaeology_ruins, :archaeology_artifacts, :archaeology_museums] do
       if :ets.whereis(table) != :undefined, do: :ets.delete_all_objects(table)
     end
@@ -14,7 +14,7 @@ defmodule Modus.Simulation.ArchaeologyTest do
   end
 
   describe "init_table/0" do
-    test "ETS tabloları oluşturulur" do
+    test "ETS tables are created" do
       assert :ets.whereis(:archaeology_ruins) != :undefined
       assert :ets.whereis(:archaeology_artifacts) != :undefined
       assert :ets.whereis(:archaeology_museums) != :undefined
@@ -22,7 +22,7 @@ defmodule Modus.Simulation.ArchaeologyTest do
   end
 
   describe "create_ancient_ruin/3" do
-    test "antik harabe oluşturur" do
+    test "creates ancient ruins" do
       ruin = Archaeology.create_ancient_ruin(:temple, {10, 20}, 1000)
       assert ruin.type == :temple
       assert ruin.position == {10, 20}
@@ -81,7 +81,7 @@ defmodule Modus.Simulation.ArchaeologyTest do
   end
 
   describe "generate_ancient_ruins/3" do
-    test "dünya boyutuna göre harabe üretir" do
+    test "generates ruins based on world size" do
       ruins = Archaeology.generate_ancient_ruins(50, 50, 1000)
       assert length(ruins) >= 3
     end

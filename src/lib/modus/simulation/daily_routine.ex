@@ -159,12 +159,12 @@ defmodule Modus.Simulation.DailyRoutine do
   @spec generate_dream(map()) :: String.t()
   def generate_dream(agent) do
     dreams = [
-      "#{agent.name} rüyasında uçsuz bucaksız bir ovada yürüdüğünü gördü.",
-      "#{agent.name} rüyasında eski bir dostla karşılaştı.",
-      "#{agent.name} rüyasında parlak bir ışık gördü ve huzur hissetti.",
-      "#{agent.name} rüyasında yeni topraklar keşfetti.",
-      "#{agent.name} rüyasında büyük bir şölen vardı.",
-      "#{agent.name} rüyasında gökyüzünde dans eden yıldızları izledi."
+      "#{agent.name} dreamed of walking across an endless plain.",
+      "#{agent.name} dreamed of meeting an old friend.",
+      "#{agent.name} dreamed of a bright light and felt peace.",
+      "#{agent.name} dreamed of discovering new lands.",
+      "#{agent.name} dreamed of a great feast.",
+      "#{agent.name} dreamed of watching stars dance across the sky."
     ]
 
     Enum.random(dreams)

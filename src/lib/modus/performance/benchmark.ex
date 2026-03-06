@@ -1,25 +1,25 @@
 defmodule Modus.Performance.Benchmark do
   @moduledoc """
-  Benchmark — Performans testi modülü.
+  Benchmark — Performance testing module.
 
-  50, 100, 200 ve 500 agent ile tick süresi, bellek kullanımı,
-  GC baskısı ve hotspot analizi yapar.
+  Measures tick duration, memory usage, GC pressure, and hotspot analysis
+  with 50, 100, 200, and 500 agents.
   """
 
   require Logger
 
-  @doc "Belirtilen agent sayısı ve tick ile benchmark çalıştır."
+  @doc "Run benchmark with specified agent count and tick count."
   @spec run(pos_integer(), pos_integer()) :: map()
   def run(agent_count, tick_count \\ 100) do
-    Logger.info("BENCHMARK: #{agent_count} agent, #{tick_count} tick başlatılıyor")
+    Logger.info("BENCHMARK: #{agent_count} agents, #{tick_count} ticks starting")
 
-    # GC baskısı ölçümü — önce
+    # GC pressure measurement — before
     gc_before = gc_count()
     mem_before = :erlang.memory(:total)
     proc_mem_before = :erlang.memory(:processes)
     ets_mem_before = :erlang.memory(:ets)
 
-    # Tick döngüsü
+    # Tick loop
     start_time = System.monotonic_time(:microsecond)
 
     tick_times =
@@ -39,7 +39,7 @@ defmodule Modus.Performance.Benchmark do
     end_time = System.monotonic_time(:microsecond)
     total_us = end_time - start_time
 
-    # GC baskısı — sonra
+    # GC pressure — after
     gc_after = gc_count()
     mem_after = :erlang.memory(:total)
     proc_mem_after = :erlang.memory(:processes)
@@ -74,11 +74,11 @@ defmodule Modus.Performance.Benchmark do
       throughput_ticks_per_sec: if(total_us > 0, do: Float.round(tick_count * 1_000_000 / total_us, 1), else: 0.0)
     }
 
-    Logger.info("BENCHMARK SONUÇ: #{agent_count} agent — avg #{result.avg_tick_ms}ms, p95 #{div(p95, 1000)}ms, budget #{if result.tick_budget_ok, do: "✅", else: "❌"}")
+    Logger.info("BENCHMARK RESULT: #{agent_count} agents — avg #{result.avg_tick_ms}ms, p95 #{div(p95, 1000)}ms, budget #{if result.tick_budget_ok, do: "✅", else: "❌"}")
     result
   end
 
-  @doc "Standart benchmark paketi: 50, 100, 200, 500 agent."
+  @doc "Standard benchmark suite: 50, 100, 200, 500 agents."
   @spec suite() :: [map()]
   def suite do
     results = for count <- [50, 100, 200, 500], do: run(count, 50)
@@ -119,7 +119,7 @@ defmodule Modus.Performance.Benchmark do
     |> Enum.sort_by(& &1.total_us, :desc)
   end
 
-  @doc "Hızlı benchmark — mevcut durumu ölç."
+  @doc "Quick benchmark — measure current state."
   @spec quick() :: map()
   def quick do
     agent_count =
@@ -147,7 +147,7 @@ defmodule Modus.Performance.Benchmark do
     }
   end
 
-  @doc "HTML performans raporu oluştur."
+  @doc "Generate HTML performance report."
   @spec generate_report([map()], [map()]) :: String.t()
   def generate_report(suite_results, hotspots \\ []) do
     rows =
@@ -222,7 +222,7 @@ defmodule Modus.Performance.Benchmark do
 
       <h2>🎯 Hedef: 200 agent @ &lt;100ms tick</h2>
       <div class="card">
-        <p>Spatial Index (O(1) komşu arama), ETS read_concurrency, StateLimiter (10KB/agent), GC tuning (fullsweep_after: 50), delta render (sadece değişen tile gönder).</p>
+        <p>Spatial Index (O(1) neighbor lookup), ETS read_concurrency, StateLimiter (10KB/agent), GC tuning (fullsweep_after: 50), delta render (only send changed tiles).</p>
       </div>
 
       <footer>NeuraByte Labs — "Where Spinoza Meets Silicon" | Sprint v4 Mundus</footer>

@@ -140,7 +140,7 @@ defmodule Modus.Nexus.ActionEngineTest do
     end
 
     test "parses spawn entity with quoted name" do
-      params = ActionEngine.parse_params(:spawn_entity, "oluştur 'Ahmet' 20,25")
+      params = ActionEngine.parse_params(:spawn_entity, "spawn 'Ahmet' 20,25")
       assert params.name == "Ahmet"
       assert params.x == 20
       assert params.y == 25

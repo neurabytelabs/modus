@@ -124,7 +124,7 @@ defmodule Modus.UI.NotificationCenter do
 
   def detect_milestone(%{type: :goal_completed, data: data}) do
     name = data[:name] || "Someone"
-    add(:agent, :info, "🎯 #{name} hedefine ulaştı!")
+    add(:agent, :info, "🎯 #{name} reached their goal!")
   end
 
   def detect_milestone(_event), do: :ok
