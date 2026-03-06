@@ -161,4 +161,89 @@ defmodule Modus.Protocol.PersonalityPromptBuilderTest do
       assert result =~ "exhausted"
     end
   end
+
+  describe "build_conscious/4" do
+    test "returns speech style when context_map is empty" do
+      result = PersonalityPromptBuilder.build_conscious(@base_personality, :joy, 0.5, %{})
+      assert result =~ "joyful"
+    end
+
+    test "includes memories section" do
+      ctx = %{memories: ["Met a traveler at the river", "Found berries in the forest"]}
+      result = PersonalityPromptBuilder.build_conscious(@base_personality, :neutral, 0.5, ctx)
+      assert result =~ "MEMORIES:"
+      assert result =~ "Met a traveler"
+      assert result =~ "Found berries"
+    end
+
+    test "includes relationships section" do
+      ctx = %{relationships: [%{name: "Ada", type: :friend, sentiment: 0.8}]}
+      result = PersonalityPromptBuilder.build_conscious(@base_personality, :neutral, 0.5, ctx)
+      assert result =~ "RELATIONSHIPS:"
+      assert result =~ "Ada"
+      assert result =~ "warmly"
+    end
+
+    test "includes goals section with progress" do
+      ctx = %{goals: [%{description: "Build a shelter", progress: 0.6}]}
+      result = PersonalityPromptBuilder.build_conscious(@base_personality, :neutral, 0.5, ctx)
+      assert result =~ "GOALS:"
+      assert result =~ "Build a shelter"
+      assert result =~ "60%"
+    end
+
+    test "combines all sections" do
+      ctx = %{
+        memories: ["Saw a sunset"],
+        relationships: [%{name: "Bob", type: :rival, sentiment: -0.7}],
+        goals: [%{description: "Find water", progress: 0.3}]
+      }
+      result = PersonalityPromptBuilder.build_conscious(
+        %{@base_personality | openness: 0.8}, :desire, 0.9, ctx
+      )
+      assert result =~ "MEMORIES:"
+      assert result =~ "RELATIONSHIPS:"
+      assert result =~ "GOALS:"
+      assert result =~ "hostile"
+      assert result =~ "30%"
+      assert result =~ "vitality"
+    end
+
+    test "negative sentiment shows uneasy" do
+      ctx = %{relationships: [%{name: "Eve", type: :stranger, sentiment: -0.3}]}
+      result = PersonalityPromptBuilder.build_conscious(@base_personality, :neutral, 0.5, ctx)
+      assert result =~ "uneasy"
+    end
+
+    test "neutral sentiment shows neutral" do
+      ctx = %{relationships: [%{name: "Zed", type: :acquaintance, sentiment: 0.0}]}
+      result = PersonalityPromptBuilder.build_conscious(@base_personality, :neutral, 0.5, ctx)
+      assert result =~ "neutral about them"
+    end
+
+    test "empty lists produce no section headers" do
+      ctx = %{memories: [], relationships: [], goals: []}
+      result = PersonalityPromptBuilder.build_conscious(@base_personality, :neutral, 0.5, ctx)
+      refute result =~ "MEMORIES:"
+      refute result =~ "RELATIONSHIPS:"
+      refute result =~ "GOALS:"
+    end
+
+    test "limits memories to 10" do
+      mems = Enum.map(1..15, &("Memory #{&1}"))
+      ctx = %{memories: mems}
+      result = PersonalityPromptBuilder.build_conscious(@base_personality, :neutral, 0.5, ctx)
+      assert result =~ "Memory 10"
+      refute result =~ "Memory 11"
+    end
+
+    test "limits goals to 5" do
+      goals = Enum.map(1..8, &(%{description: "Goal #{&1}", progress: 0.1}))
+      ctx = %{goals: goals}
+      result = PersonalityPromptBuilder.build_conscious(@base_personality, :neutral, 0.5, ctx)
+      assert result =~ "Goal 5"
+      refute result =~ "Goal 6"
+    end
+  end
+
 end

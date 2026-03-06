@@ -29,6 +29,13 @@ defmodule Modus.Protocol.PersonalityPromptBuilder do
 
   @type affect :: :joy | :sadness | :desire | :fear | :neutral
 
+
+  @type context_map :: %{
+          optional(:memories) => [String.t()],
+          optional(:relationships) => [%{name: String.t(), type: atom(), sentiment: float()}],
+          optional(:goals) => [%{description: String.t(), progress: float()}]
+        }
+
   @doc """
   Build a complete speech style directive from personality + affect state + conatus energy.
 
@@ -115,6 +122,76 @@ defmodule Modus.Protocol.PersonalityPromptBuilder do
         nil
     end
   end
+
+
+  @doc """
+  Build a fully conscious prompt that includes personality speech style,
+  affect state, conatus energy, plus episodic memories, relationships, and goals.
+
+  The context_map may contain:
+    - `:memories` — list of episodic memory strings
+    - `:relationships` — list of maps with :name, :type, :sentiment
+    - `:goals` — list of maps with :description, :progress
+
+  Returns a multi-section string suitable for LLM system prompt injection.
+  """
+  @spec build_conscious(personality(), affect(), float(), context_map()) :: String.t()
+  def build_conscious(personality, affect_state, conatus_energy, context_map) do
+    speech = build(personality, affect_state, conatus_energy)
+    memories = build_memories_section(Map.get(context_map, :memories, []))
+    relationships = build_relationships_section(Map.get(context_map, :relationships, []))
+    goals = build_goals_section(Map.get(context_map, :goals, []))
+
+    [speech, memories, relationships, goals]
+    |> Enum.reject(&(&1 == "" or is_nil(&1)))
+    |> Enum.join("\n\n")
+  end
+
+  defp build_memories_section([]), do: ""
+
+  defp build_memories_section(memories) do
+    lines = memories |> Enum.take(10) |> Enum.map(&("- #{&1}"))
+    "MEMORIES:\n" <> Enum.join(lines, "\n")
+  end
+
+  defp build_relationships_section([]), do: ""
+
+  defp build_relationships_section(relationships) do
+    lines =
+      relationships
+      |> Enum.take(10)
+      |> Enum.map(fn rel ->
+        name = Map.get(rel, :name, "unknown")
+        type = Map.get(rel, :type, :acquaintance)
+        sentiment = Map.get(rel, :sentiment, 0.0)
+        tone = relationship_sentiment_tone(sentiment)
+        "- #{name} (#{type}) — #{tone}"
+      end)
+
+    "RELATIONSHIPS:\n" <> Enum.join(lines, "\n")
+  end
+
+  defp build_goals_section([]), do: ""
+
+  defp build_goals_section(goals) do
+    lines =
+      goals
+      |> Enum.take(5)
+      |> Enum.map(fn goal ->
+        desc = Map.get(goal, :description, "unnamed goal")
+        progress = Map.get(goal, :progress, 0.0)
+        pct = round(progress * 100)
+        "- #{desc} (#{pct}% complete)"
+      end)
+
+    "GOALS:\n" <> Enum.join(lines, "\n")
+  end
+
+  defp relationship_sentiment_tone(sentiment) when sentiment > 0.6, do: "you feel warmly toward them"
+  defp relationship_sentiment_tone(sentiment) when sentiment > 0.2, do: "you feel positively about them"
+  defp relationship_sentiment_tone(sentiment) when sentiment < -0.6, do: "you feel hostile toward them"
+  defp relationship_sentiment_tone(sentiment) when sentiment < -0.2, do: "you feel uneasy around them"
+  defp relationship_sentiment_tone(_), do: "you feel neutral about them"
 
   # ── Openness ──────────────────────────────────────────
 
