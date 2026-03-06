@@ -1,0 +1,9 @@
+🧠 MODUS agents now respond from their full inner state.
+
+Affect. Memory. Personality. Conatus. Relationships.
+
+No generic LLM answers — every agent is unique.
+
+Open source: github.com/neurabytelabs/modus
+
+@0xsarac #BuildInPublic #AI #Spinoza

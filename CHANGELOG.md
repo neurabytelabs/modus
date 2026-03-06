@@ -4,6 +4,15 @@
 
 Versioning follows Spinoza's philosophical evolution. Each release is a new mode of understanding.
 
+## v9.3.0 — Sprint 8: Conscious Chat Finalize (2026-03-06)
+
+### Features
+- **ConsciousChatPrompt module** — Full inner state integration for chat responses: affect, memory, conatus, personality, and relationships woven into every prompt
+- **PersonalityPromptBuilder.build_conscious/4** — New builder function that assembles conscious context from all agent subsystems into a coherent prompt layer
+- **Bridge integration** — Every chat response is now unique per agent, driven by their full inner state rather than generic LLM defaults
+
+---
+
 ## v7.8.0 — Sprint v7.8 (2026-02-19)
 
 ### Bug Fixes
