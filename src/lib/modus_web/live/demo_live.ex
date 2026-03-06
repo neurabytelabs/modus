@@ -9,8 +9,8 @@ defmodule ModusWeb.DemoLive do
   alias Modus.Simulation.{World, Ticker, Observatory}
   alias ModusWeb.Presence
 
-  @toast_timeout_ms 6_000
 
+  @toast_timeout_ms 6_000
   @presence_topic "demo:viewers"
 
   @impl true
@@ -91,7 +91,7 @@ defmodule ModusWeb.DemoLive do
     }
 
     toasts = Enum.take([toast | socket.assigns.toasts], 5)
-    Process.send_after(self(), {:dismiss_toast, toast.id}, 6_000)
+    Process.send_after(self(), {:dismiss_toast, toast.id}, @toast_timeout_ms)
     {:noreply, assign(socket, toasts: toasts)}
   end
 
@@ -387,6 +387,7 @@ defmodule ModusWeb.DemoLive do
 
   # Terminate callback: Timer cleanup is automatic when process terminates.
   # send_after refs are not stored, so explicit cancellation not needed.
+  @impl true
   def terminate(_reason, _socket), do: :ok
 
 

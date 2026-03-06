@@ -716,9 +716,6 @@ defmodule ModusWeb.WorldChannel do
     end
   end
 
-  defp safe_json(val) when is_tuple(val), do: Tuple.to_list(val)
-  defp safe_json(val), do: val
-
   def handle_in("get_events_since", %{"tick" => tick}, socket) do
     events =
       EventLog.since_tick(tick)
@@ -835,45 +832,6 @@ defmodule ModusWeb.WorldChannel do
 
   # ── Trust System ──────────────────────────────────────────────
 
-  def handle_in("get_agent_trust", %{"agent_id" => id}, socket) do
-    trust = Modus.Mind.Trust.get_trust(id)
-    level = Modus.Mind.Trust.trust_level(id)
-    {:reply, {:ok, %{trust: trust, level: level}}, socket}
-  end
-
-  # ── Gift & Aid System ───────────────────────────────────────
-
-  def handle_in("give_gift", %{"agent_id" => id, "resource" => res}, socket) do
-    case Modus.Interaction.GiftSystem.give_gift("player", id, res) do
-      {:ok, new_trust} ->
-        {:reply, {:ok, %{trust: new_trust, resource: res}}, socket}
-
-      {:error, reason} ->
-        {:reply, {:error, %{reason: reason}}, socket}
-    end
-  end
-
-  def handle_in("aid_agent", %{"agent_id" => id}, socket) do
-    {:ok, _need, new_trust} = Modus.Interaction.GiftSystem.aid_agent("player", id)
-    {:reply, {:ok, %{trust: new_trust}}, socket}
-  end
-
-  # ── Notifications ────────────────────────────────────────────
-
-  def handle_in("get_notifications", _payload, socket) do
-    {:reply,
-     {:ok,
-      %{
-        notifications: Modus.UI.NotificationCenter.list(:all),
-        unread: Modus.UI.NotificationCenter.unread_count()
-      }}, socket}
-  end
-
-  def handle_in("mark_notifications_read", _payload, socket) do
-    Modus.UI.NotificationCenter.mark_all_read()
-    {:reply, {:ok, %{}}, socket}
-  end
-
   # ── World Status ─────────────────────────────────────────────
 
   def handle_in("get_world_status", _payload, socket) do
@@ -890,8 +848,38 @@ defmodule ModusWeb.WorldChannel do
     {:reply, {:ok, status}, socket}
   end
 
-  # ── handle_info ─────────────────────────────────────────────
+  # ── Tutorial handlers ──────────────────────────────────────
 
+  def handle_in("get_tutorial_state", _payload, socket) do
+    state = Modus.UI.Tutorial.state()
+    {:reply, {:ok, state}, socket}
+  end
+
+  def handle_in("tutorial_advance", _payload, socket) do
+    result = Modus.UI.Tutorial.advance()
+    state = Modus.UI.Tutorial.state()
+    {:reply, {:ok, Map.put(state, :result, to_string(result))}, socket}
+  end
+
+  def handle_in("tutorial_skip", _payload, socket) do
+    Modus.UI.Tutorial.skip()
+    state = Modus.UI.Tutorial.state()
+    {:reply, {:ok, state}, socket}
+  end
+
+  # ── Settings handlers ────────────────────────────────────
+
+  def handle_in("get_settings", _payload, socket) do
+    settings = Modus.UI.Settings.all()
+    {:reply, {:ok, settings}, socket}
+  end
+
+  def handle_in("update_setting", %{"key" => key, "value" => value}, socket) do
+    Modus.UI.Settings.set(String.to_existing_atom(key), value)
+    {:reply, {:ok, %{key: key, value: value}}, socket}
+  end
+
+  # ── handle_info ─────────────────────────────────────────────
   @impl true
   def handle_info({:tick, tick_number}, socket) do
     # Agents now self-tick via PubSub — we just query state
@@ -1381,36 +1369,6 @@ defmodule ModusWeb.WorldChannel do
     end
   end
 
-  # ── Tutorial handlers ──────────────────────────────────────
-
-  def handle_in("get_tutorial_state", _payload, socket) do
-    state = Modus.UI.Tutorial.state()
-    {:reply, {:ok, state}, socket}
-  end
-
-  def handle_in("tutorial_advance", _payload, socket) do
-    result = Modus.UI.Tutorial.advance()
-    state = Modus.UI.Tutorial.state()
-    {:reply, {:ok, Map.put(state, :result, to_string(result))}, socket}
-  end
-
-  def handle_in("tutorial_skip", _payload, socket) do
-    Modus.UI.Tutorial.skip()
-    state = Modus.UI.Tutorial.state()
-    {:reply, {:ok, state}, socket}
-  end
-
-  # ── Settings handlers ────────────────────────────────────
-
-  def handle_in("get_settings", _payload, socket) do
-    settings = Modus.UI.Settings.all()
-    {:reply, {:ok, settings}, socket}
-  end
-
-  def handle_in("update_setting", %{"key" => key, "value" => value}, socket) do
-    Modus.UI.Settings.set(String.to_existing_atom(key), value)
-    {:reply, {:ok, %{key: key, value: value}}, socket}
-  end
 
   defp safe_json(val) when is_tuple(val), do: Tuple.to_list(val)
   defp safe_json(val), do: val

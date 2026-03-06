@@ -221,8 +221,7 @@ defmodule Modus.Intelligence.GeminiClient do
 
     case Req.post(url,
            json: body,
-           receive_timeout: @timeout,
-           
+           receive_timeout: @timeout
          ) do
       {:ok, %{status: 200, body: resp}} ->
         text =

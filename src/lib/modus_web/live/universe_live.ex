@@ -2581,7 +2581,7 @@ defmodule ModusWeb.UniverseLive do
               <span class="text-slate-300 font-medium text-[10px] uppercase tracking-wider"><%= @weather_name %></span>
             </div>
             <%!-- Zoom level indicator --%>
-            <div class="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/50 hidden sm:flex" title="Zoom: +/- keys | F: Fog of War">
+            <div class="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/50 hidden sm:flex" title="Zoom: +/- keys | F: Fog of War" aria-label="Zoom: +/- keys | F: Fog of War">
               <span class="text-sm">🔍</span>
               <span class="text-slate-300 font-medium text-[10px] uppercase tracking-wider" id="zoom-level-indicator">LOCAL</span>
             </div>
@@ -2595,9 +2595,9 @@ defmodule ModusWeb.UniverseLive do
               <span class="text-purple-400 font-bold tabular-nums"><%= @agent_count %></span>
             </div>
             <div class="flex items-center gap-1.5 hidden sm:flex">
-              <span class="text-green-400 tabular-nums" title="Trades">🤝<%= @trades_count %></span>
-              <span class="text-cyan-400 tabular-nums" title="Births">👶<%= @births_count %></span>
-              <span class="text-red-400 tabular-nums" title="Deaths">💀<%= @deaths_count %></span>
+              <span class="text-green-400 tabular-nums" title="Trades" aria-label="Trades">🤝<%= @trades_count %></span>
+              <span class="text-cyan-400 tabular-nums" title="Births" aria-label="Births">👶<%= @births_count %></span>
+              <span class="text-red-400 tabular-nums" title="Deaths" aria-label="Deaths">💀<%= @deaths_count %></span>
             </div>
             <span class={"px-2 py-0.5 rounded text-[10px] uppercase tracking-wider #{status_color(@status)}"}>
               <%= @status %>
@@ -2628,87 +2628,87 @@ defmodule ModusWeb.UniverseLive do
           </div>
 
           <%!-- Agent Designer --%>
-          <button phx-click="toggle_agent_designer" class={"ctrl-btn #{if @agent_designer_open, do: "ctrl-btn-active"}"} title="Agent Designer — Create Characters & Animals">
+          <button phx-click="toggle_agent_designer" class={"ctrl-btn #{if @agent_designer_open, do: "ctrl-btn-active"}"} title="Agent Designer — Create Characters & Animals" aria-label="Agent Designer — Create Characters & Animals">
             ➕🧑
           </button>
 
           <%!-- Build Mode --%>
-          <button phx-click="toggle_build_mode" class={"ctrl-btn #{if @build_mode, do: "ctrl-btn-active"}"} title="Build Mode — World Builder">
+          <button phx-click="toggle_build_mode" class={"ctrl-btn #{if @build_mode, do: "ctrl-btn-active"}"} title="Build Mode — World Builder" aria-label="Build Mode — World Builder">
             🔨
           </button>
 
           <%!-- God Mode --%>
-          <button phx-click="toggle_god_mode" class={"ctrl-btn #{if @god_mode, do: "ctrl-btn-active"}"} title="God Mode — See All Agent Internals">
+          <button phx-click="toggle_god_mode" class={"ctrl-btn #{if @god_mode, do: "ctrl-btn-active"}"} title="God Mode — See All Agent Internals" aria-label="God Mode — See All Agent Internals">
             👁️
           </button>
 
           <%!-- Divine Intervention (Imperium) --%>
-          <button phx-click="toggle_divine_panel" class={"ctrl-btn #{if @divine_panel_open, do: "ctrl-btn-active"}"} title="Divine Intervention — God Commands">
+          <button phx-click="toggle_divine_panel" class={"ctrl-btn #{if @divine_panel_open, do: "ctrl-btn-active"}"} title="Divine Intervention — God Commands" aria-label="Divine Intervention — God Commands">
             ⚡👑
           </button>
 
           <%!-- Cinematic Camera --%>
-          <button phx-click="toggle_cinematic" class={"ctrl-btn #{if @cinematic_mode, do: "ctrl-btn-active"}"} title="Cinematic Camera — Auto-follow Events">
+          <button phx-click="toggle_cinematic" class={"ctrl-btn #{if @cinematic_mode, do: "ctrl-btn-active"}"} title="Cinematic Camera — Auto-follow Events" aria-label="Cinematic Camera — Auto-follow Events">
             🎬
           </button>
 
           <%!-- Screenshot with World Name Overlay --%>
-          <button phx-click="screenshot_with_overlay" class="ctrl-btn" title="Screenshot with World Name Overlay">
+          <button phx-click="screenshot_with_overlay" class="ctrl-btn" title="Screenshot with World Name Overlay" aria-label="Screenshot with World Name Overlay">
             📸
           </button>
 
           <%!-- Mind View Toggle --%>
-          <button id="mind-view-btn" phx-click="toggle_mind_view" class={"ctrl-btn #{if @mind_view_active, do: "ctrl-btn-primary"}"} title="Mind View">
+          <button id="mind-view-btn" phx-click="toggle_mind_view" class={"ctrl-btn #{if @mind_view_active, do: "ctrl-btn-primary"}"} title="Mind View" aria-label="Mind View">
             🧠
           </button>
 
           <%!-- Timeline --%>
-          <button phx-click="toggle_timeline" class={"ctrl-btn #{if @timeline_open, do: "ctrl-btn-primary"}"} title="Story Timeline">
+          <button phx-click="toggle_timeline" class={"ctrl-btn #{if @timeline_open, do: "ctrl-btn-primary"}"} title="Story Timeline" aria-label="Story Timeline">
             📜
           </button>
 
           <%!-- Event Timeline (Eventus) --%>
-          <button phx-click="toggle_event_timeline" class={"ctrl-btn #{if @event_timeline_open, do: "ctrl-btn-active"}"} title="Event Timeline">
+          <button phx-click="toggle_event_timeline" class={"ctrl-btn #{if @event_timeline_open, do: "ctrl-btn-active"}"} title="Event Timeline" aria-label="Event Timeline">
             🔔<%= if length(@event_timeline) > 0 do %><span class="text-[8px] text-red-400"><%= length(@event_timeline) %></span><% end %>
           </button>
 
           <%!-- LLM Metrics (M key) --%>
-          <button phx-click="toggle_llm_metrics" class={"ctrl-btn #{if @llm_metrics_open, do: "ctrl-btn-primary"}"} title="LLM Metrics (M)">
+          <button phx-click="toggle_llm_metrics" class={"ctrl-btn #{if @llm_metrics_open, do: "ctrl-btn-primary"}"} title="LLM Metrics (M)" aria-label="LLM Metrics (M)">
             ⚡
           </button>
 
           <%!-- Observatory --%>
-          <button phx-click="open_stats" class={"ctrl-btn #{if @stats_open, do: "ctrl-btn-primary"}"} title="Observatory Dashboard">
+          <button phx-click="open_stats" class={"ctrl-btn #{if @stats_open, do: "ctrl-btn-primary"}"} title="Observatory Dashboard" aria-label="Observatory Dashboard">
             📊
           </button>
 
           <%!-- World History --%>
-          <button phx-click="open_history" class={"ctrl-btn #{if @history_open, do: "ctrl-btn-primary"}"} title="World History">
+          <button phx-click="open_history" class={"ctrl-btn #{if @history_open, do: "ctrl-btn-primary"}"} title="World History" aria-label="World History">
             📖
           </button>
 
           <%!-- Universe Gallery --%>
-          <button phx-click="dashboard_back" class="ctrl-btn" title="Universe Gallery">
+          <button phx-click="dashboard_back" class="ctrl-btn" title="Universe Gallery" aria-label="Universe Gallery">
             🌍
           </button>
 
           <%!-- Save/Load --%>
-          <button phx-click="open_save_load" class="ctrl-btn" title="Save / Load World">
+          <button phx-click="open_save_load" class="ctrl-btn" title="Save / Load World" aria-label="Save / Load World">
             💾
           </button>
 
           <%!-- Export & Share --%>
-          <button phx-click="open_export" class={"ctrl-btn #{if @export_open, do: "ctrl-btn-active"}"} title="Export / Import / Share World">
+          <button phx-click="open_export" class={"ctrl-btn #{if @export_open, do: "ctrl-btn-active"}"} title="Export / Import / Share World" aria-label="Export / Import / Share World">
             📤
           </button>
 
           <%!-- Rules Engine --%>
-          <button phx-click="open_rules" class={"ctrl-btn #{if @rules_open, do: "ctrl-btn-active"}"} title="World Rules">
+          <button phx-click="open_rules" class={"ctrl-btn #{if @rules_open, do: "ctrl-btn-active"}"} title="World Rules" aria-label="World Rules">
             🎛️
           </button>
 
           <%!-- LLM indicator + Settings --%>
-          <button phx-click="open_settings" class="ctrl-btn flex items-center gap-1.5" title="LLM Settings">
+          <button phx-click="open_settings" class="ctrl-btn flex items-center gap-1.5" title="LLM Settings" aria-label="LLM Settings">
             <span class="text-[9px] text-slate-500 hidden sm:inline">
               <%= if @settings_provider == "gemini", do: "✨", else: "🦙" %>
               <%= String.slice(@settings_model, 0..12) %>

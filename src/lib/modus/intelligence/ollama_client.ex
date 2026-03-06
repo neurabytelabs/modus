@@ -92,9 +92,7 @@ defmodule Modus.Intelligence.OllamaClient do
     url = Map.get(config, :base_url, @default_url)
 
     case Req.get("#{url}/api/tags",
-           receive_timeout: 10_000,
-           
-           
+           receive_timeout: 10_000
          ) do
       {:ok, %{status: 200}} -> :ok
       {:ok, %{status: s}} -> {:error, "HTTP #{s}"}
@@ -119,9 +117,7 @@ defmodule Modus.Intelligence.OllamaClient do
 
     case Req.post("#{url}/api/generate",
            json: body,
-           receive_timeout: @timeout,
-           
-           
+           receive_timeout: @timeout
          ) do
       {:ok, %{status: 200, body: %{"response" => text}}} -> {:ok, text}
       {:ok, %{status: status, body: body}} -> {:error, {:http, status, body}}
