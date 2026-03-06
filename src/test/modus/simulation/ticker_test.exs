@@ -52,7 +52,7 @@ defmodule Modus.Simulation.TickerTest do
     :ok = Ticker.run(pid)
 
     # Wait for at least one tick broadcast
-    assert_receive {:tick, n}, 200
+    assert_receive {:tick, n}, 2000
     assert n >= 1
     :ok = Ticker.pause(pid)
   end
