@@ -161,17 +161,19 @@ defmodule Modus.Nexus.TraceEngine do
 
     agent_state =
       try do
-        agent = Agent.get_state(agent_id)
-
-        %{
-          name: agent.name,
-          position: agent.position,
-          energy: agent.conatus_energy,
-          affect: agent.affect_state,
-          alive: agent.alive?,
-          needs: agent.needs,
-          last_reasoning: agent.last_reasoning
-        }
+        case Agent.get_state(agent_id) do
+          nil -> nil
+          agent ->
+            %{
+              name: agent.name,
+              position: agent.position,
+              energy: agent.conatus_energy,
+              affect: agent.affect_state,
+              alive: agent.alive?,
+              needs: agent.needs,
+              last_reasoning: agent.last_reasoning
+            }
+        end
       catch
         :exit, _ -> nil
       end
@@ -205,17 +207,19 @@ defmodule Modus.Nexus.TraceEngine do
 
     agent_state =
       try do
-        agent = Agent.get_state(agent_id)
-
-        %{
-          name: agent.name,
-          position: agent.position,
-          energy: agent.conatus_energy,
-          affect: agent.affect_state,
-          alive: agent.alive?,
-          needs: agent.needs,
-          last_reasoning: agent.last_reasoning
-        }
+        case Agent.get_state(agent_id) do
+          nil -> nil
+          agent ->
+            %{
+              name: agent.name,
+              position: agent.position,
+              energy: agent.conatus_energy,
+              affect: agent.affect_state,
+              alive: agent.alive?,
+              needs: agent.needs,
+              last_reasoning: agent.last_reasoning
+            }
+        end
       catch
         :exit, _ -> nil
       end

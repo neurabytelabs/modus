@@ -87,8 +87,10 @@ defmodule Modus.Mind.Cerebro.SocialInsight do
 
   defp get_agent_name(agent_id) do
     try do
-      state = Agent.get_state(agent_id)
-      state.name
+      case Agent.get_state(agent_id) do
+        nil -> "Unknown"
+        state -> state.name
+      end
     catch
       :exit, _ -> "Unknown"
     end

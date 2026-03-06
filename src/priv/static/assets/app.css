@@ -951,12 +951,12 @@ body {
   top: 4rem;
 }
 
-.top-3 {
-  top: 0.75rem;
-}
-
 .top-28 {
   top: 7rem;
+}
+
+.top-3 {
+  top: 0.75rem;
 }
 
 .z-10 {
@@ -965,10 +965,6 @@ body {
 
 .z-20 {
   z-index: 20;
-}
-
-.z-30 {
-  z-index: 30;
 }
 
 .z-40 {

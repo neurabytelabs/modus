@@ -36,6 +36,10 @@ defmodule Modus.Nexus.InsightEngine do
     try do
       agent = Agent.get_state(agent_id)
 
+      if is_nil(agent) do
+        {:error, :agent_not_found}
+      else
+
       history =
         case :ets.lookup(@ets_table, agent_id) do
           [{^agent_id, positions}] -> Enum.take(positions, 10)
@@ -52,6 +56,7 @@ defmodule Modus.Nexus.InsightEngine do
         alive?: agent.alive?,
         position_history: history
       }
+      end
     catch
       :exit, _ -> {:error, :agent_not_found}
     end
