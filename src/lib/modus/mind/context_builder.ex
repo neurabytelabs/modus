@@ -3,7 +3,7 @@ defmodule Modus.Mind.ContextBuilder do
 
   alias Modus.Mind.{Perception, Cerebro.SocialInsight, Culture, Trust}
   alias Modus.Persistence.AgentMemory
-  alias Modus.Protocol.PersonalityPromptBuilder
+  alias Modus.Protocol.{PersonalityPromptBuilder, ConsciousChatPrompt}
   alias Modus.Simulation.{Seasons, WorldHistory}
   alias Modus.I18n
 
@@ -11,55 +11,18 @@ defmodule Modus.Mind.ContextBuilder do
   defp ensure_float(val) when is_integer(val), do: val / 1
   defp ensure_float(_), do: 0.0
 
-  @doc "Build a full system prompt for chat with real context."
-  def build_chat_prompt(agent, _user_message \\ nil) do
-    perception = Perception.snapshot(agent)
-    # Top 3 relationships only (prompt compression)
-    social = SocialInsight.describe_relationships(agent.id) |> compress_text()
-    energy_pct = round(ensure_float(perception.conatus_energy) * 100)
-    lang = I18n.current_language()
-    lang_instruction = I18n.language_instruction(lang)
-    identity = I18n.identity_prompt(lang, agent.name, agent.occupation)
+  @doc """
+  Build a full system prompt for chat with real context.
 
-    """
-    #{lang_instruction}
-    #{identity}
+  Delegates to ConsciousChatPrompt which assembles ALL inner state
+  (episodic memories, conversation history, affect memories, desires, relationships)
+  into a structured prompt.
 
-    You are #{agent.name}, a #{agent.occupation} in a living world.
-
-    Your personality: #{describe_personality_rich(agent.personality)}
-
-    SPEECH STYLE: #{PersonalityPromptBuilder.build(agent.personality, perception.affect_state, perception.conatus_energy)}
-
-    Right now you're #{action_name(perception.current_action)} in the #{terrain_name(perception.terrain)}.
-    Your energy is #{energy_pct}% and you're feeling #{affect_name(perception.affect_state)}.
-    #{hunger_context(perception.needs)}
-
-    #{nearby_context(perception.nearby_agents)}
-    #{social}
-
-    #{season_context()}
-
-    #{memory_context(agent.id)}
-
-    #{goals_context(agent.id)}
-
-    #{culture_context(agent.id)}
-
-    #{world_history_context()}
-
-    #{trust_context(agent.id)}
-
-    RULES:
-    - Speak naturally as #{agent.name} would — use your personality
-    - If you have goals, mention them naturally when relevant
-    - Reference your REAL surroundings, feelings, and relationships
-    - If hungry, mention it naturally. If tired, sound it. If happy, show it
-    - Keep responses 1-3 sentences but make them ALIVE
-    - Never say "I'm currently [action]" robotically — weave it into natural speech
-    - If someone asks about your world, describe what you actually see
-    - Remember past conversations and reference them
-    """
+  ## Options
+    - :target_agent_id — if chatting with another agent (agent-to-agent mode)
+  """
+  def build_chat_prompt(agent, user_message \\ nil, opts \\ []) do
+    ConsciousChatPrompt.build(agent, user_message || "", opts)
   end
 
   @doc "Build prompt for agent-to-agent conversation."

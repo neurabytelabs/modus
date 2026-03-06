@@ -12,23 +12,31 @@ defmodule Modus.Protocol.Bridge do
   defp ensure_float(val) when is_integer(val), do: val / 1
   defp ensure_float(_), do: 0.0
 
-  @doc "Main entry point: process a user message to an agent."
-  def process(agent_id, user_message) do
+  @doc """
+  Main entry point: process a user message to an agent.
+
+  ## Parameters
+    - agent_id: The target agent's ID
+    - user_message: The message text
+    - opts: Optional keyword list
+      - :target_agent_id — if the message is from another agent (agent-to-agent mode)
+  """
+  def process(agent_id, user_message, opts \\ []) do
     agent = Agent.get_state(agent_id)
 
     if is_nil(agent) do
       {:error, "Agent not found"}
     else
-      process_intent(agent, agent_id, user_message)
+      process_intent(agent, agent_id, user_message, opts)
     end
   end
 
-  defp process_intent(agent, agent_id, user_message) do
+  defp process_intent(agent, agent_id, user_message, opts \\ []) do
     intent = IntentParser.parse(user_message)
 
     case intent do
       {:chat, text} ->
-        system_prompt = ContextBuilder.build_chat_prompt(agent, text)
+        system_prompt = ContextBuilder.build_chat_prompt(agent, text, opts)
 
         {:ok, reply} = chat_with_context(agent, text, system_prompt)
         Modus.Mind.ConversationMemory.record(
