@@ -16,15 +16,12 @@ services:
       - PHX_PORT=4000
       - SECRET_KEY_BASE=${SECRET_KEY_BASE:-}
       - DATABASE_PATH=/app/priv/data/modus.db
-      - OLLAMA_URL=http://modus-llm:11434
+      - OLLAMA_URL=http://host.docker.internal:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2:3b-instruct-q4_K_M}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-${GEMINI_API_KEY}}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
-    depends_on:
-      modus-llm:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4000/"]
       interval: 30s
@@ -33,18 +30,6 @@ services:
       start_period: 60s
     command: >
       sh -c "mix deps.get && mix ecto.create && mix ecto.migrate && mix phx.server"
-
-  modus-llm:
-    image: ollama/ollama:latest
-    volumes:
-      - ./data/ollama:/root/.ollama
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
 
 volumes:
   deps:

@@ -1,12 +1,12 @@
 defmodule Modus.Nexus.Router do
   @moduledoc """
-  NexusRouter — Chat mesajını intent olarak sınıflar.
-  Pure Elixir, LLM kullanmaz. Pattern matching + keyword tabanlı.
+  NexusRouter — Classifies chat messages into intents.
+  Pure Elixir, no LLM. Pattern matching + keyword based.
 
-  Intent tipleri:
-  - :insight (soru) — alt: agent_query, event_query, stats_query, why_query
-  - :action (komut) — alt: terrain_modify, spawn_entity, config_change, rule_inject
-  - :chat (sohbet) — alt: greeting, farewell, general
+  Intent types:
+  - :insight (question) — sub: agent_query, event_query, stats_query, why_query
+  - :action (command) — sub: terrain_modify, spawn_entity, config_change, rule_inject
+  - :chat (conversation) — sub: greeting, farewell, general
   """
 
   @type intent :: :insight | :action | :chat
@@ -23,19 +23,19 @@ defmodule Modus.Nexus.Router do
         }
 
   # Keywords for intent detection
-  @insight_question_words ~w(ne nerede nereye nasıl kaç kim hangi what where how who which when neden why)
-  @insight_stats_words ~w(ortalama toplam istatistik stats average total count en)
-  @insight_event_words ~w(olay olaylar event events son oldu happened log)
-  @insight_why_words ~w(neden why niçin sebebi nedeni reason açıkla explain)
-  @insight_agent_words ~w(ajan agent ajanlar agents enerji energy konum position affect duygu mutlu üzgün)
+  @insight_question_words ~w(what where how who which when why)
+  @insight_stats_words ~w(stats average total count most)
+  @insight_event_words ~w(event events last happened log)
+  @insight_why_words ~w(why reason explain)
+  @insight_agent_words ~w(agent agents energy position affect mood happy sad)
 
-  @action_terrain_words ~w(biome değiştir arazi terrain modify change biom çöl orman ocean forest desert)
-  @action_spawn_words ~w(oluştur spawn create yarat doğur agent ajan hayvan animal)
-  @action_config_words ~w(ayar config hız speed decay oran rate difficulty zorluk)
-  @action_rule_words ~w(kural rule inject yasak ban izin allow)
+  @action_terrain_words ~w(biome terrain modify change ocean forest desert)
+  @action_spawn_words ~w(spawn create agent animal)
+  @action_config_words ~w(config speed decay rate difficulty)
+  @action_rule_words ~w(rule inject ban allow)
 
-  @greeting_words ~w(merhaba selam hello hi hey hola sa selamlar günaydın)
-  @farewell_words ~w(bye güle hoşça görüşürüz elveda bb)
+  @greeting_words ~w(hello hi hey hola)
+  @farewell_words ~w(bye goodbye farewell)
 
   @doc "Classify a chat message into intent + sub_intent"
   @spec classify(String.t()) :: classification()
@@ -200,7 +200,7 @@ defmodule Modus.Nexus.Router do
     end
   end
 
-  @action_verbs ~w(ekle oluştur yarat değiştir kaldır sil spawn create add remove delete modify change set ayarla koy inject)
+  @action_verbs ~w(spawn create add remove delete modify change set inject)
   defp has_action_verb?(tokens), do: match_any?(tokens, @action_verbs)
 
   defp match_any?(tokens, words), do: Enum.any?(tokens, &(&1 in words))

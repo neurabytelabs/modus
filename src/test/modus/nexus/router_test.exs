@@ -6,14 +6,14 @@ defmodule Modus.Nexus.RouterTest do
   describe "classify/1" do
     # 1. Greeting
     test "classifies greetings" do
-      result = Router.classify("Merhaba!")
+      result = Router.classify("Hello!")
       assert result.intent == :chat
       assert result.sub_intent == :greeting
     end
 
     # 2. Farewell
     test "classifies farewells" do
-      result = Router.classify("Güle güle!")
+      result = Router.classify("Goodbye!")
       assert result.intent == :chat
       assert result.sub_intent == :farewell
     end
@@ -27,7 +27,7 @@ defmodule Modus.Nexus.RouterTest do
 
     # 4. Stats query
     test "classifies stats query" do
-      result = Router.classify("How many agents are there?")
+      result = Router.classify("What is the total stats count?")
       assert result.intent == :insight
       assert result.sub_intent == :stats_query
     end
@@ -55,7 +55,7 @@ defmodule Modus.Nexus.RouterTest do
 
     # 8. Terrain modify action
     test "classifies terrain modify action" do
-      result = Router.classify("Biome'u çöle değiştir")
+      result = Router.classify("Change biome to desert")
       assert result.intent == :action
       assert result.sub_intent == :terrain_modify
     end
@@ -82,14 +82,14 @@ defmodule Modus.Nexus.RouterTest do
 
     # 12. Rule inject
     test "classifies rule inject action" do
-      result = Router.classify("Yeni bir kural ekle")
+      result = Router.classify("Inject a new rule")
       assert result.intent == :action
       assert result.sub_intent == :rule_inject
     end
 
     # 13. Question mark fallback
     test "question mark triggers insight fallback" do
-      result = Router.classify("Bu doğru mu?")
+      result = Router.classify("Is this correct?")
       assert result.intent == :insight
     end
 

@@ -38,7 +38,7 @@ defmodule Modus.Nexus.ActionEngineTest do
 
     test "rejects invalid biome" do
       assert {:error, msg} = ActionEngine.execute(:terrain_modify, %{biome: :lava, x: 5, y: 5, radius: 1})
-      assert msg =~ "Geçersiz biome"
+      assert msg =~ "Invalid biome"
     end
 
     test "rejects invalid radius" do
@@ -48,7 +48,7 @@ defmodule Modus.Nexus.ActionEngineTest do
 
     test "large radius requires confirmation" do
       assert {:confirm, msg} = ActionEngine.execute(:terrain_modify, %{biome: :desert, x: 5, y: 5, radius: 7})
-      assert msg =~ "Onaylıyor"
+      assert msg =~ "Confirm"
 
       # Confirm it
       assert {:ok, _} = ActionEngine.confirm()
@@ -58,7 +58,7 @@ defmodule Modus.Nexus.ActionEngineTest do
   describe "spawn_entity" do
     test "rejects empty name" do
       assert {:error, msg} = ActionEngine.execute(:spawn_entity, %{name: ""})
-      assert msg =~ "adı"
+      assert msg =~ "name"
     end
   end
 

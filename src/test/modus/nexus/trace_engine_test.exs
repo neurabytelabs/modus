@@ -93,7 +93,7 @@ defmodule Modus.Nexus.TraceEngineTest do
   test "why_answer handles missing agent" do
     result = TraceEngine.why_answer("nonexistent-agent")
     assert is_binary(result)
-    assert String.contains?(result, "bulunamadı")
+    assert String.contains?(result, "not found")
   end
 
   # 10. why_answer returns analysis for agent with decisions logged

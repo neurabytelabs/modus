@@ -1,14 +1,14 @@
 defmodule Modus.Nexus.TraceEngine do
   @moduledoc """
-  TraceEngine — Agent davranış izleme ve "Neden?" soruları motoru.
+  TraceEngine — Agent behavior tracking and "Why?" question engine.
 
-  ## Özellikler
-  - **Decision Log:** Her tick'te ajanın kararını kaydeder (ETS, circular buffer, max 100/ajan)
-  - **Position Trace:** Timeline formatında konum geçmişi
-  - **Disappearance Detection:** Ajan görünür alandan çıkınca otomatik log
-  - **Why Answer:** decision_log + affect_state + spatial_data birleştirip açıklama üretir
+  ## Features
+  - **Decision Log:** Records agent decisions every tick (ETS, circular buffer, max 100/agent)
+  - **Position Trace:** Timeline-formatted position history
+  - **Disappearance Detection:** Automatic log when agent leaves visible area
+  - **Why Answer:** Combines decision_log + affect_state + spatial_data to generate explanations
 
-  ETS tabloları memory-efficient: ajan başına max 100 entry, circular buffer.
+  ETS tables are memory-efficient: max 100 entries per agent, circular buffer.
   """
   use GenServer
 
@@ -279,33 +279,33 @@ defmodule Modus.Nexus.TraceEngine do
   end
 
   defp disappearance_reason(:death, agent, _viewport) do
-    "#{agent.name} öldü. Son konum: #{inspect(agent.position)}"
+    "#{agent.name} died. Last position: #{inspect(agent.position)}"
   end
 
   defp disappearance_reason(:exhaustion, agent, _viewport) do
-    "#{agent.name} enerjisi tükendi (#{agent.conatus_energy}). Konum: #{inspect(agent.position)}"
+    "#{agent.name} exhausted (#{agent.conatus_energy}). Position: #{inspect(agent.position)}"
   end
 
   defp disappearance_reason(:boundary_x, agent, viewport) do
-    "#{agent.name} yatay sınırı aştı. Konum: #{inspect(agent.position)}, sınır: #{viewport.min_x}-#{viewport.max_x}"
+    "#{agent.name} exceeded horizontal boundary. Position: #{inspect(agent.position)}, bounds: #{viewport.min_x}-#{viewport.max_x}"
   end
 
   defp disappearance_reason(:boundary_y, agent, viewport) do
-    "#{agent.name} dikey sınırı aştı. Konum: #{inspect(agent.position)}, sınır: #{viewport.min_y}-#{viewport.max_y}"
+    "#{agent.name} exceeded vertical boundary. Position: #{inspect(agent.position)}, bounds: #{viewport.min_y}-#{viewport.max_y}"
   end
 
   defp disappearance_reason(:fled, agent, _viewport) do
-    "#{agent.name} korku durumunda kaçtı. Konum: #{inspect(agent.position)}"
+    "#{agent.name} fled in fear. Position: #{inspect(agent.position)}"
   end
 
   defp disappearance_reason(:unknown, agent, _viewport) do
-    "#{agent.name} bilinmeyen nedenle kayboldu. Konum: #{inspect(agent.position)}"
+    "#{agent.name} disappeared for unknown reason. Position: #{inspect(agent.position)}"
   end
 
   defp try_ollama_explain(context) do
     prompt = """
     You are explaining agent behavior in a simulation. Be brief and friendly.
-    Respond in the world's language (Turkish if unclear).
+    Respond in English.
 
     Agent data:
     #{inspect(context, pretty: true, limit: 500)}
@@ -317,7 +317,7 @@ defmodule Modus.Nexus.TraceEngine do
   end
 
   defp try_ollama_why(context) do
-    question = Map.get(context, :question, "Neden?")
+    question = Map.get(context, :question, "Why?")
 
     prompt = """
     You are answering a question about an agent in a simulation. Be brief and clear.
@@ -358,7 +358,7 @@ defmodule Modus.Nexus.TraceEngine do
   end
 
   defp template_why(%{agent: nil}) do
-    "🔍 Ajan bulunamadı — muhtemelen öldü veya kayboldu."
+    "🔍 Agent not found — probably died or disappeared."
   end
 
   defp template_why(%{agent: agent} = context) do
@@ -366,17 +366,17 @@ defmodule Modus.Nexus.TraceEngine do
     positions = Map.get(context, :position_trace, [])
     disappearances = Map.get(context, :disappearances, [])
 
-    parts = ["🔍 #{agent.name} Analizi:"]
+    parts = ["🔍 #{agent.name} Analysis:"]
 
     # Current state
     parts =
       parts ++
-        ["  ⚡ Enerji: #{agent.energy}, Duygu: #{agent.affect}"]
+        ["  ⚡ Energy: #{agent.energy}, Affect: #{agent.affect}"]
 
     # Last reasoning
     parts =
       if agent.last_reasoning do
-        parts ++ ["  💭 Son düşünce: #{agent.last_reasoning}"]
+        parts ++ ["  💭 Last thought: #{agent.last_reasoning}"]
       else
         parts
       end
@@ -390,7 +390,7 @@ defmodule Modus.Nexus.TraceEngine do
           |> Enum.map(fn {k, v} -> "#{k}=#{round(v)}" end)
 
         if length(critical) > 0 do
-          parts ++ ["  ⚠️ Kritik ihtiyaçlar: #{Enum.join(critical, ", ")}"]
+          parts ++ ["  ⚠️ Critical needs: #{Enum.join(critical, ", ")}"]
         else
           parts
         end
