@@ -13,7 +13,7 @@
 
 **AI agents with emotions, memory, and free will — building civilizations in worlds you design.**
 
-[![Version](https://img.shields.io/badge/version-v9.0.0_Anima-blueviolet)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v9.1.0_Anima-blueviolet)](CHANGELOG.md)
 [![Elixir](https://img.shields.io/badge/Elixir-1.17+-4B275F?logo=elixir)](https://elixir-lang.org/)
 [![Phoenix](https://img.shields.io/badge/Phoenix-1.7+-orange?logo=phoenix-framework)](https://phoenixframework.org/)
 [![Tests](https://img.shields.io/badge/tests-867-brightgreen)](test/)
