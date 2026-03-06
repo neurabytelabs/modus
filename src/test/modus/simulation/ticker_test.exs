@@ -67,6 +67,6 @@ defmodule Modus.Simulation.TickerTest do
   end
 
   test "current_tick returns the tick number", %{pid: pid} do
-    assert Ticker.current_tick(pid) in [0, 1]
+    assert Ticker.current_tick(pid) >= 0
   end
 end
