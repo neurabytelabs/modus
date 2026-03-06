@@ -5,6 +5,7 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
   alias Modus.Mind.AffectMemory
   alias Modus.Intelligence.LlmProvider
   alias Modus.Simulation.{Agent, EventLog}
+  alias Modus.Protocol.ConsciousChatPrompt
 
   alias Modus.Protocol.{
     DialogueSystem,
@@ -148,7 +149,7 @@ defmodule Modus.Mind.Cerebro.AgentConversation do
         end
 
         relationship = SocialNetwork.get_relationship(agent.id, partner_id)
-        prompt = build_conversation_prompt(agent, partner, relationship)
+        prompt = ConsciousChatPrompt.build(agent, "conversation", target_agent_id: partner.id)
 
         config = LlmProvider.get_config()
 

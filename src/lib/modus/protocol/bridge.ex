@@ -6,6 +6,7 @@ defmodule Modus.Protocol.Bridge do
   alias Modus.Mind.{ContextBuilder, Perception}
   alias Modus.Mind.Cerebro.SocialInsight
   alias Modus.Intelligence.LlmProvider
+  alias Modus.Protocol.ConsciousChatPrompt
   alias Modus.Simulation.Agent
 
   defp ensure_float(val) when is_float(val), do: val
@@ -36,7 +37,7 @@ defmodule Modus.Protocol.Bridge do
 
     case intent do
       {:chat, text} ->
-        system_prompt = ContextBuilder.build_chat_prompt(agent, text, opts)
+        system_prompt = ConsciousChatPrompt.build(agent, text, opts)
 
         {:ok, reply} = chat_with_context(agent, text, system_prompt)
         Modus.Mind.ConversationMemory.record(
