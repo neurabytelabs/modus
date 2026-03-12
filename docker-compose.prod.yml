@@ -1,0 +1,71 @@
+# MODUS Production Docker Compose
+# Target: modus.neurabytelabs.com (Hetzner + Coolify)
+# Usage: docker-compose -f docker-compose.prod.yml up -d
+#
+# Required env vars (set in Coolify or .env.prod):
+#   SECRET_KEY_BASE   — mix phx.gen.secret
+#   PHX_HOST          — modus.neurabytelabs.com
+#   GEMINI_API_KEY    — Google AI API key
+#
+# Optional:
+#   OLLAMA_URL        — http://localhost:11434 (if using local Ollama)
+#   OLLAMA_MODEL      — llama3.2:3b-instruct-q4_K_M
+#   PORT              — 4001 (internal, Coolify reverse proxies to 443)
+
+version: "3.9"
+
+services:
+  modus-app:
+    build:
+      context: ./src
+      dockerfile: Dockerfile.prod
+    image: neurabytelabs/modus:latest
+    container_name: modus-app
+    restart: unless-stopped
+
+    ports:
+      - "4001:4000"   # Coolify reverse proxy: modus.neurabytelabs.com → :4001
+
+    environment:
+      MIX_ENV: prod
+      PHX_HOST: ${PHX_HOST:-modus.neurabytelabs.com}
+      PORT: 4000
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:?SECRET_KEY_BASE is required}
+      DATABASE_PATH: /app/priv/data/modus_prod.db
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b-instruct-q4_K_M}
+      # Demo mode limits
+      DEMO_MODE: ${DEMO_MODE:-true}
+      DEMO_MAX_AGENTS: ${DEMO_MAX_AGENTS:-20}
+      DEMO_CHAT_RATE_LIMIT: ${DEMO_CHAT_RATE_LIMIT:-10}
+
+    volumes:
+      - modus-data:/app/priv/data    # SQLite persistence
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+
+    labels:
+      # Coolify / Traefik labels (if using Traefik reverse proxy)
+      - "traefik.enable=true"
+      - "traefik.http.routers.modus.rule=Host(`modus.neurabytelabs.com`)"
+      - "traefik.http.routers.modus.entrypoints=websecure"
+      - "traefik.http.routers.modus.tls.certresolver=letsencrypt"
+      - "traefik.http.services.modus.loadbalancer.server.port=4000"
+
+volumes:
+  modus-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/modus/data   # Hetzner persistent path
