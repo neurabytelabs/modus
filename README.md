@@ -22,7 +22,13 @@
 *"Each thing, as far as it lies in itself, strives to persevere in its being."*  
 — Baruch Spinoza, *Ethics* III
 
-[Demo](#-quick-start) · [Features](#-what-makes-modus-different) · [Architecture](#-architecture) · [Docs](docs/) · [Changelog](CHANGELOG.md)
+[🌐 Live Demo](https://modus.neurabytelabs.com) · [Features](#-what-makes-modus-different) · [Architecture](#-architecture) · [Docs](docs/) · [Changelog](CHANGELOG.md)
+
+---
+
+### 🚀 [Try the Live Demo → modus.neurabytelabs.com](https://modus.neurabytelabs.com)
+
+*No install required. Max 20 agents, demo mode. Self-host with Docker for full access.*
 
 </div>
 
